@@ -38,3 +38,33 @@ export interface AppBootstrap {
   availableProperties: PropertySummary[];
   defaultProperty: PropertyCode;
 }
+
+export interface PropertySettings {
+  propertyCode: PropertyCode;
+  displayName: string;
+  supportEmail: string;
+  timezone: string;
+  profile: "commuter_rail" | "streetcar";
+  branding: {
+    primaryColor: string;
+    logoMode: "herzog-default" | "property-override";
+  };
+  features: {
+    powerBi: boolean;
+    fileUploads: boolean;
+    cmms: boolean;
+  };
+}
+
+export interface ManagedUser {
+  id: string;
+  displayName: string;
+  email: string;
+  status: "active" | "invited" | "disabled";
+  roleLabel: string;
+  lastSeen: string;
+}
+
+export interface ManagedUserList {
+  items: ManagedUser[];
+}

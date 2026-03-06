@@ -9,6 +9,8 @@ import { ensurePropertyAccess } from "./lib/tenant-access.js";
 import { registerBootstrapRoutes } from "./routes/bootstrap.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerSecureRoutes } from "./routes/secure.js";
+import { registerSettingsRoutes } from "./routes/settings.js";
+import { registerUserRoutes } from "./routes/users.js";
 
 class HttpError extends Error {
   statusCode: number;
@@ -108,6 +110,8 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
     await registerHealthRoutes(api);
     await registerBootstrapRoutes(api);
     await registerSecureRoutes(api);
+    await registerSettingsRoutes(api);
+    await registerUserRoutes(api);
   }, { prefix: config.API_PREFIX });
 
   return app;

@@ -88,4 +88,43 @@ describe("app contracts", () => {
       defaultProperty: "caltrain"
     });
   });
+
+  it("returns property settings for authorized property context", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/settings/property",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      propertyCode: "caltrain",
+      branding: {
+        primaryColor: "#1E3A5F"
+      }
+    });
+  });
+
+  it("returns managed users for authorized property context", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/users",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "capmetro"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "ops-manager"
+        })
+      ])
+    );
+  });
 });

@@ -171,6 +171,12 @@ h2 {
   gap: 1rem;
 }
 
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .eyebrow,
 .metric-label {
   margin: 0 0 0.4rem;
@@ -188,6 +194,50 @@ h2 {
 
 .panel-body {
   line-height: 1.6;
+}
+
+.key-value-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.key-value-list div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.key-value-list dt {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  color: var(--mid-gray);
+  letter-spacing: 0.06em;
+}
+
+.key-value-list dd {
+  margin: 0;
+}
+
+.user-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.user-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--border-gray);
+}
+
+.user-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.user-row p {
+  margin: 0.1rem 0;
 }
 
 .status-badge {

@@ -1,55 +1,22 @@
-import type {
-  AppBootstrap,
-  ManagedUserList,
-  PropertyCode,
-  PropertySettings,
-  UserSession
-} from "@tps/types";
+import type { PropertyCode, PropertySettings } from "@tps/types";
 
-export const demoSession: UserSession = {
-  id: "local-dev-user",
-  email: "local-dev-user@herzog.com",
-  displayName: "Local Development User",
-  allowedProperties: ["caltrain", "capmetro", "tre"]
-};
-
-export const demoBootstrap: AppBootstrap = {
-  user: demoSession,
-  availableProperties: [
-    {
-      code: "caltrain",
-      name: "CalTrain",
-      profile: "commuter_rail",
-      themeColor: "#1E3A5F"
-    },
-    {
-      code: "capmetro",
-      name: "CapMetro",
-      profile: "commuter_rail",
-      themeColor: "#AB2D24"
-    },
-    {
-      code: "tre",
-      name: "Trinity Railway Express",
-      profile: "commuter_rail",
-      themeColor: "#086670"
-    }
-  ],
-  defaultProperty: "caltrain"
-};
-
-export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
+const propertySettingsCatalog: Record<PropertyCode, Omit<PropertySettings, "propertyCode">> = {
   caltrain: {
-    propertyCode: "caltrain",
     displayName: "CalTrain",
     supportEmail: "caltrain-ops@herzog.com",
     timezone: "America/Los_Angeles",
     profile: "commuter_rail",
-    branding: { primaryColor: "#1E3A5F", logoMode: "herzog-default" },
-    features: { powerBi: true, fileUploads: true, cmms: false }
+    branding: {
+      primaryColor: "#1E3A5F",
+      logoMode: "herzog-default"
+    },
+    features: {
+      powerBi: true,
+      fileUploads: true,
+      cmms: false
+    }
   },
   texrail: {
-    propertyCode: "texrail",
     displayName: "TEXRail",
     supportEmail: "texrail-ops@herzog.com",
     timezone: "America/Chicago",
@@ -58,7 +25,6 @@ export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
     features: { powerBi: true, fileUploads: true, cmms: false }
   },
   tre: {
-    propertyCode: "tre",
     displayName: "Trinity Railway Express",
     supportEmail: "tre-ops@herzog.com",
     timezone: "America/Chicago",
@@ -67,7 +33,6 @@ export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
     features: { powerBi: true, fileUploads: true, cmms: true }
   },
   trirail: {
-    propertyCode: "trirail",
     displayName: "Tri-Rail",
     supportEmail: "trirail-ops@herzog.com",
     timezone: "America/New_York",
@@ -76,7 +41,6 @@ export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
     features: { powerBi: true, fileUploads: true, cmms: false }
   },
   nmrx: {
-    propertyCode: "nmrx",
     displayName: "New Mexico Rail Runner",
     supportEmail: "nmrx-ops@herzog.com",
     timezone: "America/Denver",
@@ -85,7 +49,6 @@ export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
     features: { powerBi: true, fileUploads: false, cmms: false }
   },
   ctrail: {
-    propertyCode: "ctrail",
     displayName: "CT Rail",
     supportEmail: "ctrail-ops@herzog.com",
     timezone: "America/New_York",
@@ -94,7 +57,6 @@ export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
     features: { powerBi: true, fileUploads: true, cmms: false }
   },
   ace: {
-    propertyCode: "ace",
     displayName: "ACE",
     supportEmail: "ace-ops@herzog.com",
     timezone: "America/Los_Angeles",
@@ -103,7 +65,6 @@ export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
     features: { powerBi: true, fileUploads: true, cmms: false }
   },
   capmetro: {
-    propertyCode: "capmetro",
     displayName: "CapMetro",
     supportEmail: "capmetro-ops@herzog.com",
     timezone: "America/Chicago",
@@ -112,7 +73,6 @@ export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
     features: { powerBi: true, fileUploads: true, cmms: true }
   },
   kcstreetcar: {
-    propertyCode: "kcstreetcar",
     displayName: "KC Streetcar",
     supportEmail: "kcstreetcar-ops@herzog.com",
     timezone: "America/Chicago",
@@ -121,7 +81,6 @@ export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
     features: { powerBi: true, fileUploads: false, cmms: false }
   },
   okcstreetcar: {
-    propertyCode: "okcstreetcar",
     displayName: "OKC Streetcar",
     supportEmail: "okcstreetcar-ops@herzog.com",
     timezone: "America/Chicago",
@@ -130,7 +89,6 @@ export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
     features: { powerBi: false, fileUploads: false, cmms: false }
   },
   octastreetcar: {
-    propertyCode: "octastreetcar",
     displayName: "OCTA Streetcar",
     supportEmail: "octa-streetcar-ops@herzog.com",
     timezone: "America/Los_Angeles",
@@ -139,7 +97,6 @@ export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
     features: { powerBi: true, fileUploads: false, cmms: false }
   },
   metrolinkarrow: {
-    propertyCode: "metrolinkarrow",
     displayName: "Metrolink Arrow",
     supportEmail: "metrolink-arrow-ops@herzog.com",
     timezone: "America/Los_Angeles",
@@ -148,7 +105,6 @@ export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
     features: { powerBi: true, fileUploads: true, cmms: false }
   },
   silverline: {
-    propertyCode: "silverline",
     displayName: "Silver Line",
     supportEmail: "silverline-ops@herzog.com",
     timezone: "America/Chicago",
@@ -158,80 +114,9 @@ export const demoPropertySettings: Record<PropertyCode, PropertySettings> = {
   }
 };
 
-export const demoManagedUsers: Record<PropertyCode, ManagedUserList> = {
-  caltrain: {
-    items: [
-      {
-        id: "ops-manager",
-        displayName: "Jordan Reyes",
-        email: "jordan.reyes@herzog.com",
-        status: "active",
-        roleLabel: "Operations Manager",
-        lastSeen: "2026-03-06T14:10:00Z"
-      },
-      {
-        id: "dispatcher-1",
-        displayName: "Taylor Brooks",
-        email: "taylor.brooks@herzog.com",
-        status: "active",
-        roleLabel: "Dispatcher",
-        lastSeen: "2026-03-06T13:45:00Z"
-      }
-    ]
-  },
-  texrail: {
-    items: []
-  },
-  tre: {
-    items: [
-      {
-        id: "ops-manager",
-        displayName: "Jordan Reyes",
-        email: "jordan.reyes@herzog.com",
-        status: "active",
-        roleLabel: "Rail Operations Manager",
-        lastSeen: "2026-03-06T14:10:00Z"
-      }
-    ]
-  },
-  trirail: { items: [] },
-  nmrx: { items: [] },
-  ctrail: { items: [] },
-  ace: { items: [] },
-  capmetro: {
-    items: [
-      {
-        id: "ops-manager",
-        displayName: "Jordan Reyes",
-        email: "jordan.reyes@herzog.com",
-        status: "active",
-        roleLabel: "Transit Operations Manager",
-        lastSeen: "2026-03-06T14:10:00Z"
-      },
-      {
-        id: "dispatcher-1",
-        displayName: "Taylor Brooks",
-        email: "taylor.brooks@herzog.com",
-        status: "active",
-        roleLabel: "Dispatcher",
-        lastSeen: "2026-03-06T13:45:00Z"
-      }
-    ]
-  },
-  kcstreetcar: {
-    items: [
-      {
-        id: "ops-manager",
-        displayName: "Jordan Reyes",
-        email: "jordan.reyes@herzog.com",
-        status: "active",
-        roleLabel: "Streetcar Operations Lead",
-        lastSeen: "2026-03-06T14:10:00Z"
-      }
-    ]
-  },
-  okcstreetcar: { items: [] },
-  octastreetcar: { items: [] },
-  metrolinkarrow: { items: [] },
-  silverline: { items: [] }
-};
+export function getPropertySettings(propertyCode: PropertyCode): PropertySettings {
+  return {
+    propertyCode,
+    ...propertySettingsCatalog[propertyCode]
+  };
+}

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/app-shell.js";
 import { useBootstrap } from "./hooks/use-bootstrap.js";
+import { usePropertyData } from "./hooks/use-property-data.js";
 import { DashboardPage } from "./pages/dashboard-page.js";
 import { OperationsPage } from "./pages/operations-page.js";
 import { SettingsPage } from "./pages/settings-page.js";
@@ -13,6 +14,7 @@ export function App() {
   const activeProperty =
     data.availableProperties.find((property) => property.code === selectedProperty) ??
     data.availableProperties[0];
+  const propertyData = usePropertyData(activeProperty?.code ?? data.defaultProperty);
 
   const appVersion = import.meta.env.VITE_APP_VERSION ?? "0.1.0";
 
@@ -44,7 +46,17 @@ export function App() {
       <Routes>
         <Route path="/" element={<DashboardPage property={activeProperty} source={source} />} />
         <Route path="/operations" element={<OperationsPage property={activeProperty} />} />
-        <Route path="/settings" element={<SettingsPage property={activeProperty} />} />
+        <Route
+          path="/settings"
+          element={
+            <SettingsPage
+              property={activeProperty}
+              settings={propertyData.settings}
+              source={propertyData.source}
+              users={propertyData.users}
+            />
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>
