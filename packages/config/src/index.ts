@@ -8,6 +8,7 @@ const envSchema = z.object({
   API_PREFIX: z.string().default("/api/v1"),
   WEB_ORIGIN: z.string().url(),
   DATABASE_URL: z.string().min(1),
+  DATA_ACCESS_MODE: z.enum(["mock", "postgres"]).default("mock"),
   JWT_AUDIENCE: z.string().min(1),
   JWT_ISSUER: z.string().min(1),
   JWT_DEV_TOKEN: z.string().min(1),

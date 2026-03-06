@@ -1,0 +1,72 @@
+import type { PropertyCode, PropertySettings } from "@tps/types";
+
+import { getReferenceData } from "../lib/reference-data.js";
+
+import type { PropertyRepository } from "./contracts.js";
+import type { Queryable } from "./postgres-client.js";
+
+interface PropertySettingsRow {
+  railroad_code: PropertyCode;
+  display_name: string;
+  profile: "commuter_rail" | "streetcar";
+  support_email: string;
+  timezone_name: string;
+  primary_color: string;
+  logo_mode: "herzog-default" | "property-override";
+  power_bi_enabled: boolean;
+  file_uploads_enabled: boolean;
+  cmms_enabled: boolean;
+}
+
+export class PostgresPropertyRepository implements PropertyRepository {
+  constructor(private readonly db: Queryable) {}
+
+  async getSettings(propertyCode: PropertyCode): Promise<PropertySettings> {
+    const result = await this.db.query<PropertySettingsRow>(
+      `
+        SELECT
+          r.code AS railroad_code,
+          r.display_name,
+          r.profile,
+          ps.support_email,
+          ps.timezone_name,
+          ps.primary_color,
+          ps.logo_mode,
+          ps.power_bi_enabled,
+          ps.file_uploads_enabled,
+          ps.cmms_enabled
+        FROM shared.property_settings ps
+        JOIN shared.railroad r ON r.code = ps.railroad_code
+        WHERE ps.railroad_code = $1
+      `,
+      [propertyCode]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      throw new Error("property.not_found");
+    }
+
+    return {
+      propertyCode: row.railroad_code,
+      displayName: row.display_name,
+      supportEmail: row.support_email,
+      timezone: row.timezone_name,
+      profile: row.profile,
+      branding: {
+        primaryColor: row.primary_color,
+        logoMode: row.logo_mode
+      },
+      features: {
+        powerBi: row.power_bi_enabled,
+        fileUploads: row.file_uploads_enabled,
+        cmms: row.cmms_enabled
+      }
+    };
+  }
+
+  getReferenceData(propertyCode: PropertyCode) {
+    return getReferenceData(propertyCode);
+  }
+}
+
