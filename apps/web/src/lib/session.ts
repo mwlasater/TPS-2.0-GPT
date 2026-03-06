@@ -6,6 +6,7 @@ import type {
   DelayEventList,
   FileServiceList,
   JobProfileList,
+  ManagedUserDetail,
   ManagedUserList,
   NotificationList,
   PermissionGroupList,
@@ -17,6 +18,7 @@ import type {
   StationStopList,
   TrainRunList,
   TrainScheduleList,
+  UserAdminActionList,
   UserSession
 } from "@tps/types";
 
@@ -248,6 +250,58 @@ export const demoManagedUsers: Record<PropertyCode, ManagedUserList> = {
   octastreetcar: { items: [] },
   metrolinkarrow: { items: [] },
   silverline: { items: [] }
+};
+
+const makeUserDetail = (
+  propertyCode: PropertyCode,
+  roleLabel: string,
+  groups: string[]
+): ManagedUserDetail => ({
+  id: "ops-manager",
+  displayName: "Jordan Reyes",
+  email: "jordan.reyes@herzog.com",
+  status: "active",
+  roleLabel,
+  lastSeen: "2026-03-06T14:10:00Z",
+  propertyAccess: [propertyCode],
+  groups,
+  lastAction: "Password reset sent on 2026-03-01"
+});
+
+export const demoUserDetails: Record<PropertyCode, ManagedUserDetail> = {
+  caltrain: makeUserDetail("caltrain", "Operations Manager", ["Operations Admin", "Dispatch Leadership"]),
+  texrail: makeUserDetail("texrail", "Operations Manager", ["Operations Admin", "Dispatch Leadership"]),
+  tre: makeUserDetail("tre", "Rail Operations Manager", ["Operations Admin", "Dispatch Leadership"]),
+  trirail: makeUserDetail("trirail", "Operations Manager", ["Operations Admin"]),
+  nmrx: makeUserDetail("nmrx", "Operations Manager", ["Operations Admin"]),
+  ctrail: makeUserDetail("ctrail", "Operations Manager", ["Operations Admin"]),
+  ace: makeUserDetail("ace", "Operations Manager", ["Operations Admin"]),
+  capmetro: makeUserDetail("capmetro", "Transit Operations Manager", ["Operations Admin", "Dispatch Leadership"]),
+  kcstreetcar: makeUserDetail("kcstreetcar", "Streetcar Operations Lead", ["Streetcar Operations"]),
+  okcstreetcar: makeUserDetail("okcstreetcar", "Streetcar Operations Lead", ["Streetcar Operations"]),
+  octastreetcar: makeUserDetail("octastreetcar", "Streetcar Operations Lead", ["Streetcar Operations"]),
+  metrolinkarrow: makeUserDetail("metrolinkarrow", "Operations Manager", ["Operations Admin"]),
+  silverline: makeUserDetail("silverline", "Operations Manager", ["Operations Admin"])
+};
+
+export const demoUserAdminActions: UserAdminActionList = {
+  items: [
+    {
+      id: "reset-password",
+      label: "Reset Password",
+      style: "primary"
+    },
+    {
+      id: "resend-invite",
+      label: "Resend Invite",
+      style: "secondary"
+    },
+    {
+      id: "disable-user",
+      label: "Disable User",
+      style: "warning"
+    }
+  ]
 };
 
 const commuterReferenceData: ReferenceDataset = {

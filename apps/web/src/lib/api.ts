@@ -6,6 +6,7 @@ import type {
   DelayEventList,
   FileServiceList,
   JobProfileList,
+  ManagedUserDetail,
   ManagedUserList,
   NotificationList,
   PermissionGroupList,
@@ -16,7 +17,8 @@ import type {
   ReportConfigList,
   StationStopList,
   TrainRunList,
-  TrainScheduleList
+  TrainScheduleList,
+  UserAdminActionList
 } from "@tps/types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/api/v1";
@@ -57,6 +59,20 @@ export function fetchPropertySettings(propertyCode: PropertyCode): Promise<Prope
 
 export function fetchManagedUsers(propertyCode: PropertyCode): Promise<ManagedUserList> {
   return fetchPropertyScoped<ManagedUserList>("/users", propertyCode);
+}
+
+export function fetchManagedUserDetail(
+  propertyCode: PropertyCode,
+  userId: string
+): Promise<ManagedUserDetail> {
+  return fetchPropertyScoped<ManagedUserDetail>(`/users/${userId}`, propertyCode);
+}
+
+export function fetchUserAdminActions(
+  propertyCode: PropertyCode,
+  userId: string
+): Promise<UserAdminActionList> {
+  return fetchPropertyScoped<UserAdminActionList>(`/users/${userId}/actions`, propertyCode);
 }
 
 export function fetchPermissionGroups(propertyCode: PropertyCode): Promise<PermissionGroupList> {

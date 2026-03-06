@@ -67,6 +67,22 @@ export const managedUserListSchema = z.object({
   items: z.array(managedUserSchema)
 });
 
+export const managedUserDetailSchema = managedUserSchema.extend({
+  propertyAccess: z.array(z.string()),
+  groups: z.array(z.string()),
+  lastAction: z.string()
+});
+
+export const userAdminActionSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  style: z.enum(["primary", "secondary", "warning"])
+});
+
+export const userAdminActionListSchema = z.object({
+  items: z.array(userAdminActionSchema)
+});
+
 export const referenceDatasetSchema = z.object({
   delayReasons: z.array(z.string()),
   crewRoles: z.array(z.string()),

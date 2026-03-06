@@ -8,6 +8,7 @@ import { useBootstrap } from "./hooks/use-bootstrap.js";
 import { useOperationsData } from "./hooks/use-operations-data.js";
 import { usePlatformData } from "./hooks/use-platform-data.js";
 import { usePropertyData } from "./hooks/use-property-data.js";
+import { useUserAdminData } from "./hooks/use-user-admin-data.js";
 import { DashboardPage } from "./pages/dashboard-page.js";
 import { OperationsPage } from "./pages/operations-page.js";
 import { SettingsPage } from "./pages/settings-page.js";
@@ -22,6 +23,7 @@ export function App() {
   const baselineData = useBaselineData(activeProperty?.code ?? data.defaultProperty);
   const propertyData = usePropertyData(activeProperty?.code ?? data.defaultProperty);
   const platformData = usePlatformData(activeProperty?.code ?? data.defaultProperty);
+  const userAdminData = useUserAdminData(activeProperty?.code ?? data.defaultProperty, "ops-manager");
   const operationsData = useOperationsData(activeProperty?.code ?? data.defaultProperty);
 
   const appVersion = import.meta.env.VITE_APP_VERSION ?? "0.1.0";
@@ -76,6 +78,8 @@ export function App() {
               attendance={baselineData.attendance}
               files={platformData.files}
               jobProfiles={baselineData.jobProfiles}
+              managedUserActions={userAdminData.actions}
+              managedUserDetail={userAdminData.detail}
               notifications={platformData.notifications}
               permissionGroups={adminData.permissionGroups}
               powerBi={platformData.powerBi}

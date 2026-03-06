@@ -69,6 +69,22 @@ export interface ManagedUserList {
   items: ManagedUser[];
 }
 
+export interface ManagedUserDetail extends ManagedUser {
+  propertyAccess: PropertyCode[];
+  groups: string[];
+  lastAction: string;
+}
+
+export interface UserAdminAction {
+  id: string;
+  label: string;
+  style: "primary" | "secondary" | "warning";
+}
+
+export interface UserAdminActionList {
+  items: UserAdminAction[];
+}
+
 export interface ReferenceDataset {
   delayReasons: string[];
   crewRoles: string[];

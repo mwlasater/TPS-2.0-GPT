@@ -228,6 +228,36 @@ describe("app contracts", () => {
     );
   });
 
+  it("returns managed user detail and admin actions for authorized property context", async () => {
+    const detailResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/users/ops-manager",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const actionsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/users/ops-manager/actions",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(detailResponse.statusCode).toBe(200);
+    expect(actionsResponse.statusCode).toBe(200);
+    expect(detailResponse.json()).toMatchObject({
+      id: "ops-manager",
+      propertyAccess: ["caltrain"]
+    });
+    expect(actionsResponse.json().items[0]).toMatchObject({
+      label: "Reset Password"
+    });
+  });
+
   it("returns reference data for authorized property context", async () => {
     const response = await app.inject({
       method: "GET",

@@ -2,13 +2,15 @@ import type {
   AttendanceExceptionList,
   FileServiceList,
   JobProfileList,
+  ManagedUserDetail,
   ManagedUserList,
   NotificationList,
   PermissionGroupList,
   PowerBiEmbedList,
   PropertySettings,
   PropertySummary,
-  ReportConfigList
+  ReportConfigList,
+  UserAdminActionList
 } from "@tps/types";
 
 import { Panel } from "../components/panel.js";
@@ -18,6 +20,8 @@ interface SettingsPageProps {
   attendance: AttendanceExceptionList;
   files: FileServiceList;
   jobProfiles: JobProfileList;
+  managedUserActions: UserAdminActionList;
+  managedUserDetail: ManagedUserDetail;
   permissionGroups: PermissionGroupList;
   notifications: NotificationList;
   powerBi: PowerBiEmbedList;
@@ -32,6 +36,8 @@ export function SettingsPage({
   attendance,
   files,
   jobProfiles,
+  managedUserActions,
+  managedUserDetail,
   notifications,
   permissionGroups,
   powerBi,
@@ -105,6 +111,49 @@ export function SettingsPage({
           )}
         </div>
       </Panel>
+      <div className="two-column-grid">
+        <Panel title="Selected user detail" eyebrow={managedUserDetail.status}>
+          <dl className="key-value-list">
+            <div>
+              <dt>Name</dt>
+              <dd>{managedUserDetail.displayName}</dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd>{managedUserDetail.email}</dd>
+            </div>
+            <div>
+              <dt>Groups</dt>
+              <dd>{managedUserDetail.groups.join(", ")}</dd>
+            </div>
+            <div>
+              <dt>Property access</dt>
+              <dd>{managedUserDetail.propertyAccess.join(", ")}</dd>
+            </div>
+            <div>
+              <dt>Last admin action</dt>
+              <dd>{managedUserDetail.lastAction}</dd>
+            </div>
+          </dl>
+        </Panel>
+        <Panel title="Admin actions" eyebrow={`${managedUserActions.items.length} available`}>
+          <div className="badge-row">
+            {managedUserActions.items.map((action) => (
+              <StatusBadge
+                key={action.id}
+                tone={
+                  action.style === "primary"
+                    ? "success"
+                    : action.style === "warning"
+                      ? "warning"
+                      : "neutral"
+                }
+                label={action.label}
+              />
+            ))}
+          </div>
+        </Panel>
+      </div>
       <div className="two-column-grid">
         <Panel title="Permission groups" eyebrow={`${permissionGroups.items.length} groups`}>
           <div className="list-stack">
