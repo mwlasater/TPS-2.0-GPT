@@ -10,7 +10,8 @@ describe("migration service", () => {
     expect(migrations.map((migration) => migration.id)).toEqual([
       "0001_foundation",
       "0002_operations",
-      "0003_admin_platform"
+      "0003_admin_platform",
+      "0004_run_resources"
     ]);
   });
 });

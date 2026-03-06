@@ -1,4 +1,8 @@
 import type {
+  ConsistEquipment,
+  ConsistEquipmentList,
+  CrewAssignment,
+  CrewAssignmentList,
   DelayEvent,
   DelayEventList,
   PropertyCode,
@@ -51,6 +55,22 @@ interface DelayEventRow {
   minutes: number;
   notes: string;
   reported_at: string | Date;
+}
+
+interface ConsistEquipmentRow {
+  id: string;
+  equipment_number: string;
+  equipment_type: string;
+  position_index: number;
+  status: ConsistEquipment["status"];
+}
+
+interface CrewAssignmentRow {
+  id: string;
+  employee_name: string;
+  role_name: string;
+  on_duty_time: string;
+  status: CrewAssignment["status"];
 }
 
 function toIsoDate(value: string | Date): string {
@@ -211,11 +231,79 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
-  listConsistEquipment(propertyCode: PropertyCode, runId: string) {
-    return listConsistEquipment(propertyCode, runId);
+  async listConsistEquipment(
+    propertyCode: PropertyCode,
+    runId: string
+  ): Promise<ConsistEquipmentList> {
+    const result = await this.db.query<ConsistEquipmentRow>(
+      `
+        SELECT
+          ce.id,
+          ce.equipment_number,
+          ce.equipment_type,
+          ce.position_index,
+          ce.status
+        FROM shared.consist_equipment ce
+        JOIN shared.train_run tr ON tr.id = ce.train_run_id
+        WHERE tr.railroad_code = $1
+          AND ce.train_run_id = $2
+        ORDER BY ce.position_index
+      `,
+      [propertyCode, runId]
+    );
+
+    if (!result.rows.length) {
+      return listConsistEquipment(propertyCode, runId);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): ConsistEquipment => ({
+          id: row.id,
+          equipmentNumber: row.equipment_number,
+          equipmentType: row.equipment_type,
+          position: row.position_index,
+          status: row.status
+        })
+      )
+    };
   }
 
-  listCrewAssignments(propertyCode: PropertyCode, runId: string) {
-    return listCrewAssignments(propertyCode, runId);
+  async listCrewAssignments(
+    propertyCode: PropertyCode,
+    runId: string
+  ): Promise<CrewAssignmentList> {
+    const result = await this.db.query<CrewAssignmentRow>(
+      `
+        SELECT
+          ca.id,
+          ca.employee_name,
+          ca.role_name,
+          ca.on_duty_time,
+          ca.status
+        FROM shared.crew_assignment ca
+        JOIN shared.train_run tr ON tr.id = ca.train_run_id
+        WHERE tr.railroad_code = $1
+          AND ca.train_run_id = $2
+        ORDER BY ca.on_duty_time, ca.employee_name
+      `,
+      [propertyCode, runId]
+    );
+
+    if (!result.rows.length) {
+      return listCrewAssignments(propertyCode, runId);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): CrewAssignment => ({
+          id: row.id,
+          employeeName: row.employee_name,
+          role: row.role_name,
+          onDutyTime: row.on_duty_time,
+          status: row.status
+        })
+      )
+    };
   }
 }

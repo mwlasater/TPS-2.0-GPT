@@ -7,6 +7,6 @@ describe("seed service", () => {
     const seeds = await loadSeeds();
 
     expect(seeds.length).toBeGreaterThan(0);
-    expect(seeds.map((seed) => seed.id)).toEqual(["0001_bootstrap"]);
+    expect(seeds.map((seed) => seed.id)).toEqual(["0001_bootstrap", "0002_run_resources"]);
   });
 });
