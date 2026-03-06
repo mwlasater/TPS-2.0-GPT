@@ -1,0 +1,29 @@
+{
+  "name": "@tps/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/server.ts",
+    "lint": "eslint src --ext .ts",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.1",
+    "@tps/auth": "0.1.0",
+    "@tps/config": "0.1.0",
+    "@tps/types": "0.1.0",
+    "@tps/validation": "0.1.0",
+    "fastify": "^5.2.1",
+    "pino-pretty": "^13.0.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3",
+    "vitest": "^3.0.8"
+  }
+}
+
