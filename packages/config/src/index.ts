@@ -7,6 +7,7 @@ const envSchema = z.object({
   APP_VERSION: z.string().default("0.1.0"),
   API_PREFIX: z.string().default("/api/v1"),
   WEB_ORIGIN: z.string().url(),
+  DATABASE_URL: z.string().min(1),
   JWT_AUDIENCE: z.string().min(1),
   JWT_ISSUER: z.string().min(1),
   JWT_DEV_TOKEN: z.string().min(1),
@@ -40,4 +41,3 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     )
   };
 }
-

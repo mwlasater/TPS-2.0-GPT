@@ -9,6 +9,7 @@ const env = {
   APP_VERSION: "0.1.0-test",
   API_PREFIX: "/api/v1",
   WEB_ORIGIN: "http://localhost:5173",
+  DATABASE_URL: "postgres://tps:tps@localhost:5432/tps",
   JWT_AUDIENCE: "tps-2.0",
   JWT_ISSUER: "https://login.microsoftonline.com/example/v2.0",
   JWT_DEV_TOKEN: "local-dev-token",
