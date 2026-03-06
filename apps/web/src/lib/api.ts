@@ -4,9 +4,11 @@ import type {
   CrewAssignmentList,
   DelayEventList,
   ManagedUserList,
+  PermissionGroupList,
   PropertyCode,
   PropertySettings,
   ReferenceDataset,
+  ReportConfigList,
   StationStopList,
   TrainRunList,
   TrainScheduleList
@@ -50,6 +52,14 @@ export function fetchPropertySettings(propertyCode: PropertyCode): Promise<Prope
 
 export function fetchManagedUsers(propertyCode: PropertyCode): Promise<ManagedUserList> {
   return fetchPropertyScoped<ManagedUserList>("/users", propertyCode);
+}
+
+export function fetchPermissionGroups(propertyCode: PropertyCode): Promise<PermissionGroupList> {
+  return fetchPropertyScoped<PermissionGroupList>("/permission-groups", propertyCode);
+}
+
+export function fetchReportConfig(propertyCode: PropertyCode): Promise<ReportConfigList> {
+  return fetchPropertyScoped<ReportConfigList>("/report-config", propertyCode);
 }
 
 export function fetchReferenceData(propertyCode: PropertyCode): Promise<ReferenceDataset> {

@@ -151,3 +151,27 @@ export interface CrewAssignment {
 export interface CrewAssignmentList {
   items: CrewAssignment[];
 }
+
+export interface PermissionGroup {
+  id: string;
+  name: string;
+  description: string;
+  members: number;
+  permissions: string[];
+}
+
+export interface PermissionGroupList {
+  items: PermissionGroup[];
+}
+
+export interface ReportConfigRow {
+  id: string;
+  reportName: string;
+  audience: string;
+  embedEnabled: boolean;
+  schedule: string;
+}
+
+export interface ReportConfigList {
+  items: ReportConfigRow[];
+}

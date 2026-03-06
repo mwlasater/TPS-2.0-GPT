@@ -4,9 +4,11 @@ import type {
   CrewAssignmentList,
   DelayEventList,
   ManagedUserList,
+  PermissionGroupList,
   PropertyCode,
   PropertySettings,
   ReferenceDataset,
+  ReportConfigList,
   StationStopList,
   TrainRunList,
   TrainScheduleList,
@@ -643,4 +645,119 @@ export const demoCrewAssignments: Record<PropertyCode, CrewAssignmentList> = {
   octastreetcar: streetcarCrew,
   metrolinkarrow: commuterCrew,
   silverline: commuterCrew
+};
+
+const commuterPermissionGroups: PermissionGroupList = {
+  items: [
+    {
+      id: "ops-admin",
+      name: "Operations Admin",
+      description: "Full operational control across schedules, runs, delays, and crew.",
+      members: 4,
+      permissions: ["schedules.write", "runs.approve", "delays.write", "crew.assign"]
+    },
+    {
+      id: "dispatch",
+      name: "Dispatcher",
+      description: "Day-of-service editing for train runs and delays.",
+      members: 7,
+      permissions: ["runs.write", "delays.write", "stops.write"]
+    }
+  ]
+};
+
+const streetcarPermissionGroups: PermissionGroupList = {
+  items: [
+    {
+      id: "streetcar-ops",
+      name: "Streetcar Operations",
+      description: "Dispatch and service adjustments for streetcar operations.",
+      members: 3,
+      permissions: ["runs.write", "delays.write", "crew.assign"]
+    },
+    {
+      id: "streetcar-reporting",
+      name: "Streetcar Reporting",
+      description: "Read-only reporting and export access.",
+      members: 2,
+      permissions: ["reports.view", "reports.export"]
+    }
+  ]
+};
+
+const commuterReportConfig: ReportConfigList = {
+  items: [
+    {
+      id: "report-1",
+      reportName: "Daily OTP",
+      audience: "Operations Leadership",
+      embedEnabled: true,
+      schedule: "06:00 daily"
+    },
+    {
+      id: "report-2",
+      reportName: "Delay Detail",
+      audience: "Dispatch",
+      embedEnabled: true,
+      schedule: "Every 30 min"
+    },
+    {
+      id: "report-3",
+      reportName: "Crew Exceptions",
+      audience: "Crew Management",
+      embedEnabled: false,
+      schedule: "08:00 weekdays"
+    }
+  ]
+};
+
+const streetcarReportConfig: ReportConfigList = {
+  items: [
+    {
+      id: "street-report-1",
+      reportName: "Streetcar Service Summary",
+      audience: "Operations Leadership",
+      embedEnabled: true,
+      schedule: "07:00 daily"
+    },
+    {
+      id: "street-report-2",
+      reportName: "Incident Log",
+      audience: "Street Supervisors",
+      embedEnabled: false,
+      schedule: "On demand"
+    }
+  ]
+};
+
+export const demoPermissionGroups: Record<PropertyCode, PermissionGroupList> = {
+  caltrain: commuterPermissionGroups,
+  texrail: commuterPermissionGroups,
+  tre: commuterPermissionGroups,
+  trirail: commuterPermissionGroups,
+  nmrx: commuterPermissionGroups,
+  ctrail: commuterPermissionGroups,
+  ace: commuterPermissionGroups,
+  capmetro: commuterPermissionGroups,
+  kcstreetcar: streetcarPermissionGroups,
+  okcstreetcar: streetcarPermissionGroups,
+  octastreetcar: streetcarPermissionGroups,
+  metrolinkarrow: commuterPermissionGroups,
+  silverline: commuterPermissionGroups
+};
+
+export const demoReportConfig: Record<PropertyCode, ReportConfigList> = {
+  caltrain: commuterReportConfig,
+  texrail: commuterReportConfig,
+  tre: commuterReportConfig,
+  trirail: commuterReportConfig,
+  nmrx: commuterReportConfig,
+  ctrail: commuterReportConfig,
+  ace: commuterReportConfig,
+  capmetro: commuterReportConfig,
+  kcstreetcar: streetcarReportConfig,
+  okcstreetcar: streetcarReportConfig,
+  octastreetcar: streetcarReportConfig,
+  metrolinkarrow: commuterReportConfig,
+  silverline: commuterReportConfig
 };

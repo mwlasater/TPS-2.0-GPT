@@ -1,16 +1,31 @@
-import type { ManagedUserList, PropertySettings, PropertySummary } from "@tps/types";
+import type {
+  ManagedUserList,
+  PermissionGroupList,
+  PropertySettings,
+  PropertySummary,
+  ReportConfigList
+} from "@tps/types";
 
 import { Panel } from "../components/panel.js";
 import { StatusBadge } from "../components/status-badge.js";
 
 interface SettingsPageProps {
+  permissionGroups: PermissionGroupList;
   property: PropertySummary;
+  reportConfig: ReportConfigList;
   settings: PropertySettings;
   source: "api" | "fallback";
   users: ManagedUserList;
 }
 
-export function SettingsPage({ property, settings, source, users }: SettingsPageProps) {
+export function SettingsPage({
+  permissionGroups,
+  property,
+  reportConfig,
+  settings,
+  source,
+  users
+}: SettingsPageProps) {
   return (
     <div className="page-stack">
       <Panel title="Property settings" eyebrow={property.code}>
@@ -75,6 +90,50 @@ export function SettingsPage({ property, settings, source, users }: SettingsPage
           )}
         </div>
       </Panel>
+      <div className="two-column-grid">
+        <Panel title="Permission groups" eyebrow={`${permissionGroups.items.length} groups`}>
+          <div className="list-stack">
+            {permissionGroups.items.map((group) => (
+              <article className="list-row" key={group.id}>
+                <div>
+                  <strong>{group.name}</strong>
+                  <p>{group.description}</p>
+                  <div className="badge-row">
+                    {group.permissions.map((permission) => (
+                      <StatusBadge key={permission} tone="neutral" label={permission} />
+                    ))}
+                  </div>
+                </div>
+                <div className="list-meta">
+                  <span>{group.members} members</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </Panel>
+        <Panel title="Report configuration" eyebrow={reportConfig.items.length ? source : "empty"}>
+          <div className="matrix-table">
+            <div className="matrix-head">Report</div>
+            <div className="matrix-head">Audience</div>
+            <div className="matrix-head">Embed</div>
+            <div className="matrix-head">Schedule</div>
+            {reportConfig.items.flatMap((row) => [
+              <div key={`${row.id}-name`} className="matrix-cell">
+                {row.reportName}
+              </div>,
+              <div key={`${row.id}-audience`} className="matrix-cell">
+                {row.audience}
+              </div>,
+              <div key={`${row.id}-embed`} className="matrix-cell">
+                <StatusBadge tone={row.embedEnabled ? "success" : "neutral"} label={row.embedEnabled ? "on" : "off"} />
+              </div>,
+              <div key={`${row.id}-schedule`} className="matrix-cell">
+                {row.schedule}
+              </div>
+            ])}
+          </div>
+        </Panel>
+      </div>
     </div>
   );
 }

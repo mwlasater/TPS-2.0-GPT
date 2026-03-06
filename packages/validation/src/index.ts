@@ -150,6 +150,30 @@ export const crewAssignmentListSchema = z.object({
   items: z.array(crewAssignmentSchema)
 });
 
+export const permissionGroupSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  members: z.number(),
+  permissions: z.array(z.string())
+});
+
+export const permissionGroupListSchema = z.object({
+  items: z.array(permissionGroupSchema)
+});
+
+export const reportConfigRowSchema = z.object({
+  id: z.string(),
+  reportName: z.string(),
+  audience: z.string(),
+  embedEnabled: z.boolean(),
+  schedule: z.string()
+});
+
+export const reportConfigListSchema = z.object({
+  items: z.array(reportConfigRowSchema)
+});
+
 export const propertyHeaderSchema = z.object({
   "x-property": z.string().min(1)
 });

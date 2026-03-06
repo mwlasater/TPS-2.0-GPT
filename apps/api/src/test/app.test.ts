@@ -108,6 +108,35 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns permission groups and report configuration for authorized property context", async () => {
+    const groupsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/permission-groups",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const reportResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/report-config",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(groupsResponse.statusCode).toBe(200);
+    expect(reportResponse.statusCode).toBe(200);
+    expect(groupsResponse.json().items[0]).toMatchObject({
+      name: "Operations Admin"
+    });
+    expect(reportResponse.json().items[0]).toMatchObject({
+      reportName: "Daily OTP"
+    });
+  });
+
   it("returns managed users for authorized property context", async () => {
     const response = await app.inject({
       method: "GET",
