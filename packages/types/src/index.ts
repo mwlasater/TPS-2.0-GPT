@@ -68,3 +68,36 @@ export interface ManagedUser {
 export interface ManagedUserList {
   items: ManagedUser[];
 }
+
+export interface ReferenceDataset {
+  delayReasons: string[];
+  crewRoles: string[];
+  stationCodes: string[];
+}
+
+export interface TrainSchedule {
+  id: string;
+  trainNumber: string;
+  routeName: string;
+  direction: "eastbound" | "westbound" | "northbound" | "southbound";
+  serviceDays: string[];
+  stopCount: number;
+}
+
+export interface TrainScheduleList {
+  items: TrainSchedule[];
+}
+
+export interface TrainRun {
+  id: string;
+  scheduleId: string;
+  trainNumber: string;
+  operatingDate: string;
+  status: "scheduled" | "in_progress" | "approved" | "delayed";
+  delayMinutes: number;
+  crewAssigned: number;
+}
+
+export interface TrainRunList {
+  items: TrainRun[];
+}

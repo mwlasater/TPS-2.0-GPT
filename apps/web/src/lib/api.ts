@@ -1,4 +1,12 @@
-import type { AppBootstrap, ManagedUserList, PropertyCode, PropertySettings } from "@tps/types";
+import type {
+  AppBootstrap,
+  ManagedUserList,
+  PropertyCode,
+  PropertySettings,
+  ReferenceDataset,
+  TrainRunList,
+  TrainScheduleList
+} from "@tps/types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/api/v1";
 const developmentToken = import.meta.env.VITE_DEV_BEARER_TOKEN ?? "local-dev-token";
@@ -38,4 +46,16 @@ export function fetchPropertySettings(propertyCode: PropertyCode): Promise<Prope
 
 export function fetchManagedUsers(propertyCode: PropertyCode): Promise<ManagedUserList> {
   return fetchPropertyScoped<ManagedUserList>("/users", propertyCode);
+}
+
+export function fetchReferenceData(propertyCode: PropertyCode): Promise<ReferenceDataset> {
+  return fetchPropertyScoped<ReferenceDataset>("/reference-data", propertyCode);
+}
+
+export function fetchTrainSchedules(propertyCode: PropertyCode): Promise<TrainScheduleList> {
+  return fetchPropertyScoped<TrainScheduleList>("/train-schedules", propertyCode);
+}
+
+export function fetchTrainRuns(propertyCode: PropertyCode): Promise<TrainRunList> {
+  return fetchPropertyScoped<TrainRunList>("/train-runs", propertyCode);
 }

@@ -3,6 +3,9 @@ import type {
   ManagedUserList,
   PropertyCode,
   PropertySettings,
+  ReferenceDataset,
+  TrainRunList,
+  TrainScheduleList,
   UserSession
 } from "@tps/types";
 
@@ -227,6 +230,175 @@ export const demoManagedUsers: Record<PropertyCode, ManagedUserList> = {
         status: "active",
         roleLabel: "Streetcar Operations Lead",
         lastSeen: "2026-03-06T14:10:00Z"
+      }
+    ]
+  },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+const commuterReferenceData: ReferenceDataset = {
+  delayReasons: ["Mechanical", "Signal delay", "Late crew", "Passenger loading"],
+  crewRoles: ["Engineer", "Conductor", "Assistant Conductor", "Dispatcher"],
+  stationCodes: ["STA", "STB", "STC", "STD", "STE"]
+};
+
+const streetcarReferenceData: ReferenceDataset = {
+  delayReasons: ["Traffic hold", "Signal issue", "Passenger assistance", "Vehicle reset"],
+  crewRoles: ["Operator", "Street Supervisor", "Service Lead"],
+  stationCodes: ["ST01", "ST02", "ST03", "ST04"]
+};
+
+export const demoReferenceData: Record<PropertyCode, ReferenceDataset> = {
+  caltrain: commuterReferenceData,
+  texrail: commuterReferenceData,
+  tre: commuterReferenceData,
+  trirail: commuterReferenceData,
+  nmrx: commuterReferenceData,
+  ctrail: commuterReferenceData,
+  ace: commuterReferenceData,
+  capmetro: commuterReferenceData,
+  kcstreetcar: streetcarReferenceData,
+  okcstreetcar: streetcarReferenceData,
+  octastreetcar: streetcarReferenceData,
+  metrolinkarrow: commuterReferenceData,
+  silverline: commuterReferenceData
+};
+
+export const demoTrainSchedules: Record<PropertyCode, TrainScheduleList> = {
+  caltrain: {
+    items: [
+      {
+        id: "ct-101",
+        trainNumber: "101",
+        routeName: "San Francisco to San Jose",
+        direction: "southbound",
+        serviceDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+        stopCount: 10
+      },
+      {
+        id: "ct-154",
+        trainNumber: "154",
+        routeName: "San Jose to San Francisco",
+        direction: "northbound",
+        serviceDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+        stopCount: 10
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: {
+    items: [
+      {
+        id: "tre-401",
+        trainNumber: "401",
+        routeName: "Dallas Union to Fort Worth T&P",
+        direction: "westbound",
+        serviceDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+        stopCount: 8
+      }
+    ]
+  },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "cm-701",
+        trainNumber: "701",
+        routeName: "Leander to Downtown Austin",
+        direction: "southbound",
+        serviceDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+        stopCount: 9
+      }
+    ]
+  },
+  kcstreetcar: {
+    items: [
+      {
+        id: "kc-01",
+        trainNumber: "SC-01",
+        routeName: "Main Street Line",
+        direction: "northbound",
+        serviceDays: ["Daily"],
+        stopCount: 6
+      }
+    ]
+  },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoTrainRuns: Record<PropertyCode, TrainRunList> = {
+  caltrain: {
+    items: [
+      {
+        id: "caltrain-run-1",
+        scheduleId: "ct-101",
+        trainNumber: "101",
+        operatingDate: "2026-03-06",
+        status: "in_progress",
+        delayMinutes: 7,
+        crewAssigned: 3
+      },
+      {
+        id: "caltrain-run-2",
+        scheduleId: "ct-154",
+        trainNumber: "154",
+        operatingDate: "2026-03-06",
+        status: "approved",
+        delayMinutes: 0,
+        crewAssigned: 3
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: {
+    items: [
+      {
+        id: "tre-run-1",
+        scheduleId: "tre-401",
+        trainNumber: "401",
+        operatingDate: "2026-03-06",
+        status: "in_progress",
+        delayMinutes: 4,
+        crewAssigned: 3
+      }
+    ]
+  },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "capmetro-run-1",
+        scheduleId: "cm-701",
+        trainNumber: "701",
+        operatingDate: "2026-03-06",
+        status: "scheduled",
+        delayMinutes: 0,
+        crewAssigned: 2
+      }
+    ]
+  },
+  kcstreetcar: {
+    items: [
+      {
+        id: "kcstreetcar-run-1",
+        scheduleId: "kc-01",
+        trainNumber: "SC-01",
+        operatingDate: "2026-03-06",
+        status: "in_progress",
+        delayMinutes: 2,
+        crewAssigned: 1
       }
     ]
   },

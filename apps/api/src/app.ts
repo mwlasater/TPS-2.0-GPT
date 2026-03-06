@@ -8,6 +8,8 @@ import { createErrorResponse } from "./lib/errors.js";
 import { ensurePropertyAccess } from "./lib/tenant-access.js";
 import { registerBootstrapRoutes } from "./routes/bootstrap.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerOperationsRoutes } from "./routes/operations.js";
+import { registerReferenceRoutes } from "./routes/reference.js";
 import { registerSecureRoutes } from "./routes/secure.js";
 import { registerSettingsRoutes } from "./routes/settings.js";
 import { registerUserRoutes } from "./routes/users.js";
@@ -112,6 +114,8 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
     await registerSecureRoutes(api);
     await registerSettingsRoutes(api);
     await registerUserRoutes(api);
+    await registerReferenceRoutes(api);
+    await registerOperationsRoutes(api);
   }, { prefix: config.API_PREFIX });
 
   return app;

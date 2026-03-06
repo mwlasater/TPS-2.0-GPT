@@ -67,6 +67,39 @@ export const managedUserListSchema = z.object({
   items: z.array(managedUserSchema)
 });
 
+export const referenceDatasetSchema = z.object({
+  delayReasons: z.array(z.string()),
+  crewRoles: z.array(z.string()),
+  stationCodes: z.array(z.string())
+});
+
+export const trainScheduleSchema = z.object({
+  id: z.string(),
+  trainNumber: z.string(),
+  routeName: z.string(),
+  direction: z.enum(["eastbound", "westbound", "northbound", "southbound"]),
+  serviceDays: z.array(z.string()),
+  stopCount: z.number()
+});
+
+export const trainScheduleListSchema = z.object({
+  items: z.array(trainScheduleSchema)
+});
+
+export const trainRunSchema = z.object({
+  id: z.string(),
+  scheduleId: z.string(),
+  trainNumber: z.string(),
+  operatingDate: z.string(),
+  status: z.enum(["scheduled", "in_progress", "approved", "delayed"]),
+  delayMinutes: z.number(),
+  crewAssigned: z.number()
+});
+
+export const trainRunListSchema = z.object({
+  items: z.array(trainRunSchema)
+});
+
 export const propertyHeaderSchema = z.object({
   "x-property": z.string().min(1)
 });

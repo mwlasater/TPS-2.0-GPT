@@ -127,4 +127,49 @@ describe("app contracts", () => {
       ])
     );
   });
+
+  it("returns reference data for authorized property context", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/reference-data",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      delayReasons: expect.arrayContaining(["Mechanical"])
+    });
+  });
+
+  it("returns train schedules and train runs for authorized property context", async () => {
+    const schedulesResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-schedules",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const runsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(schedulesResponse.statusCode).toBe(200);
+    expect(runsResponse.statusCode).toBe(200);
+    expect(schedulesResponse.json().items[0]).toMatchObject({
+      trainNumber: "101"
+    });
+    expect(runsResponse.json().items[0]).toMatchObject({
+      status: "in_progress"
+    });
+  });
 });

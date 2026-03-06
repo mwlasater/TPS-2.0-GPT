@@ -171,6 +171,12 @@ h2 {
   gap: 1rem;
 }
 
+.three-column-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
 .badge-row {
   display: flex;
   flex-wrap: wrap;
@@ -221,6 +227,46 @@ h2 {
 .user-list {
   display: grid;
   gap: 0.75rem;
+}
+
+.list-stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.detail-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.list-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--border-gray);
+}
+
+.list-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.list-row p {
+  margin: 0.1rem 0;
+}
+
+.list-meta {
+  display: grid;
+  justify-items: end;
+  gap: 0.4rem;
+  text-align: right;
+}
+
+.simple-list {
+  margin: 0;
+  padding-left: 1rem;
+  line-height: 1.8;
 }
 
 .user-row {
@@ -300,6 +346,7 @@ h2 {
   .hero-card,
   .section-grid,
   .two-column-grid,
+  .three-column-grid,
   .topbar {
     grid-template-columns: 1fr;
   }
