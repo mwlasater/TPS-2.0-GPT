@@ -3,6 +3,7 @@ import type { AppConfig } from "@tps/config";
 import type { DataAccess } from "./contracts.js";
 import { createMockDataAccess } from "./mock-data-access.js";
 import { getPostgresPool } from "./postgres-client.js";
+import { PostgresOperationsRepository } from "./postgres-operations-repository.js";
 import { PostgresPropertyRepository } from "./postgres-property-repository.js";
 
 export function createDataAccess(config: AppConfig): DataAccess {
@@ -12,10 +13,13 @@ export function createDataAccess(config: AppConfig): DataAccess {
     return mock;
   }
 
-  const property = new PostgresPropertyRepository(getPostgresPool(config));
+  const pool = getPostgresPool(config);
+  const property = new PostgresPropertyRepository(pool);
+  const operations = new PostgresOperationsRepository(pool);
 
   return {
     ...mock,
-    property
+    property,
+    operations
   };
 }
