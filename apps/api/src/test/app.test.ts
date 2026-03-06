@@ -70,5 +70,22 @@ describe("app contracts", () => {
       error: "property.forbidden"
     });
   });
-});
 
+  it("returns bootstrap data for authenticated users", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/auth/session",
+      headers: {
+        authorization: "Bearer local-dev-token"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      user: {
+        id: "local-dev-user"
+      },
+      defaultProperty: "caltrain"
+    });
+  });
+});

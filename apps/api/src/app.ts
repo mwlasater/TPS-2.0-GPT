@@ -6,6 +6,7 @@ import Fastify from "fastify";
 
 import { createErrorResponse } from "./lib/errors.js";
 import { ensurePropertyAccess } from "./lib/tenant-access.js";
+import { registerBootstrapRoutes } from "./routes/bootstrap.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerSecureRoutes } from "./routes/secure.js";
 
@@ -105,6 +106,7 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
 
   app.register(async (api) => {
     await registerHealthRoutes(api);
+    await registerBootstrapRoutes(api);
     await registerSecureRoutes(api);
   }, { prefix: config.API_PREFIX });
 

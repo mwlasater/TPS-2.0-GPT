@@ -26,3 +26,15 @@ export interface UserSession {
   allowedProperties: PropertyCode[];
 }
 
+export interface PropertySummary {
+  code: PropertyCode;
+  name: string;
+  profile: "commuter_rail" | "streetcar";
+  themeColor: string;
+}
+
+export interface AppBootstrap {
+  user: UserSession;
+  availableProperties: PropertySummary[];
+  defaultProperty: PropertyCode;
+}

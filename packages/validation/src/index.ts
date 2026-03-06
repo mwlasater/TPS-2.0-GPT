@@ -17,7 +17,26 @@ export const versionResponseSchema = z.object({
   apiPrefix: z.string()
 });
 
+export const propertySummarySchema = z.object({
+  code: z.string(),
+  name: z.string(),
+  profile: z.enum(["commuter_rail", "streetcar"]),
+  themeColor: z.string()
+});
+
+export const userSessionSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  displayName: z.string(),
+  allowedProperties: z.array(z.string())
+});
+
+export const appBootstrapSchema = z.object({
+  user: userSessionSchema,
+  availableProperties: z.array(propertySummarySchema),
+  defaultProperty: z.string()
+});
+
 export const propertyHeaderSchema = z.object({
   "x-property": z.string().min(1)
 });
-

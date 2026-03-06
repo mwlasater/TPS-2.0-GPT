@@ -119,7 +119,7 @@ h2 {
 
 .topbar-chip,
 .metric-card,
-.info-card {
+.panel {
   border: 1px solid var(--border-gray);
   border-radius: 0.75rem;
   background: #ffffff;
@@ -157,12 +157,18 @@ h2 {
 }
 
 .metric-card,
-.info-card {
+.panel {
   padding: 1rem;
 }
 
 .section-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.two-column-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
 }
 
 .eyebrow,
@@ -180,10 +186,70 @@ h2 {
   line-height: 1.6;
 }
 
+.panel-body {
+  line-height: 1.6;
+}
+
+.status-badge {
+  display: inline-flex;
+  margin-top: 0.75rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.status-badge.success {
+  background: rgba(30, 107, 56, 0.12);
+  color: var(--success-green);
+}
+
+.status-badge.warning {
+  background: rgba(138, 87, 0, 0.12);
+  color: #8a5700;
+}
+
+.status-badge.neutral {
+  background: rgba(30, 58, 95, 0.12);
+  color: var(--navy-blue);
+}
+
+.sidebar-selector,
+.property-selector {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.sidebar-selector select,
+.property-selector select {
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-gray);
+  background: #ffffff;
+  color: var(--dark-gray);
+  font: inherit;
+}
+
+.inverse {
+  color: var(--smoke);
+}
+
+.loading-screen {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  font-family: "Oswald", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 @media (max-width: 900px) {
   .app-shell,
   .hero-card,
   .section-grid,
+  .two-column-grid,
   .topbar {
     grid-template-columns: 1fr;
   }
@@ -193,4 +259,3 @@ h2 {
     border-bottom: 4px solid var(--herzog-gold);
   }
 }
-
