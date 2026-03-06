@@ -1,8 +1,10 @@
 import type {
+  AttendanceExceptionList,
   AppBootstrap,
   ConsistEquipmentList,
   CrewAssignmentList,
   DelayEventList,
+  JobProfileList,
   ManagedUserList,
   PermissionGroupList,
   PropertyCode,
@@ -760,4 +762,115 @@ export const demoReportConfig: Record<PropertyCode, ReportConfigList> = {
   octastreetcar: streetcarReportConfig,
   metrolinkarrow: commuterReportConfig,
   silverline: commuterReportConfig
+};
+
+const commuterJobProfiles: JobProfileList = {
+  items: [
+    {
+      id: "engineer",
+      title: "Engineer",
+      department: "Transportation",
+      minimumHeadcount: 1,
+      reliefRequired: true
+    },
+    {
+      id: "conductor",
+      title: "Conductor",
+      department: "Transportation",
+      minimumHeadcount: 1,
+      reliefRequired: true
+    },
+    {
+      id: "dispatcher",
+      title: "Dispatcher",
+      department: "Control Center",
+      minimumHeadcount: 2,
+      reliefRequired: false
+    }
+  ]
+};
+
+const streetcarJobProfiles: JobProfileList = {
+  items: [
+    {
+      id: "operator",
+      title: "Operator",
+      department: "Street Operations",
+      minimumHeadcount: 1,
+      reliefRequired: true
+    },
+    {
+      id: "street-supervisor",
+      title: "Street Supervisor",
+      department: "Street Operations",
+      minimumHeadcount: 1,
+      reliefRequired: false
+    }
+  ]
+};
+
+const commuterAttendanceExceptions: AttendanceExceptionList = {
+  items: [
+    {
+      id: "att-1",
+      employeeName: "Casey Morgan",
+      exceptionType: "absence",
+      startDate: "2026-03-06",
+      status: "approved",
+      notes: "Approved medical leave."
+    },
+    {
+      id: "att-2",
+      employeeName: "Taylor Brooks",
+      exceptionType: "tardy",
+      startDate: "2026-03-06",
+      status: "open",
+      notes: "Reported 12 minutes late due to traffic."
+    }
+  ]
+};
+
+const streetcarAttendanceExceptions: AttendanceExceptionList = {
+  items: [
+    {
+      id: "street-att-1",
+      employeeName: "Jordan Reyes",
+      exceptionType: "tardy",
+      startDate: "2026-03-06",
+      status: "resolved",
+      notes: "Late sign-on resolved with supervisor approval."
+    }
+  ]
+};
+
+export const demoJobProfiles: Record<PropertyCode, JobProfileList> = {
+  caltrain: commuterJobProfiles,
+  texrail: commuterJobProfiles,
+  tre: commuterJobProfiles,
+  trirail: commuterJobProfiles,
+  nmrx: commuterJobProfiles,
+  ctrail: commuterJobProfiles,
+  ace: commuterJobProfiles,
+  capmetro: commuterJobProfiles,
+  kcstreetcar: streetcarJobProfiles,
+  okcstreetcar: streetcarJobProfiles,
+  octastreetcar: streetcarJobProfiles,
+  metrolinkarrow: commuterJobProfiles,
+  silverline: commuterJobProfiles
+};
+
+export const demoAttendanceExceptions: Record<PropertyCode, AttendanceExceptionList> = {
+  caltrain: commuterAttendanceExceptions,
+  texrail: commuterAttendanceExceptions,
+  tre: commuterAttendanceExceptions,
+  trirail: commuterAttendanceExceptions,
+  nmrx: commuterAttendanceExceptions,
+  ctrail: commuterAttendanceExceptions,
+  ace: commuterAttendanceExceptions,
+  capmetro: commuterAttendanceExceptions,
+  kcstreetcar: streetcarAttendanceExceptions,
+  okcstreetcar: streetcarAttendanceExceptions,
+  octastreetcar: streetcarAttendanceExceptions,
+  metrolinkarrow: commuterAttendanceExceptions,
+  silverline: commuterAttendanceExceptions
 };

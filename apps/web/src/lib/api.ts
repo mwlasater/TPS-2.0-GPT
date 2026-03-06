@@ -1,8 +1,10 @@
 import type {
+  AttendanceExceptionList,
   AppBootstrap,
   ConsistEquipmentList,
   CrewAssignmentList,
   DelayEventList,
+  JobProfileList,
   ManagedUserList,
   PermissionGroupList,
   PropertyCode,
@@ -60,6 +62,16 @@ export function fetchPermissionGroups(propertyCode: PropertyCode): Promise<Permi
 
 export function fetchReportConfig(propertyCode: PropertyCode): Promise<ReportConfigList> {
   return fetchPropertyScoped<ReportConfigList>("/report-config", propertyCode);
+}
+
+export function fetchJobProfiles(propertyCode: PropertyCode): Promise<JobProfileList> {
+  return fetchPropertyScoped<JobProfileList>("/job-profiles", propertyCode);
+}
+
+export function fetchAttendanceExceptions(
+  propertyCode: PropertyCode
+): Promise<AttendanceExceptionList> {
+  return fetchPropertyScoped<AttendanceExceptionList>("/attendance-exceptions", propertyCode);
 }
 
 export function fetchReferenceData(propertyCode: PropertyCode): Promise<ReferenceDataset> {

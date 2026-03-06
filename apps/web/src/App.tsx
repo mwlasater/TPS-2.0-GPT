@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/app-shell.js";
 import { useAdminData } from "./hooks/use-admin-data.js";
+import { useBaselineData } from "./hooks/use-baseline-data.js";
 import { useBootstrap } from "./hooks/use-bootstrap.js";
 import { useOperationsData } from "./hooks/use-operations-data.js";
 import { usePropertyData } from "./hooks/use-property-data.js";
@@ -17,6 +18,7 @@ export function App() {
     data.availableProperties.find((property) => property.code === selectedProperty) ??
     data.availableProperties[0];
   const adminData = useAdminData(activeProperty?.code ?? data.defaultProperty);
+  const baselineData = useBaselineData(activeProperty?.code ?? data.defaultProperty);
   const propertyData = usePropertyData(activeProperty?.code ?? data.defaultProperty);
   const operationsData = useOperationsData(activeProperty?.code ?? data.defaultProperty);
 
@@ -69,6 +71,8 @@ export function App() {
           path="/settings"
           element={
             <SettingsPage
+              attendance={baselineData.attendance}
+              jobProfiles={baselineData.jobProfiles}
               permissionGroups={adminData.permissionGroups}
               property={activeProperty}
               reportConfig={adminData.reportConfig}

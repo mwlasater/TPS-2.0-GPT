@@ -174,6 +174,31 @@ export const reportConfigListSchema = z.object({
   items: z.array(reportConfigRowSchema)
 });
 
+export const jobProfileSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  department: z.string(),
+  minimumHeadcount: z.number(),
+  reliefRequired: z.boolean()
+});
+
+export const jobProfileListSchema = z.object({
+  items: z.array(jobProfileSchema)
+});
+
+export const attendanceExceptionSchema = z.object({
+  id: z.string(),
+  employeeName: z.string(),
+  exceptionType: z.enum(["absence", "tardy"]),
+  startDate: z.string(),
+  status: z.enum(["open", "approved", "resolved"]),
+  notes: z.string()
+});
+
+export const attendanceExceptionListSchema = z.object({
+  items: z.array(attendanceExceptionSchema)
+});
+
 export const propertyHeaderSchema = z.object({
   "x-property": z.string().min(1)
 });

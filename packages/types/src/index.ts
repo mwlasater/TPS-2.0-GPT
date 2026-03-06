@@ -175,3 +175,28 @@ export interface ReportConfigRow {
 export interface ReportConfigList {
   items: ReportConfigRow[];
 }
+
+export interface JobProfile {
+  id: string;
+  title: string;
+  department: string;
+  minimumHeadcount: number;
+  reliefRequired: boolean;
+}
+
+export interface JobProfileList {
+  items: JobProfile[];
+}
+
+export interface AttendanceException {
+  id: string;
+  employeeName: string;
+  exceptionType: "absence" | "tardy";
+  startDate: string;
+  status: "open" | "approved" | "resolved";
+  notes: string;
+}
+
+export interface AttendanceExceptionList {
+  items: AttendanceException[];
+}

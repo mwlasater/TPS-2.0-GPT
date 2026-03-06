@@ -137,6 +137,35 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns job profiles and attendance exceptions for authorized property context", async () => {
+    const profilesResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/job-profiles",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const attendanceResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/attendance-exceptions",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(profilesResponse.statusCode).toBe(200);
+    expect(attendanceResponse.statusCode).toBe(200);
+    expect(profilesResponse.json().items[0]).toMatchObject({
+      title: "Engineer"
+    });
+    expect(attendanceResponse.json().items[0]).toMatchObject({
+      exceptionType: "absence"
+    });
+  });
+
   it("returns managed users for authorized property context", async () => {
     const response = await app.inject({
       method: "GET",

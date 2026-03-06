@@ -1,4 +1,6 @@
 import type {
+  AttendanceExceptionList,
+  JobProfileList,
   ManagedUserList,
   PermissionGroupList,
   PropertySettings,
@@ -10,6 +12,8 @@ import { Panel } from "../components/panel.js";
 import { StatusBadge } from "../components/status-badge.js";
 
 interface SettingsPageProps {
+  attendance: AttendanceExceptionList;
+  jobProfiles: JobProfileList;
   permissionGroups: PermissionGroupList;
   property: PropertySummary;
   reportConfig: ReportConfigList;
@@ -19,6 +23,8 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({
+  attendance,
+  jobProfiles,
   permissionGroups,
   property,
   reportConfig,
@@ -131,6 +137,54 @@ export function SettingsPage({
                 {row.schedule}
               </div>
             ])}
+          </div>
+        </Panel>
+      </div>
+      <div className="two-column-grid">
+        <Panel title="Job profiles" eyebrow={`${jobProfiles.items.length} roles`}>
+          <div className="list-stack">
+            {jobProfiles.items.map((profile) => (
+              <article className="list-row" key={profile.id}>
+                <div>
+                  <strong>{profile.title}</strong>
+                  <p>{profile.department}</p>
+                </div>
+                <div className="list-meta">
+                  <span>Min {profile.minimumHeadcount}</span>
+                  <StatusBadge
+                    tone={profile.reliefRequired ? "warning" : "neutral"}
+                    label={profile.reliefRequired ? "relief required" : "fixed"}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+        </Panel>
+        <Panel title="Absence and tardiness" eyebrow={`${attendance.items.length} open records`}>
+          <div className="list-stack">
+            {attendance.items.map((record) => (
+              <article className="list-row" key={record.id}>
+                <div>
+                  <strong>{record.employeeName}</strong>
+                  <p>
+                    {record.exceptionType} · {record.startDate}
+                  </p>
+                  <p>{record.notes}</p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge
+                    tone={
+                      record.status === "approved"
+                        ? "success"
+                        : record.status === "open"
+                          ? "warning"
+                          : "neutral"
+                    }
+                    label={record.status}
+                  />
+                </div>
+              </article>
+            ))}
           </div>
         </Panel>
       </div>
