@@ -66,4 +66,66 @@ describe("PostgresOperationsRepository", () => {
       ]
     });
   });
+
+  it("maps station stop rows into run stops", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "stop-1",
+          station_code: "SFC",
+          stop_sequence: 1,
+          scheduled_time: "06:05",
+          actual_time: "06:06",
+          boardings: 42,
+          alightings: 3
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const stops = await repository.listStationStops("caltrain", "run_caltrain_101_2026_03_06");
+
+    expect(stops).toEqual({
+      items: [
+        {
+          id: "stop-1",
+          stationCode: "SFC",
+          sequence: 1,
+          scheduledTime: "06:05",
+          actualTime: "06:06",
+          boardings: 42,
+          alightings: 3
+        }
+      ]
+    });
+  });
+
+  it("maps delay rows into delay events", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "delay-1",
+          category: "Signal delay",
+          minutes: 4,
+          notes: "Signal clearance held at interlocking.",
+          reported_at: new Date("2026-03-06T06:19:00Z")
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const delays = await repository.listDelayEvents("caltrain", "run_caltrain_101_2026_03_06");
+
+    expect(delays).toEqual({
+      items: [
+        {
+          id: "delay-1",
+          category: "Signal delay",
+          minutes: 4,
+          notes: "Signal clearance held at interlocking.",
+          reportedAt: "2026-03-06T06:19:00.000Z"
+        }
+      ]
+    });
+  });
 });

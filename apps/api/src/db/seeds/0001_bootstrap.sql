@@ -99,3 +99,49 @@ SET
   status = EXCLUDED.status,
   delay_minutes = EXCLUDED.delay_minutes,
   crew_assigned = EXCLUDED.crew_assigned;
+
+INSERT INTO shared.station_stop (
+  id,
+  train_run_id,
+  station_code,
+  stop_sequence,
+  scheduled_time,
+  actual_time,
+  boardings,
+  alightings
+)
+VALUES
+  ('stop_caltrain_101_1', 'run_caltrain_101_2026_03_06', 'SFC', 1, '06:05', '06:06', 42, 3),
+  ('stop_caltrain_101_2', 'run_caltrain_101_2026_03_06', 'PAO', 2, '06:18', '06:23', 27, 11),
+  ('stop_caltrain_101_3', 'run_caltrain_101_2026_03_06', 'SJC', 3, '06:31', NULL, 0, 0),
+  ('stop_capmetro_550_1', 'run_capmetro_550_2026_03_06', 'LNR', 1, '07:10', '07:10', 14, 2),
+  ('stop_capmetro_550_2', 'run_capmetro_550_2026_03_06', 'MLK', 2, '07:18', '07:20', 8, 4)
+ON CONFLICT (id) DO UPDATE
+SET
+  train_run_id = EXCLUDED.train_run_id,
+  station_code = EXCLUDED.station_code,
+  stop_sequence = EXCLUDED.stop_sequence,
+  scheduled_time = EXCLUDED.scheduled_time,
+  actual_time = EXCLUDED.actual_time,
+  boardings = EXCLUDED.boardings,
+  alightings = EXCLUDED.alightings;
+
+INSERT INTO shared.delay_event (
+  id,
+  train_run_id,
+  category,
+  minutes,
+  notes,
+  reported_at
+)
+VALUES
+  ('delay_caltrain_101_1', 'run_caltrain_101_2026_03_06', 'Signal delay', 4, 'Signal clearance held at interlocking.', TIMESTAMPTZ '2026-03-06T06:19:00Z'),
+  ('delay_caltrain_101_2', 'run_caltrain_101_2026_03_06', 'Passenger loading', 3, 'Heavy boarding volume at central station.', TIMESTAMPTZ '2026-03-06T06:24:00Z'),
+  ('delay_tre_221_1', 'run_tre_221_2026_03_06', 'Dispatch conflict', 14, 'Single-track meet required an unscheduled hold.', TIMESTAMPTZ '2026-03-06T08:02:00Z')
+ON CONFLICT (id) DO UPDATE
+SET
+  train_run_id = EXCLUDED.train_run_id,
+  category = EXCLUDED.category,
+  minutes = EXCLUDED.minutes,
+  notes = EXCLUDED.notes,
+  reported_at = EXCLUDED.reported_at;

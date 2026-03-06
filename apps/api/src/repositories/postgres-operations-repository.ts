@@ -1,5 +1,9 @@
 import type {
+  DelayEvent,
+  DelayEventList,
   PropertyCode,
+  StationStop,
+  StationStopList,
   TrainRun,
   TrainRunList,
   TrainSchedule,
@@ -31,9 +35,35 @@ interface TrainRunRow {
   crew_assigned: number;
 }
 
+interface StationStopRow {
+  id: string;
+  station_code: string;
+  stop_sequence: number;
+  scheduled_time: string;
+  actual_time: string | null;
+  boardings: number;
+  alightings: number;
+}
+
+interface DelayEventRow {
+  id: string;
+  category: string;
+  minutes: number;
+  notes: string;
+  reported_at: string | Date;
+}
+
 function toIsoDate(value: string | Date): string {
   if (value instanceof Date) {
     return value.toISOString().slice(0, 10);
+  }
+
+  return value;
+}
+
+function toIsoTimestamp(value: string | Date): string {
+  if (value instanceof Date) {
+    return value.toISOString();
   }
 
   return value;
@@ -107,12 +137,78 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
-  listStationStops(propertyCode: PropertyCode, runId: string) {
-    return listStationStops(propertyCode, runId);
+  async listStationStops(propertyCode: PropertyCode, runId: string): Promise<StationStopList> {
+    const result = await this.db.query<StationStopRow>(
+      `
+        SELECT
+          ss.id,
+          ss.station_code,
+          ss.stop_sequence,
+          ss.scheduled_time,
+          ss.actual_time,
+          ss.boardings,
+          ss.alightings
+        FROM shared.station_stop ss
+        JOIN shared.train_run tr ON tr.id = ss.train_run_id
+        WHERE tr.railroad_code = $1
+          AND ss.train_run_id = $2
+        ORDER BY ss.stop_sequence
+      `,
+      [propertyCode, runId]
+    );
+
+    if (!result.rows.length) {
+      return listStationStops(propertyCode, runId);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): StationStop => ({
+          id: row.id,
+          stationCode: row.station_code,
+          sequence: row.stop_sequence,
+          scheduledTime: row.scheduled_time,
+          actualTime: row.actual_time,
+          boardings: row.boardings,
+          alightings: row.alightings
+        })
+      )
+    };
   }
 
-  listDelayEvents(propertyCode: PropertyCode, runId: string) {
-    return listDelayEvents(propertyCode, runId);
+  async listDelayEvents(propertyCode: PropertyCode, runId: string): Promise<DelayEventList> {
+    const result = await this.db.query<DelayEventRow>(
+      `
+        SELECT
+          de.id,
+          de.category,
+          de.minutes,
+          de.notes,
+          de.reported_at
+        FROM shared.delay_event de
+        JOIN shared.train_run tr ON tr.id = de.train_run_id
+        WHERE tr.railroad_code = $1
+          AND de.train_run_id = $2
+        ORDER BY de.reported_at
+      `,
+      [propertyCode, runId]
+    );
+
+    if (!result.rows.length) {
+      return listDelayEvents(propertyCode, runId);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): DelayEvent => ({
+          id: row.id,
+          category: row.category,
+          minutes: row.minutes,
+          notes: row.notes,
+          reportedAt: toIsoTimestamp(row.reported_at)
+        })
+      )
+    };
   }
 
   listConsistEquipment(propertyCode: PropertyCode, runId: string) {
@@ -123,4 +219,3 @@ export class PostgresOperationsRepository implements OperationsRepository {
     return listCrewAssignments(propertyCode, runId);
   }
 }
-
