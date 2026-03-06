@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 
 import { listAttendanceExceptions, listJobProfiles } from "../lib/baseline-data.js";
 import { listPermissionGroups } from "../lib/permission-groups.js";
+import { listFiles, listNotifications, listPowerBiEmbeds } from "../lib/platform-data.js";
 import { listReportConfig } from "../lib/report-config.js";
 
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
@@ -35,5 +36,29 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => listAttendanceExceptions(request.property)
+  );
+
+  app.get(
+    "/files",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => listFiles(request.property)
+  );
+
+  app.get(
+    "/notifications",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => listNotifications(request.property)
+  );
+
+  app.get(
+    "/power-bi",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => listPowerBiEmbeds(request.property)
   );
 }

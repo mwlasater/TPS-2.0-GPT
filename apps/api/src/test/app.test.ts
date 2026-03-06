@@ -166,6 +166,48 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns platform integrations for authorized property context", async () => {
+    const filesResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/files",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const notificationsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/notifications",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const powerBiResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/power-bi",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(filesResponse.statusCode).toBe(200);
+    expect(notificationsResponse.statusCode).toBe(200);
+    expect(powerBiResponse.statusCode).toBe(200);
+    expect(filesResponse.json().items[0]).toMatchObject({
+      fileName: "daily-delay-export.csv"
+    });
+    expect(notificationsResponse.json().items[0]).toMatchObject({
+      channel: "email"
+    });
+    expect(powerBiResponse.json().items[0]).toMatchObject({
+      reportName: "Daily OTP"
+    });
+  });
+
   it("returns managed users for authorized property context", async () => {
     const response = await app.inject({
       method: "GET",

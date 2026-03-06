@@ -200,3 +200,39 @@ export interface AttendanceException {
 export interface AttendanceExceptionList {
   items: AttendanceException[];
 }
+
+export interface FileServiceItem {
+  id: string;
+  fileName: string;
+  category: string;
+  uploadedAt: string;
+  status: "available" | "processing" | "archived";
+}
+
+export interface FileServiceList {
+  items: FileServiceItem[];
+}
+
+export interface NotificationItem {
+  id: string;
+  channel: "email" | "in_app";
+  templateName: string;
+  recipientGroup: string;
+  enabled: boolean;
+}
+
+export interface NotificationList {
+  items: NotificationItem[];
+}
+
+export interface PowerBiEmbed {
+  id: string;
+  reportName: string;
+  workspace: string;
+  embedUrl: string;
+  enabled: boolean;
+}
+
+export interface PowerBiEmbedList {
+  items: PowerBiEmbed[];
+}

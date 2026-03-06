@@ -1,8 +1,11 @@
 import type {
   AttendanceExceptionList,
+  FileServiceList,
   JobProfileList,
   ManagedUserList,
+  NotificationList,
   PermissionGroupList,
+  PowerBiEmbedList,
   PropertySettings,
   PropertySummary,
   ReportConfigList
@@ -13,8 +16,11 @@ import { StatusBadge } from "../components/status-badge.js";
 
 interface SettingsPageProps {
   attendance: AttendanceExceptionList;
+  files: FileServiceList;
   jobProfiles: JobProfileList;
   permissionGroups: PermissionGroupList;
+  notifications: NotificationList;
+  powerBi: PowerBiEmbedList;
   property: PropertySummary;
   reportConfig: ReportConfigList;
   settings: PropertySettings;
@@ -24,8 +30,11 @@ interface SettingsPageProps {
 
 export function SettingsPage({
   attendance,
+  files,
   jobProfiles,
+  notifications,
   permissionGroups,
+  powerBi,
   property,
   reportConfig,
   settings,
@@ -188,6 +197,61 @@ export function SettingsPage({
           </div>
         </Panel>
       </div>
+      <div className="two-column-grid">
+        <Panel title="File services" eyebrow={`${files.items.length} items`}>
+          <div className="list-stack">
+            {files.items.map((file) => (
+              <article className="list-row" key={file.id}>
+                <div>
+                  <strong>{file.fileName}</strong>
+                  <p>
+                    {file.category} · {file.uploadedAt}
+                  </p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge
+                    tone={file.status === "available" ? "success" : file.status === "processing" ? "warning" : "neutral"}
+                    label={file.status}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+        </Panel>
+        <Panel title="Notifications" eyebrow={`${notifications.items.length} templates`}>
+          <div className="list-stack">
+            {notifications.items.map((notification) => (
+              <article className="list-row" key={notification.id}>
+                <div>
+                  <strong>{notification.templateName}</strong>
+                  <p>
+                    {notification.channel} · {notification.recipientGroup}
+                  </p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge tone={notification.enabled ? "success" : "neutral"} label={notification.enabled ? "enabled" : "disabled"} />
+                </div>
+              </article>
+            ))}
+          </div>
+        </Panel>
+      </div>
+      <Panel title="Power BI embeds" eyebrow={`${powerBi.items.length} reports`}>
+        <div className="list-stack">
+          {powerBi.items.map((report) => (
+            <article className="list-row" key={report.id}>
+              <div>
+                <strong>{report.reportName}</strong>
+                <p>{report.workspace}</p>
+                <p>{report.embedUrl}</p>
+              </div>
+              <div className="list-meta">
+                <StatusBadge tone={report.enabled ? "success" : "neutral"} label={report.enabled ? "enabled" : "disabled"} />
+              </div>
+            </article>
+          ))}
+        </div>
+      </Panel>
     </div>
   );
 }

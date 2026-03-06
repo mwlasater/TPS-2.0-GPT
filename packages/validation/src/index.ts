@@ -199,6 +199,42 @@ export const attendanceExceptionListSchema = z.object({
   items: z.array(attendanceExceptionSchema)
 });
 
+export const fileServiceItemSchema = z.object({
+  id: z.string(),
+  fileName: z.string(),
+  category: z.string(),
+  uploadedAt: z.string(),
+  status: z.enum(["available", "processing", "archived"])
+});
+
+export const fileServiceListSchema = z.object({
+  items: z.array(fileServiceItemSchema)
+});
+
+export const notificationItemSchema = z.object({
+  id: z.string(),
+  channel: z.enum(["email", "in_app"]),
+  templateName: z.string(),
+  recipientGroup: z.string(),
+  enabled: z.boolean()
+});
+
+export const notificationListSchema = z.object({
+  items: z.array(notificationItemSchema)
+});
+
+export const powerBiEmbedSchema = z.object({
+  id: z.string(),
+  reportName: z.string(),
+  workspace: z.string(),
+  embedUrl: z.string().url(),
+  enabled: z.boolean()
+});
+
+export const powerBiEmbedListSchema = z.object({
+  items: z.array(powerBiEmbedSchema)
+});
+
 export const propertyHeaderSchema = z.object({
   "x-property": z.string().min(1)
 });

@@ -4,9 +4,12 @@ import type {
   ConsistEquipmentList,
   CrewAssignmentList,
   DelayEventList,
+  FileServiceList,
   JobProfileList,
   ManagedUserList,
+  NotificationList,
   PermissionGroupList,
+  PowerBiEmbedList,
   PropertyCode,
   PropertySettings,
   ReferenceDataset,
@@ -72,6 +75,18 @@ export function fetchAttendanceExceptions(
   propertyCode: PropertyCode
 ): Promise<AttendanceExceptionList> {
   return fetchPropertyScoped<AttendanceExceptionList>("/attendance-exceptions", propertyCode);
+}
+
+export function fetchFiles(propertyCode: PropertyCode): Promise<FileServiceList> {
+  return fetchPropertyScoped<FileServiceList>("/files", propertyCode);
+}
+
+export function fetchNotifications(propertyCode: PropertyCode): Promise<NotificationList> {
+  return fetchPropertyScoped<NotificationList>("/notifications", propertyCode);
+}
+
+export function fetchPowerBi(propertyCode: PropertyCode): Promise<PowerBiEmbedList> {
+  return fetchPropertyScoped<PowerBiEmbedList>("/power-bi", propertyCode);
 }
 
 export function fetchReferenceData(propertyCode: PropertyCode): Promise<ReferenceDataset> {
