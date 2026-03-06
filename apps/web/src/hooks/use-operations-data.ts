@@ -1,14 +1,24 @@
 import type {
+  DelayEventList,
   PropertyCode,
   ReferenceDataset,
+  StationStopList,
   TrainRunList,
   TrainScheduleList
 } from "@tps/types";
 import { useEffect, useState } from "react";
 
-import { fetchReferenceData, fetchTrainRuns, fetchTrainSchedules } from "../lib/api.js";
 import {
+  fetchDelayEvents,
+  fetchReferenceData,
+  fetchStationStops,
+  fetchTrainRuns,
+  fetchTrainSchedules
+} from "../lib/api.js";
+import {
+  demoDelayEvents,
   demoReferenceData,
+  demoStationStops,
   demoTrainRuns,
   demoTrainSchedules
 } from "../lib/session.js";
@@ -17,6 +27,8 @@ interface OperationsDataState {
   referenceData: ReferenceDataset;
   schedules: TrainScheduleList;
   runs: TrainRunList;
+  delayEvents: DelayEventList;
+  stationStops: StationStopList;
   source: "api" | "fallback";
   isLoading: boolean;
 }
@@ -26,6 +38,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     referenceData: demoReferenceData[propertyCode],
     schedules: demoTrainSchedules[propertyCode],
     runs: demoTrainRuns[propertyCode],
+    delayEvents: demoDelayEvents[propertyCode],
+    stationStops: demoStationStops[propertyCode],
     source: "fallback",
     isLoading: true
   });
@@ -37,6 +51,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       referenceData: demoReferenceData[propertyCode],
       schedules: demoTrainSchedules[propertyCode],
       runs: demoTrainRuns[propertyCode],
+      delayEvents: demoDelayEvents[propertyCode],
+      stationStops: demoStationStops[propertyCode],
       source: "fallback",
       isLoading: true
     });
@@ -46,12 +62,22 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       fetchTrainSchedules(propertyCode),
       fetchTrainRuns(propertyCode)
     ])
-      .then(([referenceData, schedules, runs]) => {
+      .then(async ([referenceData, schedules, runs]) => {
+        const firstRunId = runs.items[0]?.id;
+        const [stationStops, delayEvents] = firstRunId
+          ? await Promise.all([
+              fetchStationStops(propertyCode, firstRunId),
+              fetchDelayEvents(propertyCode, firstRunId)
+            ])
+          : [demoStationStops[propertyCode], demoDelayEvents[propertyCode]];
+
         if (isMounted) {
           setState({
             referenceData,
             schedules,
             runs,
+            delayEvents,
+            stationStops,
             source: "api",
             isLoading: false
           });
@@ -63,6 +89,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             referenceData: demoReferenceData[propertyCode],
             schedules: demoTrainSchedules[propertyCode],
             runs: demoTrainRuns[propertyCode],
+            delayEvents: demoDelayEvents[propertyCode],
+            stationStops: demoStationStops[propertyCode],
             source: "fallback",
             isLoading: false
           });

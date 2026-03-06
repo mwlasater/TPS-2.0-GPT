@@ -172,4 +172,33 @@ describe("app contracts", () => {
       status: "in_progress"
     });
   });
+
+  it("returns run detail stops and delays for authorized property context", async () => {
+    const stopsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/stops",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const delaysResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/delays",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(stopsResponse.statusCode).toBe(200);
+    expect(delaysResponse.statusCode).toBe(200);
+    expect(stopsResponse.json().items[0]).toMatchObject({
+      stationCode: "STA"
+    });
+    expect(delaysResponse.json().items[0]).toMatchObject({
+      category: "Signal delay"
+    });
+  });
 });

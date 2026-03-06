@@ -1,6 +1,8 @@
 import type {
+  DelayEventList,
   PropertySummary,
   ReferenceDataset,
+  StationStopList,
   TrainRunList,
   TrainSchedule,
   TrainScheduleList
@@ -11,17 +13,21 @@ import { StatusBadge } from "../components/status-badge.js";
 
 interface OperationsPageProps {
   property: PropertySummary;
+  delayEvents: DelayEventList;
   referenceData: ReferenceDataset;
   runs: TrainRunList;
   schedules: TrainScheduleList;
+  stationStops: StationStopList;
   source: "api" | "fallback";
 }
 
 export function OperationsPage({
+  delayEvents,
   property,
   referenceData,
   runs,
   schedules,
+  stationStops,
   source
 }: OperationsPageProps) {
   const selectedSchedule: TrainSchedule | undefined = schedules.items[0];
@@ -96,6 +102,45 @@ export function OperationsPage({
           ) : (
             <p>Selecting schedules will drive detail panes here as train modules expand.</p>
           )}
+        </Panel>
+      </div>
+      <div className="two-column-grid">
+        <Panel title="Station stops" eyebrow={`${stationStops.items.length} stops`}>
+          <div className="list-stack">
+            {stationStops.items.map((stop) => (
+              <article className="list-row" key={stop.id}>
+                <div>
+                  <strong>
+                    {stop.sequence}. {stop.stationCode}
+                  </strong>
+                  <p>
+                    Scheduled {stop.scheduledTime}
+                    {stop.actualTime ? `, actual ${stop.actualTime}` : ", pending"}
+                  </p>
+                </div>
+                <div className="list-meta">
+                  <span>+{stop.boardings}</span>
+                  <span>-{stop.alightings}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </Panel>
+        <Panel title="Delay log" eyebrow={`${delayEvents.items.length} events`}>
+          <div className="list-stack">
+            {delayEvents.items.map((delay) => (
+              <article className="list-row" key={delay.id}>
+                <div>
+                  <strong>{delay.category}</strong>
+                  <p>{delay.notes}</p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge tone="warning" label={`${delay.minutes} min`} />
+                  <span>{delay.reportedAt}</span>
+                </div>
+              </article>
+            ))}
+          </div>
         </Panel>
       </div>
       <Panel title="Reference data" eyebrow="Seeded values">

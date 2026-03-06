@@ -100,6 +100,32 @@ export const trainRunListSchema = z.object({
   items: z.array(trainRunSchema)
 });
 
+export const stationStopSchema = z.object({
+  id: z.string(),
+  stationCode: z.string(),
+  sequence: z.number(),
+  scheduledTime: z.string(),
+  actualTime: z.string().nullable(),
+  boardings: z.number(),
+  alightings: z.number()
+});
+
+export const stationStopListSchema = z.object({
+  items: z.array(stationStopSchema)
+});
+
+export const delayEventSchema = z.object({
+  id: z.string(),
+  category: z.string(),
+  minutes: z.number(),
+  notes: z.string(),
+  reportedAt: z.string()
+});
+
+export const delayEventListSchema = z.object({
+  items: z.array(delayEventSchema)
+});
+
 export const propertyHeaderSchema = z.object({
   "x-property": z.string().min(1)
 });

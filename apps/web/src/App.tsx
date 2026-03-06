@@ -51,10 +51,12 @@ export function App() {
           path="/operations"
           element={
             <OperationsPage
+              delayEvents={operationsData.delayEvents}
               property={activeProperty}
               referenceData={operationsData.referenceData}
               runs={operationsData.runs}
               schedules={operationsData.schedules}
+              stationStops={operationsData.stationStops}
               source={operationsData.source}
             />
           }

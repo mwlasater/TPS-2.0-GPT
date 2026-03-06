@@ -1,9 +1,11 @@
 import type {
   AppBootstrap,
+  DelayEventList,
   ManagedUserList,
   PropertyCode,
   PropertySettings,
   ReferenceDataset,
+  StationStopList,
   TrainRunList,
   TrainScheduleList,
   UserSession
@@ -406,4 +408,122 @@ export const demoTrainRuns: Record<PropertyCode, TrainRunList> = {
   octastreetcar: { items: [] },
   metrolinkarrow: { items: [] },
   silverline: { items: [] }
+};
+
+const commuterStationStops: StationStopList = {
+  items: [
+    {
+      id: "stop-1",
+      stationCode: "STA",
+      sequence: 1,
+      scheduledTime: "06:05",
+      actualTime: "06:06",
+      boardings: 42,
+      alightings: 3
+    },
+    {
+      id: "stop-2",
+      stationCode: "STB",
+      sequence: 2,
+      scheduledTime: "06:18",
+      actualTime: "06:23",
+      boardings: 27,
+      alightings: 11
+    },
+    {
+      id: "stop-3",
+      stationCode: "STC",
+      sequence: 3,
+      scheduledTime: "06:31",
+      actualTime: null,
+      boardings: 0,
+      alightings: 0
+    }
+  ]
+};
+
+const streetcarStationStops: StationStopList = {
+  items: [
+    {
+      id: "street-stop-1",
+      stationCode: "ST01",
+      sequence: 1,
+      scheduledTime: "07:10",
+      actualTime: "07:10",
+      boardings: 14,
+      alightings: 2
+    },
+    {
+      id: "street-stop-2",
+      stationCode: "ST02",
+      sequence: 2,
+      scheduledTime: "07:18",
+      actualTime: "07:20",
+      boardings: 8,
+      alightings: 4
+    }
+  ]
+};
+
+const commuterDelayEvents: DelayEventList = {
+  items: [
+    {
+      id: "delay-1",
+      category: "Signal delay",
+      minutes: 4,
+      notes: "Signal clearance held at interlocking.",
+      reportedAt: "2026-03-06T06:19:00Z"
+    },
+    {
+      id: "delay-2",
+      category: "Passenger loading",
+      minutes: 3,
+      notes: "Heavy boarding volume at central station.",
+      reportedAt: "2026-03-06T06:24:00Z"
+    }
+  ]
+};
+
+const streetcarDelayEvents: DelayEventList = {
+  items: [
+    {
+      id: "street-delay-1",
+      category: "Traffic hold",
+      minutes: 2,
+      notes: "Signalized crossing blocked by downtown traffic.",
+      reportedAt: "2026-03-06T07:19:00Z"
+    }
+  ]
+};
+
+export const demoStationStops: Record<PropertyCode, StationStopList> = {
+  caltrain: commuterStationStops,
+  texrail: commuterStationStops,
+  tre: commuterStationStops,
+  trirail: commuterStationStops,
+  nmrx: commuterStationStops,
+  ctrail: commuterStationStops,
+  ace: commuterStationStops,
+  capmetro: commuterStationStops,
+  kcstreetcar: streetcarStationStops,
+  okcstreetcar: streetcarStationStops,
+  octastreetcar: streetcarStationStops,
+  metrolinkarrow: commuterStationStops,
+  silverline: commuterStationStops
+};
+
+export const demoDelayEvents: Record<PropertyCode, DelayEventList> = {
+  caltrain: commuterDelayEvents,
+  texrail: commuterDelayEvents,
+  tre: commuterDelayEvents,
+  trirail: commuterDelayEvents,
+  nmrx: commuterDelayEvents,
+  ctrail: commuterDelayEvents,
+  ace: commuterDelayEvents,
+  capmetro: commuterDelayEvents,
+  kcstreetcar: streetcarDelayEvents,
+  okcstreetcar: streetcarDelayEvents,
+  octastreetcar: streetcarDelayEvents,
+  metrolinkarrow: commuterDelayEvents,
+  silverline: commuterDelayEvents
 };

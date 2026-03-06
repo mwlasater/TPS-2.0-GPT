@@ -101,3 +101,29 @@ export interface TrainRun {
 export interface TrainRunList {
   items: TrainRun[];
 }
+
+export interface StationStop {
+  id: string;
+  stationCode: string;
+  sequence: number;
+  scheduledTime: string;
+  actualTime: string | null;
+  boardings: number;
+  alightings: number;
+}
+
+export interface StationStopList {
+  items: StationStop[];
+}
+
+export interface DelayEvent {
+  id: string;
+  category: string;
+  minutes: number;
+  notes: string;
+  reportedAt: string;
+}
+
+export interface DelayEventList {
+  items: DelayEvent[];
+}

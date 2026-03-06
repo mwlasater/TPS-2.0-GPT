@@ -1,9 +1,11 @@
 import type {
   AppBootstrap,
+  DelayEventList,
   ManagedUserList,
   PropertyCode,
   PropertySettings,
   ReferenceDataset,
+  StationStopList,
   TrainRunList,
   TrainScheduleList
 } from "@tps/types";
@@ -58,4 +60,18 @@ export function fetchTrainSchedules(propertyCode: PropertyCode): Promise<TrainSc
 
 export function fetchTrainRuns(propertyCode: PropertyCode): Promise<TrainRunList> {
   return fetchPropertyScoped<TrainRunList>("/train-runs", propertyCode);
+}
+
+export function fetchStationStops(
+  propertyCode: PropertyCode,
+  runId: string
+): Promise<StationStopList> {
+  return fetchPropertyScoped<StationStopList>(`/train-runs/${runId}/stops`, propertyCode);
+}
+
+export function fetchDelayEvents(
+  propertyCode: PropertyCode,
+  runId: string
+): Promise<DelayEventList> {
+  return fetchPropertyScoped<DelayEventList>(`/train-runs/${runId}/delays`, propertyCode);
 }
