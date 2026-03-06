@@ -126,6 +126,30 @@ export const delayEventListSchema = z.object({
   items: z.array(delayEventSchema)
 });
 
+export const consistEquipmentSchema = z.object({
+  id: z.string(),
+  equipmentNumber: z.string(),
+  equipmentType: z.string(),
+  position: z.number(),
+  status: z.enum(["active", "bad_order", "spare"])
+});
+
+export const consistEquipmentListSchema = z.object({
+  items: z.array(consistEquipmentSchema)
+});
+
+export const crewAssignmentSchema = z.object({
+  id: z.string(),
+  employeeName: z.string(),
+  role: z.string(),
+  onDutyTime: z.string(),
+  status: z.enum(["assigned", "pending_relief", "complete"])
+});
+
+export const crewAssignmentListSchema = z.object({
+  items: z.array(crewAssignmentSchema)
+});
+
 export const propertyHeaderSchema = z.object({
   "x-property": z.string().min(1)
 });

@@ -51,6 +51,8 @@ export function App() {
           path="/operations"
           element={
             <OperationsPage
+              consist={operationsData.consist}
+              crew={operationsData.crew}
               delayEvents={operationsData.delayEvents}
               property={activeProperty}
               referenceData={operationsData.referenceData}

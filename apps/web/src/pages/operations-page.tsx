@@ -1,4 +1,6 @@
 import type {
+  ConsistEquipmentList,
+  CrewAssignmentList,
   DelayEventList,
   PropertySummary,
   ReferenceDataset,
@@ -13,6 +15,8 @@ import { StatusBadge } from "../components/status-badge.js";
 
 interface OperationsPageProps {
   property: PropertySummary;
+  consist: ConsistEquipmentList;
+  crew: CrewAssignmentList;
   delayEvents: DelayEventList;
   referenceData: ReferenceDataset;
   runs: TrainRunList;
@@ -22,6 +26,8 @@ interface OperationsPageProps {
 }
 
 export function OperationsPage({
+  consist,
+  crew,
   delayEvents,
   property,
   referenceData,
@@ -102,6 +108,54 @@ export function OperationsPage({
           ) : (
             <p>Selecting schedules will drive detail panes here as train modules expand.</p>
           )}
+        </Panel>
+      </div>
+      <div className="two-column-grid">
+        <Panel title="Consist and equipment" eyebrow={`${consist.items.length} units`}>
+          <div className="list-stack">
+            {consist.items.map((equipment) => (
+              <article className="list-row" key={equipment.id}>
+                <div>
+                  <strong>
+                    {equipment.position}. {equipment.equipmentNumber}
+                  </strong>
+                  <p>{equipment.equipmentType}</p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge
+                    tone={equipment.status === "active" ? "success" : "warning"}
+                    label={equipment.status}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+        </Panel>
+        <Panel title="Crew assignment" eyebrow={`${crew.items.length} assigned`}>
+          <div className="list-stack">
+            {crew.items.map((assignment) => (
+              <article className="list-row" key={assignment.id}>
+                <div>
+                  <strong>{assignment.employeeName}</strong>
+                  <p>
+                    {assignment.role} · On duty {assignment.onDutyTime}
+                  </p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge
+                    tone={
+                      assignment.status === "assigned"
+                        ? "success"
+                        : assignment.status === "pending_relief"
+                          ? "warning"
+                          : "neutral"
+                    }
+                    label={assignment.status}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
         </Panel>
       </div>
       <div className="two-column-grid">

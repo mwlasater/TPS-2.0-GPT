@@ -127,3 +127,27 @@ export interface DelayEvent {
 export interface DelayEventList {
   items: DelayEvent[];
 }
+
+export interface ConsistEquipment {
+  id: string;
+  equipmentNumber: string;
+  equipmentType: string;
+  position: number;
+  status: "active" | "bad_order" | "spare";
+}
+
+export interface ConsistEquipmentList {
+  items: ConsistEquipment[];
+}
+
+export interface CrewAssignment {
+  id: string;
+  employeeName: string;
+  role: string;
+  onDutyTime: string;
+  status: "assigned" | "pending_relief" | "complete";
+}
+
+export interface CrewAssignmentList {
+  items: CrewAssignment[];
+}

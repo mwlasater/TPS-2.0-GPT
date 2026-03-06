@@ -201,4 +201,33 @@ describe("app contracts", () => {
       category: "Signal delay"
     });
   });
+
+  it("returns consist and crew assignments for authorized property context", async () => {
+    const consistResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/consist",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const crewResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/crew",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(consistResponse.statusCode).toBe(200);
+    expect(crewResponse.statusCode).toBe(200);
+    expect(consistResponse.json().items[0]).toMatchObject({
+      equipmentType: "Cab Car"
+    });
+    expect(crewResponse.json().items[0]).toMatchObject({
+      role: "Engineer"
+    });
+  });
 });

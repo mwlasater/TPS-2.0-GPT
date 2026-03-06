@@ -1,4 +1,6 @@
 import type {
+  ConsistEquipmentList,
+  CrewAssignmentList,
   DelayEventList,
   PropertyCode,
   ReferenceDataset,
@@ -9,6 +11,8 @@ import type {
 import { useEffect, useState } from "react";
 
 import {
+  fetchConsistEquipment,
+  fetchCrewAssignments,
   fetchDelayEvents,
   fetchReferenceData,
   fetchStationStops,
@@ -16,6 +20,8 @@ import {
   fetchTrainSchedules
 } from "../lib/api.js";
 import {
+  demoConsistEquipment,
+  demoCrewAssignments,
   demoDelayEvents,
   demoReferenceData,
   demoStationStops,
@@ -28,6 +34,8 @@ interface OperationsDataState {
   schedules: TrainScheduleList;
   runs: TrainRunList;
   delayEvents: DelayEventList;
+  consist: ConsistEquipmentList;
+  crew: CrewAssignmentList;
   stationStops: StationStopList;
   source: "api" | "fallback";
   isLoading: boolean;
@@ -38,6 +46,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     referenceData: demoReferenceData[propertyCode],
     schedules: demoTrainSchedules[propertyCode],
     runs: demoTrainRuns[propertyCode],
+    consist: demoConsistEquipment[propertyCode],
+    crew: demoCrewAssignments[propertyCode],
     delayEvents: demoDelayEvents[propertyCode],
     stationStops: demoStationStops[propertyCode],
     source: "fallback",
@@ -51,6 +61,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       referenceData: demoReferenceData[propertyCode],
       schedules: demoTrainSchedules[propertyCode],
       runs: demoTrainRuns[propertyCode],
+      consist: demoConsistEquipment[propertyCode],
+      crew: demoCrewAssignments[propertyCode],
       delayEvents: demoDelayEvents[propertyCode],
       stationStops: demoStationStops[propertyCode],
       source: "fallback",
@@ -64,18 +76,27 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     ])
       .then(async ([referenceData, schedules, runs]) => {
         const firstRunId = runs.items[0]?.id;
-        const [stationStops, delayEvents] = firstRunId
+        const [stationStops, delayEvents, consist, crew] = firstRunId
           ? await Promise.all([
               fetchStationStops(propertyCode, firstRunId),
-              fetchDelayEvents(propertyCode, firstRunId)
+              fetchDelayEvents(propertyCode, firstRunId),
+              fetchConsistEquipment(propertyCode, firstRunId),
+              fetchCrewAssignments(propertyCode, firstRunId)
             ])
-          : [demoStationStops[propertyCode], demoDelayEvents[propertyCode]];
+          : [
+              demoStationStops[propertyCode],
+              demoDelayEvents[propertyCode],
+              demoConsistEquipment[propertyCode],
+              demoCrewAssignments[propertyCode]
+            ];
 
         if (isMounted) {
           setState({
             referenceData,
             schedules,
             runs,
+            consist,
+            crew,
             delayEvents,
             stationStops,
             source: "api",
@@ -89,6 +110,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             referenceData: demoReferenceData[propertyCode],
             schedules: demoTrainSchedules[propertyCode],
             runs: demoTrainRuns[propertyCode],
+            consist: demoConsistEquipment[propertyCode],
+            crew: demoCrewAssignments[propertyCode],
             delayEvents: demoDelayEvents[propertyCode],
             stationStops: demoStationStops[propertyCode],
             source: "fallback",

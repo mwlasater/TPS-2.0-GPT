@@ -1,5 +1,7 @@
 import type {
   AppBootstrap,
+  ConsistEquipmentList,
+  CrewAssignmentList,
   DelayEventList,
   ManagedUserList,
   PropertyCode,
@@ -74,4 +76,18 @@ export function fetchDelayEvents(
   runId: string
 ): Promise<DelayEventList> {
   return fetchPropertyScoped<DelayEventList>(`/train-runs/${runId}/delays`, propertyCode);
+}
+
+export function fetchConsistEquipment(
+  propertyCode: PropertyCode,
+  runId: string
+): Promise<ConsistEquipmentList> {
+  return fetchPropertyScoped<ConsistEquipmentList>(`/train-runs/${runId}/consist`, propertyCode);
+}
+
+export function fetchCrewAssignments(
+  propertyCode: PropertyCode,
+  runId: string
+): Promise<CrewAssignmentList> {
+  return fetchPropertyScoped<CrewAssignmentList>(`/train-runs/${runId}/crew`, propertyCode);
 }
