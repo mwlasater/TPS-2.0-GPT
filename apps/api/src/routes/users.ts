@@ -1,15 +1,12 @@
 import type { FastifyInstance } from "fastify";
 
-import { listManagedUsers } from "../lib/managed-users.js";
-import { getManagedUserDetail, listUserAdminActions } from "../lib/user-admin-data.js";
-
 export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
   app.get(
     "/users",
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listManagedUsers(request.property)
+    async (request) => app.dataAccess.users.listUsers(request.property)
   );
 
   app.get(
@@ -17,7 +14,7 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => getManagedUserDetail(
+    async (request) => app.dataAccess.users.getUserDetail(
       (request.params as { userId: string }).userId,
       request.property
     )
@@ -28,6 +25,6 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async () => listUserAdminActions()
+    async () => app.dataAccess.users.listUserAdminActions()
   );
 }

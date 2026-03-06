@@ -1,17 +1,12 @@
 import type { FastifyInstance } from "fastify";
 
-import { listAttendanceExceptions, listJobProfiles } from "../lib/baseline-data.js";
-import { listPermissionGroups } from "../lib/permission-groups.js";
-import { listFiles, listNotifications, listPowerBiEmbeds } from "../lib/platform-data.js";
-import { listReportConfig } from "../lib/report-config.js";
-
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   app.get(
     "/permission-groups",
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listPermissionGroups(request.property)
+    async (request) => app.dataAccess.users.listPermissionGroups(request.property)
   );
 
   app.get(
@@ -19,7 +14,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listReportConfig(request.property)
+    async (request) => app.dataAccess.platform.listReportConfig(request.property)
   );
 
   app.get(
@@ -27,7 +22,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listJobProfiles(request.property)
+    async (request) => app.dataAccess.users.listJobProfiles(request.property)
   );
 
   app.get(
@@ -35,7 +30,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listAttendanceExceptions(request.property)
+    async (request) => app.dataAccess.users.listAttendanceExceptions(request.property)
   );
 
   app.get(
@@ -43,7 +38,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listFiles(request.property)
+    async (request) => app.dataAccess.platform.listFiles(request.property)
   );
 
   app.get(
@@ -51,7 +46,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listNotifications(request.property)
+    async (request) => app.dataAccess.platform.listNotifications(request.property)
   );
 
   app.get(
@@ -59,6 +54,6 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listPowerBiEmbeds(request.property)
+    async (request) => app.dataAccess.platform.listPowerBiEmbeds(request.property)
   );
 }

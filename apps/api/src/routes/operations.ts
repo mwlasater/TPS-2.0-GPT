@@ -1,16 +1,12 @@
 import type { FastifyInstance } from "fastify";
 
-import { listTrainRuns, listTrainSchedules } from "../lib/operations-data.js";
-import { listDelayEvents, listStationStops } from "../lib/run-detail-data.js";
-import { listConsistEquipment, listCrewAssignments } from "../lib/run-resource-data.js";
-
 export async function registerOperationsRoutes(app: FastifyInstance): Promise<void> {
   app.get(
     "/train-schedules",
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listTrainSchedules(request.property)
+    async (request) => app.dataAccess.operations.listTrainSchedules(request.property)
   );
 
   app.get(
@@ -18,7 +14,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listTrainRuns(request.property)
+    async (request) => app.dataAccess.operations.listTrainRuns(request.property)
   );
 
   app.get(
@@ -26,7 +22,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listStationStops(
+    async (request) => app.dataAccess.operations.listStationStops(
       request.property,
       (request.params as { runId: string }).runId
     )
@@ -37,7 +33,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listDelayEvents(
+    async (request) => app.dataAccess.operations.listDelayEvents(
       request.property,
       (request.params as { runId: string }).runId
     )
@@ -48,7 +44,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listConsistEquipment(
+    async (request) => app.dataAccess.operations.listConsistEquipment(
       request.property,
       (request.params as { runId: string }).runId
     )
@@ -59,7 +55,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => listCrewAssignments(
+    async (request) => app.dataAccess.operations.listCrewAssignments(
       request.property,
       (request.params as { runId: string }).runId
     )

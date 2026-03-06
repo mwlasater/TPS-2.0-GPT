@@ -14,6 +14,8 @@ import { registerReferenceRoutes } from "./routes/reference.js";
 import { registerSecureRoutes } from "./routes/secure.js";
 import { registerSettingsRoutes } from "./routes/settings.js";
 import { registerUserRoutes } from "./routes/users.js";
+import { createMockDataAccess } from "./repositories/mock-data-access.js";
+import type { DataAccess } from "./repositories/contracts.js";
 
 class HttpError extends Error {
   statusCode: number;
@@ -27,6 +29,7 @@ class HttpError extends Error {
 declare module "fastify" {
   interface FastifyInstance {
     config: ReturnType<typeof loadConfig>;
+    dataAccess: DataAccess;
     authenticate: (request: import("fastify").FastifyRequest) => Promise<void>;
     requireProperty: (request: import("fastify").FastifyRequest) => Promise<void>;
   }
@@ -55,6 +58,7 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
   });
 
   app.decorate("config", config);
+  app.decorate("dataAccess", createMockDataAccess());
 
   app.decorate("authenticate", async (request) => {
     const authorization = request.headers.authorization;
