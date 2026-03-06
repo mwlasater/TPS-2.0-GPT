@@ -15,3 +15,9 @@ Commands:
 - `npm --workspace @tps/api run seed`
 
 Run migrations before seeds. The seed set is intended for local Postgres bootstrap so the persisted repositories can be exercised end to end.
+
+Local Docker bootstrap:
+
+- `docker compose up --build` now runs the API in `DATA_ACCESS_MODE=postgres`
+- the API can auto-apply migrations and seeds on startup when `DB_AUTO_BOOTSTRAP=true`
+- retries are controlled by `DB_BOOTSTRAP_MAX_ATTEMPTS` and `DB_BOOTSTRAP_RETRY_MS`
