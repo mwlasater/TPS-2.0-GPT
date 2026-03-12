@@ -10,7 +10,8 @@ describe("seed service", () => {
     expect(seeds.map((seed) => seed.id)).toEqual([
       "0001_bootstrap",
       "0002_run_resources",
-      "0003_user_admin"
+      "0003_user_admin",
+      "0004_platform_admin"
     ]);
   });
 });
