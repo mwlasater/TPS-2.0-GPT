@@ -1,6 +1,7 @@
 import type {
   ManagedUserDetail,
   PropertyCode,
+  UserPropertyAccessUpdate,
   UserAdminActionList
 } from "@tps/types";
 
@@ -57,12 +58,27 @@ const defaultActions: UserAdminActionList = {
   ]
 };
 
+const propertyAccessByUser: Partial<Record<string, PropertyCode[]>> = {
+  "ops-manager": ["caltrain", "capmetro"],
+  "dispatcher-1": ["caltrain", "tre"],
+  "reporting-admin": ["caltrain"]
+};
+
 export function getManagedUserDetail(userId: string, propertyCode: PropertyCode): ManagedUserDetail {
   const base = userDetails[userId] ?? userDetails["ops-manager"]!;
   return {
     ...base,
-    propertyAccess: [propertyCode]
+    propertyAccess: propertyAccessByUser[userId] ?? [propertyCode]
   };
+}
+
+export function updateManagedUserPropertyAccess(
+  userId: string,
+  propertyCode: PropertyCode,
+  update: UserPropertyAccessUpdate
+): ManagedUserDetail {
+  propertyAccessByUser[userId] = [...update.propertyAccess];
+  return getManagedUserDetail(userId, propertyCode);
 }
 
 export function listUserAdminActions(): UserAdminActionList {

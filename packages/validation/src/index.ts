@@ -87,6 +87,10 @@ export const managedUserDetailSchema = managedUserSchema.extend({
   lastAction: z.string()
 });
 
+export const userPropertyAccessUpdateSchema = z.object({
+  propertyAccess: z.array(z.string().min(1)).min(1)
+});
+
 export const userAdminActionSchema = z.object({
   id: z.string(),
   label: z.string(),

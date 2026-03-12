@@ -321,10 +321,49 @@ describe("app contracts", () => {
     expect(actionsResponse.statusCode).toBe(200);
     expect(detailResponse.json()).toMatchObject({
       id: "ops-manager",
-      propertyAccess: ["caltrain"]
+      propertyAccess: ["caltrain", "capmetro"]
     });
     expect(actionsResponse.json().items[0]).toMatchObject({
       label: "Reset Password"
+    });
+  });
+
+  it("updates managed user property access", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/users/ops-manager/property-access",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        propertyAccess: ["caltrain", "tre"]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: "ops-manager",
+      propertyAccess: ["caltrain", "tre"]
+    });
+  });
+
+  it("rejects invalid managed user property access payloads", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/users/ops-manager/property-access",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        propertyAccess: []
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: "validation.failed"
     });
   });
 

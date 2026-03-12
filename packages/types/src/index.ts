@@ -89,6 +89,10 @@ export interface ManagedUserDetail extends ManagedUser {
   lastAction: string;
 }
 
+export interface UserPropertyAccessUpdate {
+  propertyAccess: PropertyCode[];
+}
+
 export interface UserAdminAction {
   id: string;
   label: string;

@@ -8,7 +8,11 @@ import { getReferenceData } from "../lib/reference-data.js";
 import { listReportConfig } from "../lib/report-config.js";
 import { listDelayEvents, listStationStops } from "../lib/run-detail-data.js";
 import { listConsistEquipment, listCrewAssignments } from "../lib/run-resource-data.js";
-import { getManagedUserDetail, listUserAdminActions } from "../lib/user-admin-data.js";
+import {
+  getManagedUserDetail,
+  listUserAdminActions,
+  updateManagedUserPropertyAccess
+} from "../lib/user-admin-data.js";
 
 import type { DataAccess } from "./contracts.js";
 
@@ -22,6 +26,7 @@ export function createMockDataAccess(): DataAccess {
     users: {
       listUsers: listManagedUsers,
       getUserDetail: getManagedUserDetail,
+      updateUserPropertyAccess: updateManagedUserPropertyAccess,
       listUserAdminActions,
       listPermissionGroups,
       listJobProfiles,

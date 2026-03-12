@@ -16,6 +16,7 @@ import type {
   StationStopList,
   TrainRunList,
   TrainScheduleList,
+  UserPropertyAccessUpdate,
   UserAdminActionList
 } from "@tps/types";
 
@@ -33,6 +34,11 @@ export interface PropertyRepository {
 export interface UserRepository {
   listUsers(propertyCode: PropertyCode): MaybePromise<ManagedUserList>;
   getUserDetail(userId: string, propertyCode: PropertyCode): MaybePromise<ManagedUserDetail>;
+  updateUserPropertyAccess(
+    userId: string,
+    propertyCode: PropertyCode,
+    update: UserPropertyAccessUpdate
+  ): MaybePromise<ManagedUserDetail>;
   listUserAdminActions(): MaybePromise<UserAdminActionList>;
   listPermissionGroups(propertyCode: PropertyCode): MaybePromise<PermissionGroupList>;
   listJobProfiles(propertyCode: PropertyCode): MaybePromise<JobProfileList>;

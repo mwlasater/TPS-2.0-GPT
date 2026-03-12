@@ -9,6 +9,7 @@ import type {
   PermissionGroup,
   PermissionGroupList,
   PropertyCode,
+  UserPropertyAccessUpdate,
   UserAdminActionList
 } from "@tps/types";
 
@@ -85,6 +86,63 @@ function toIsoDate(value: string | Date): string {
 export class PostgresUsersRepository implements UserRepository {
   constructor(private readonly db: Queryable) {}
 
+  private async buildUserDetail(userId: string): Promise<ManagedUserDetail | null> {
+    const detailResult = await this.db.query<ManagedUserDetailRow>(
+      `
+        SELECT
+          id,
+          display_name,
+          email,
+          status,
+          role_label,
+          last_seen_at,
+          last_action_text
+        FROM shared.user_account
+        WHERE id = $1
+      `,
+      [userId]
+    );
+
+    const row = detailResult.rows[0];
+    if (!row) {
+      return null;
+    }
+
+    const [propertyAccessResult, groupsResult] = await Promise.all([
+      this.db.query<PropertyAccessRow>(
+        `
+          SELECT railroad_code
+          FROM shared.user_property_access
+          WHERE user_id = $1
+          ORDER BY railroad_code
+        `,
+        [userId]
+      ),
+      this.db.query<{ name: string }>(
+        `
+          SELECT pg.name
+          FROM shared.user_permission_group upg
+          JOIN shared.permission_group pg ON pg.id = upg.permission_group_id
+          WHERE upg.user_id = $1
+          ORDER BY pg.name
+        `,
+        [userId]
+      )
+    ]);
+
+    return {
+      id: row.id,
+      displayName: row.display_name,
+      email: row.email,
+      status: row.status,
+      roleLabel: row.role_label,
+      lastSeen: toIsoTimestamp(row.last_seen_at),
+      propertyAccess: propertyAccessResult.rows.map((access) => access.railroad_code),
+      groups: groupsResult.rows.map((group) => group.name),
+      lastAction: row.last_action_text
+    };
+  }
+
   async listUsers(propertyCode: PropertyCode): Promise<ManagedUserList> {
     const result = await this.db.query<ManagedUserRow>(
       `
@@ -122,62 +180,38 @@ export class PostgresUsersRepository implements UserRepository {
   }
 
   async getUserDetail(userId: string, propertyCode: PropertyCode): Promise<ManagedUserDetail> {
-    const detailResult = await this.db.query<ManagedUserDetailRow>(
+    const accessResult = await this.db.query<{ user_id: string }>(
       `
-        SELECT
-          ua.id,
-          ua.display_name,
-          ua.email,
-          ua.status,
-          ua.role_label,
-          ua.last_seen_at,
-          ua.last_action_text
-        FROM shared.user_account ua
-        JOIN shared.user_property_access upa ON upa.user_id = ua.id
-        WHERE ua.id = $1
-          AND upa.railroad_code = $2
+        SELECT user_id
+        FROM shared.user_property_access
+        WHERE user_id = $1
+          AND railroad_code = $2
       `,
       [userId, propertyCode]
     );
 
-    const row = detailResult.rows[0];
-    if (!row) {
+    if (!accessResult.rows[0]) {
       return getManagedUserDetail(userId, propertyCode);
     }
 
-    const [propertyAccessResult, groupsResult] = await Promise.all([
-      this.db.query<PropertyAccessRow>(
-        `
-          SELECT railroad_code
-          FROM shared.user_property_access
-          WHERE user_id = $1
-          ORDER BY railroad_code
-        `,
-        [userId]
-      ),
-      this.db.query<{ name: string }>(
-        `
-          SELECT pg.name
-          FROM shared.user_permission_group upg
-          JOIN shared.permission_group pg ON pg.id = upg.permission_group_id
-          WHERE upg.user_id = $1
-          ORDER BY pg.name
-        `,
-        [userId]
-      )
-    ]);
+    return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
+  }
 
-    return {
-      id: row.id,
-      displayName: row.display_name,
-      email: row.email,
-      status: row.status,
-      roleLabel: row.role_label,
-      lastSeen: toIsoTimestamp(row.last_seen_at),
-      propertyAccess: propertyAccessResult.rows.map((access) => access.railroad_code),
-      groups: groupsResult.rows.map((group) => group.name),
-      lastAction: row.last_action_text
-    };
+  async updateUserPropertyAccess(
+    userId: string,
+    propertyCode: PropertyCode,
+    update: UserPropertyAccessUpdate
+  ): Promise<ManagedUserDetail> {
+    await this.db.query("DELETE FROM shared.user_property_access WHERE user_id = $1", [userId]);
+    await this.db.query(
+      `
+        INSERT INTO shared.user_property_access (user_id, railroad_code)
+        SELECT $1, UNNEST($2::TEXT[])
+      `,
+      [userId, update.propertyAccess]
+    );
+
+    return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
   }
 
   listUserAdminActions(): UserAdminActionList {
