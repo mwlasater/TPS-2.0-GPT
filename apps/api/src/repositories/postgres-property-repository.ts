@@ -1,4 +1,4 @@
-import type { PropertyCode, PropertySettings } from "@tps/types";
+import type { PropertyCode, PropertySettings, PropertySettingsUpdate } from "@tps/types";
 
 import { getReferenceData } from "../lib/reference-data.js";
 
@@ -68,5 +68,36 @@ export class PostgresPropertyRepository implements PropertyRepository {
   getReferenceData(propertyCode: PropertyCode) {
     return getReferenceData(propertyCode);
   }
-}
 
+  async updateSettings(
+    propertyCode: PropertyCode,
+    update: PropertySettingsUpdate
+  ): Promise<PropertySettings> {
+    await this.db.query(
+      `
+        UPDATE shared.property_settings
+        SET
+          support_email = $2,
+          timezone_name = $3,
+          primary_color = $4,
+          logo_mode = $5,
+          power_bi_enabled = $6,
+          file_uploads_enabled = $7,
+          cmms_enabled = $8
+        WHERE railroad_code = $1
+      `,
+      [
+        propertyCode,
+        update.supportEmail,
+        update.timezone,
+        update.branding.primaryColor,
+        update.branding.logoMode,
+        update.features.powerBi,
+        update.features.fileUploads,
+        update.features.cmms
+      ]
+    );
+
+    return this.getSettings(propertyCode);
+  }
+}

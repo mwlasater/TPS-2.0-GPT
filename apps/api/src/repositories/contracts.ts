@@ -9,6 +9,7 @@ import type {
   PowerBiEmbedList,
   PropertyCode,
   PropertySettings,
+  PropertySettingsUpdate,
   ReferenceDataset,
   ReportConfigList,
   DelayEventList,
@@ -22,6 +23,10 @@ export type MaybePromise<T> = T | Promise<T>;
 
 export interface PropertyRepository {
   getSettings(propertyCode: PropertyCode): MaybePromise<PropertySettings>;
+  updateSettings(
+    propertyCode: PropertyCode,
+    update: PropertySettingsUpdate
+  ): MaybePromise<PropertySettings>;
   getReferenceData(propertyCode: PropertyCode): MaybePromise<ReferenceDataset>;
 }
 

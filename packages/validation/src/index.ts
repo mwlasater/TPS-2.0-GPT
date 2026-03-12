@@ -54,6 +54,20 @@ export const propertySettingsSchema = z.object({
   })
 });
 
+export const propertySettingsUpdateSchema = z.object({
+  supportEmail: z.string().email(),
+  timezone: z.string().min(1),
+  branding: z.object({
+    primaryColor: z.string().min(1),
+    logoMode: z.enum(["herzog-default", "property-override"])
+  }),
+  features: z.object({
+    powerBi: z.boolean(),
+    fileUploads: z.boolean(),
+    cmms: z.boolean()
+  })
+});
+
 export const managedUserSchema = z.object({
   id: z.string(),
   displayName: z.string(),

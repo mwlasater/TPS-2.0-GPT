@@ -3,6 +3,7 @@ import { createDevelopmentSession } from "@tps/auth";
 import { loadConfig } from "@tps/config";
 import type { PropertyCode, UserSession } from "@tps/types";
 import Fastify from "fastify";
+import { ZodError } from "zod";
 
 import { createErrorResponse } from "./lib/errors.js";
 import { ensurePropertyAccess } from "./lib/tenant-access.js";
@@ -102,10 +103,17 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
     const statusCode =
       error instanceof HttpError
         ? error.statusCode
+        : error instanceof ZodError
+          ? 400
         : typeof error === "object" && error !== null && "statusCode" in error
           ? Number((error as { statusCode: number }).statusCode)
           : 500;
-    const message = error instanceof Error ? error.message : "internal.error";
+    const message =
+      error instanceof ZodError
+        ? "validation.failed"
+        : error instanceof Error
+          ? error.message
+          : "internal.error";
     reply.status(statusCode).send(createErrorResponse(statusCode, message));
   });
 

@@ -56,6 +56,20 @@ export interface PropertySettings {
   };
 }
 
+export interface PropertySettingsUpdate {
+  supportEmail: string;
+  timezone: string;
+  branding: {
+    primaryColor: string;
+    logoMode: "herzog-default" | "property-override";
+  };
+  features: {
+    powerBi: boolean;
+    fileUploads: boolean;
+    cmms: boolean;
+  };
+}
+
 export interface ManagedUser {
   id: string;
   displayName: string;

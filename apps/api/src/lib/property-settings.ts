@@ -1,4 +1,4 @@
-import type { PropertyCode, PropertySettings } from "@tps/types";
+import type { PropertyCode, PropertySettings, PropertySettingsUpdate } from "@tps/types";
 
 const propertySettingsCatalog: Record<PropertyCode, Omit<PropertySettings, "propertyCode">> = {
   caltrain: {
@@ -119,4 +119,19 @@ export function getPropertySettings(propertyCode: PropertyCode): PropertySetting
     propertyCode,
     ...propertySettingsCatalog[propertyCode]
   };
+}
+
+export function updatePropertySettings(
+  propertyCode: PropertyCode,
+  update: PropertySettingsUpdate
+): PropertySettings {
+  propertySettingsCatalog[propertyCode] = {
+    ...propertySettingsCatalog[propertyCode],
+    supportEmail: update.supportEmail,
+    timezone: update.timezone,
+    branding: { ...update.branding },
+    features: { ...update.features }
+  };
+
+  return getPropertySettings(propertyCode);
 }

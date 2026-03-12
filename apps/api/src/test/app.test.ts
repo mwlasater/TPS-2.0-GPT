@@ -109,6 +109,75 @@ describe("app contracts", () => {
     });
   });
 
+  it("updates property settings for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/settings/property",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        supportEmail: "dispatch@caltrain.herzogops.com",
+        timezone: "America/Chicago",
+        branding: {
+          primaryColor: "#112233",
+          logoMode: "property-override"
+        },
+        features: {
+          powerBi: false,
+          fileUploads: true,
+          cmms: true
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      propertyCode: "caltrain",
+      supportEmail: "dispatch@caltrain.herzogops.com",
+      timezone: "America/Chicago",
+      branding: {
+        primaryColor: "#112233",
+        logoMode: "property-override"
+      },
+      features: {
+        powerBi: false,
+        fileUploads: true,
+        cmms: true
+      }
+    });
+  });
+
+  it("rejects invalid property settings payloads", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/settings/property",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        supportEmail: "not-an-email",
+        timezone: "",
+        branding: {
+          primaryColor: "",
+          logoMode: "bad-mode"
+        },
+        features: {
+          powerBi: false,
+          fileUploads: true,
+          cmms: true
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: "validation.failed"
+    });
+  });
+
   it("returns permission groups and report configuration for authorized property context", async () => {
     const groupsResponse = await app.inject({
       method: "GET",
