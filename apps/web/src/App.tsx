@@ -78,6 +78,13 @@ export function App() {
               attendance={baselineData.attendance}
               files={platformData.files}
               jobProfiles={baselineData.jobProfiles}
+              isSaving={
+                propertyData.isSaving ||
+                adminData.isSaving ||
+                baselineData.isSaving ||
+                platformData.isSaving ||
+                userAdminData.isSaving
+              }
               managedUserActions={userAdminData.actions}
               managedUserDetail={userAdminData.detail}
               notifications={platformData.notifications}
@@ -85,6 +92,13 @@ export function App() {
               powerBi={platformData.powerBi}
               property={activeProperty}
               reportConfig={adminData.reportConfig}
+              saveAttendance={baselineData.saveAttendance}
+              saveJobProfile={baselineData.saveJobProfile}
+              saveNotification={platformData.saveNotification}
+              savePermissionGroups={userAdminData.savePermissionGroups}
+              savePropertyAccess={userAdminData.savePropertyAccess}
+              saveReportConfig={adminData.saveReportConfig}
+              saveSettings={propertyData.saveSettings}
               settings={propertyData.settings}
               source={propertyData.source}
               users={propertyData.users}

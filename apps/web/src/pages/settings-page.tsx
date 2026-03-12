@@ -1,17 +1,25 @@
 import type {
+  AttendanceExceptionUpdate,
   AttendanceExceptionList,
   FileServiceList,
+  JobProfileUpdate,
   JobProfileList,
   ManagedUserDetail,
   ManagedUserList,
+  NotificationUpdate,
   NotificationList,
   PermissionGroupList,
   PowerBiEmbedList,
+  PropertySettingsUpdate,
   PropertySettings,
   PropertySummary,
   ReportConfigList,
+  ReportConfigUpdate,
+  UserPermissionGroupUpdate,
+  UserPropertyAccessUpdate,
   UserAdminActionList
 } from "@tps/types";
+import { useState } from "react";
 
 import { Panel } from "../components/panel.js";
 import { StatusBadge } from "../components/status-badge.js";
@@ -19,6 +27,7 @@ import { StatusBadge } from "../components/status-badge.js";
 interface SettingsPageProps {
   attendance: AttendanceExceptionList;
   files: FileServiceList;
+  isSaving: boolean;
   jobProfiles: JobProfileList;
   managedUserActions: UserAdminActionList;
   managedUserDetail: ManagedUserDetail;
@@ -27,6 +36,13 @@ interface SettingsPageProps {
   powerBi: PowerBiEmbedList;
   property: PropertySummary;
   reportConfig: ReportConfigList;
+  saveAttendance: (exceptionId: string, update: AttendanceExceptionUpdate) => Promise<void>;
+  saveJobProfile: (profileId: string, update: JobProfileUpdate) => Promise<void>;
+  saveNotification: (notificationId: string, update: NotificationUpdate) => Promise<void>;
+  savePermissionGroups: (update: UserPermissionGroupUpdate) => Promise<void>;
+  savePropertyAccess: (update: UserPropertyAccessUpdate) => Promise<void>;
+  saveReportConfig: (reportId: string, update: ReportConfigUpdate) => Promise<void>;
+  saveSettings: (update: PropertySettingsUpdate) => Promise<void>;
   settings: PropertySettings;
   source: "api" | "fallback";
   users: ManagedUserList;
@@ -35,6 +51,7 @@ interface SettingsPageProps {
 export function SettingsPage({
   attendance,
   files,
+  isSaving,
   jobProfiles,
   managedUserActions,
   managedUserDetail,
@@ -43,17 +60,35 @@ export function SettingsPage({
   powerBi,
   property,
   reportConfig,
+  saveAttendance,
+  saveJobProfile,
+  saveNotification,
+  savePermissionGroups,
+  savePropertyAccess,
+  saveReportConfig,
+  saveSettings,
   settings,
   source,
   users
 }: SettingsPageProps) {
+  const [feedback, setFeedback] = useState<string>("");
+
+  async function runAction(action: () => Promise<void>, success: string) {
+    try {
+      await action();
+      setFeedback(success);
+    } catch {
+      setFeedback("Update failed. Check API availability and validation constraints.");
+    }
+  }
+
   return (
     <div className="page-stack">
       <Panel title="Property settings" eyebrow={property.code}>
         <p>
-          Settings scaffolding is ready for branding overrides, permission seeds,
-          report configuration, and railroad profile defaults.
+          Settings editing is now wired for the main persisted admin modules in this shell.
         </p>
+        <p>{isSaving ? "Saving changes..." : feedback || "Changes save against the current property scope."}</p>
       </Panel>
       <div className="two-column-grid">
         <Panel title="Branding and support" eyebrow={source}>
@@ -75,6 +110,34 @@ export function SettingsPage({
               <dd>{settings.branding.primaryColor}</dd>
             </div>
           </dl>
+          <button
+            type="button"
+            onClick={() =>
+              void runAction(
+                () =>
+                  saveSettings({
+                    supportEmail: `dispatch@${property.code}.herzogops.com`,
+                    timezone: settings.timezone === "America/Chicago" ? "America/Los_Angeles" : "America/Chicago",
+                    branding: {
+                      primaryColor:
+                        settings.branding.primaryColor === "#112233" ? "#1E3A5F" : "#112233",
+                      logoMode:
+                        settings.branding.logoMode === "property-override"
+                          ? "herzog-default"
+                          : "property-override"
+                    },
+                    features: {
+                      powerBi: !settings.features.powerBi,
+                      fileUploads: settings.features.fileUploads,
+                      cmms: settings.features.cmms
+                    }
+                  }),
+                "Property settings updated."
+              )
+            }
+          >
+            Apply staged property update
+          </button>
           <StatusBadge
             tone={settings.branding.logoMode === "property-override" ? "warning" : "neutral"}
             label={settings.branding.logoMode}
@@ -135,6 +198,30 @@ export function SettingsPage({
               <dd>{managedUserDetail.lastAction}</dd>
             </div>
           </dl>
+          <div className="button-row">
+            <button
+              type="button"
+              onClick={() =>
+                void runAction(
+                  () => savePropertyAccess({ propertyAccess: ["caltrain", "tre"] }),
+                  "User property access updated."
+                )
+              }
+            >
+              Scope to caltrain + tre
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                void runAction(
+                  () => savePermissionGroups({ groups: ["Dispatch Leadership"] }),
+                  "User permission groups updated."
+                )
+              }
+            >
+              Keep Dispatch Leadership only
+            </button>
+          </div>
         </Panel>
         <Panel title="Admin actions" eyebrow={`${managedUserActions.items.length} available`}>
           <div className="badge-row">
@@ -196,6 +283,24 @@ export function SettingsPage({
               </div>
             ])}
           </div>
+          {reportConfig.items[0] ? (
+            <button
+              type="button"
+              onClick={() =>
+                void runAction(
+                  () =>
+                    saveReportConfig(reportConfig.items[0]!.id, {
+                      audience: "Dispatch Leadership",
+                      embedEnabled: false,
+                      schedule: "07:00 daily"
+                    }),
+                  "Report configuration updated."
+                )
+              }
+            >
+              Update first report row
+            </button>
+          ) : null}
         </Panel>
       </div>
       <div className="two-column-grid">
@@ -217,6 +322,24 @@ export function SettingsPage({
               </article>
             ))}
           </div>
+          {jobProfiles.items[0] ? (
+            <button
+              type="button"
+              onClick={() =>
+                void runAction(
+                  () =>
+                    saveJobProfile(jobProfiles.items[0]!.id, {
+                      department: "Operations Control",
+                      minimumHeadcount: 2,
+                      reliefRequired: false
+                    }),
+                  "Job profile updated."
+                )
+              }
+            >
+              Update first job profile
+            </button>
+          ) : null}
         </Panel>
         <Panel title="Absence and tardiness" eyebrow={`${attendance.items.length} open records`}>
           <div className="list-stack">
@@ -244,6 +367,23 @@ export function SettingsPage({
               </article>
             ))}
           </div>
+          {attendance.items[0] ? (
+            <button
+              type="button"
+              onClick={() =>
+                void runAction(
+                  () =>
+                    saveAttendance(attendance.items[0]!.id, {
+                      status: "resolved",
+                      notes: "Cleared for duty."
+                    }),
+                  "Attendance record updated."
+                )
+              }
+            >
+              Resolve first attendance record
+            </button>
+          ) : null}
         </Panel>
       </div>
       <div className="two-column-grid">
@@ -283,6 +423,24 @@ export function SettingsPage({
               </article>
             ))}
           </div>
+          {notifications.items[0] ? (
+            <button
+              type="button"
+              onClick={() =>
+                void runAction(
+                  () =>
+                    saveNotification(notifications.items[0]!.id, {
+                      channel: "in_app",
+                      recipientGroup: "Operations Leadership",
+                      enabled: false
+                    }),
+                  "Notification template updated."
+                )
+              }
+            >
+              Update first notification
+            </button>
+          ) : null}
         </Panel>
       </div>
       <Panel title="Power BI embeds" eyebrow={`${powerBi.items.length} reports`}>

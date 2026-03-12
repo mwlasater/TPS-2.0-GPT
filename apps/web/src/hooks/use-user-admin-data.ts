@@ -1,11 +1,18 @@
 import type {
   ManagedUserDetail,
   PropertyCode,
+  UserPermissionGroupUpdate,
+  UserPropertyAccessUpdate,
   UserAdminActionList
 } from "@tps/types";
 import { useEffect, useState } from "react";
 
-import { fetchManagedUserDetail, fetchUserAdminActions } from "../lib/api.js";
+import {
+  fetchManagedUserDetail,
+  fetchUserAdminActions,
+  updateManagedUserPermissionGroups,
+  updateManagedUserPropertyAccess
+} from "../lib/api.js";
 import { demoUserAdminActions, demoUserDetails } from "../lib/session.js";
 
 interface UserAdminDataState {
@@ -13,6 +20,9 @@ interface UserAdminDataState {
   actions: UserAdminActionList;
   source: "api" | "fallback";
   isLoading: boolean;
+  isSaving: boolean;
+  savePropertyAccess: (update: UserPropertyAccessUpdate) => Promise<void>;
+  savePermissionGroups: (update: UserPermissionGroupUpdate) => Promise<void>;
 }
 
 export function useUserAdminData(
@@ -23,7 +33,10 @@ export function useUserAdminData(
     detail: demoUserDetails[propertyCode],
     actions: demoUserAdminActions,
     source: "fallback",
-    isLoading: true
+    isLoading: true,
+    isSaving: false,
+    savePropertyAccess: async () => undefined,
+    savePermissionGroups: async () => undefined
   });
 
   useEffect(() => {
@@ -33,7 +46,10 @@ export function useUserAdminData(
       detail: demoUserDetails[propertyCode],
       actions: demoUserAdminActions,
       source: "fallback",
-      isLoading: true
+      isLoading: true,
+      isSaving: false,
+      savePropertyAccess: state.savePropertyAccess,
+      savePermissionGroups: state.savePermissionGroups
     });
 
     void Promise.all([
@@ -46,7 +62,10 @@ export function useUserAdminData(
             detail,
             actions,
             source: "api",
-            isLoading: false
+            isLoading: false,
+            isSaving: false,
+            savePropertyAccess: state.savePropertyAccess,
+            savePermissionGroups: state.savePermissionGroups
           });
         }
       })
@@ -56,7 +75,10 @@ export function useUserAdminData(
             detail: demoUserDetails[propertyCode],
             actions: demoUserAdminActions,
             source: "fallback",
-            isLoading: false
+            isLoading: false,
+            isSaving: false,
+            savePropertyAccess: state.savePropertyAccess,
+            savePermissionGroups: state.savePermissionGroups
           });
         }
       });
@@ -66,5 +88,43 @@ export function useUserAdminData(
     };
   }, [propertyCode, userId]);
 
-  return state;
+  async function savePropertyAccess(update: UserPropertyAccessUpdate): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const detail = await updateManagedUserPropertyAccess(propertyCode, userId, update);
+      setState((current) => ({
+        ...current,
+        detail,
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("user_access.update_failed");
+    }
+  }
+
+  async function savePermissionGroups(update: UserPermissionGroupUpdate): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const detail = await updateManagedUserPermissionGroups(propertyCode, userId, update);
+      setState((current) => ({
+        ...current,
+        detail,
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("user_groups.update_failed");
+    }
+  }
+
+  return {
+    ...state,
+    savePropertyAccess,
+    savePermissionGroups
+  };
 }

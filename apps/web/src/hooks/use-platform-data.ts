@@ -1,12 +1,18 @@
 import type {
   FileServiceList,
   NotificationList,
+  NotificationUpdate,
   PowerBiEmbedList,
   PropertyCode
 } from "@tps/types";
 import { useEffect, useState } from "react";
 
-import { fetchFiles, fetchNotifications, fetchPowerBi } from "../lib/api.js";
+import {
+  fetchFiles,
+  fetchNotifications,
+  fetchPowerBi,
+  updateNotification
+} from "../lib/api.js";
 import { demoFiles, demoNotifications, demoPowerBi } from "../lib/session.js";
 
 interface PlatformDataState {
@@ -15,6 +21,8 @@ interface PlatformDataState {
   powerBi: PowerBiEmbedList;
   source: "api" | "fallback";
   isLoading: boolean;
+  isSaving: boolean;
+  saveNotification: (notificationId: string, update: NotificationUpdate) => Promise<void>;
 }
 
 export function usePlatformData(propertyCode: PropertyCode): PlatformDataState {
@@ -23,7 +31,9 @@ export function usePlatformData(propertyCode: PropertyCode): PlatformDataState {
     notifications: demoNotifications[propertyCode],
     powerBi: demoPowerBi[propertyCode],
     source: "fallback",
-    isLoading: true
+    isLoading: true,
+    isSaving: false,
+    saveNotification: async () => undefined
   });
 
   useEffect(() => {
@@ -34,7 +44,9 @@ export function usePlatformData(propertyCode: PropertyCode): PlatformDataState {
       notifications: demoNotifications[propertyCode],
       powerBi: demoPowerBi[propertyCode],
       source: "fallback",
-      isLoading: true
+      isLoading: true,
+      isSaving: false,
+      saveNotification: state.saveNotification
     });
 
     void Promise.all([
@@ -49,7 +61,9 @@ export function usePlatformData(propertyCode: PropertyCode): PlatformDataState {
             notifications,
             powerBi,
             source: "api",
-            isLoading: false
+            isLoading: false,
+            isSaving: false,
+            saveNotification: state.saveNotification
           });
         }
       })
@@ -60,7 +74,9 @@ export function usePlatformData(propertyCode: PropertyCode): PlatformDataState {
             notifications: demoNotifications[propertyCode],
             powerBi: demoPowerBi[propertyCode],
             source: "fallback",
-            isLoading: false
+            isLoading: false,
+            isSaving: false,
+            saveNotification: state.saveNotification
           });
         }
       });
@@ -70,5 +86,32 @@ export function usePlatformData(propertyCode: PropertyCode): PlatformDataState {
     };
   }, [propertyCode]);
 
-  return state;
+  async function saveNotification(
+    notificationId: string,
+    update: NotificationUpdate
+  ): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const updated = await updateNotification(propertyCode, notificationId, update);
+      setState((current) => ({
+        ...current,
+        notifications: {
+          items: current.notifications.items.map((item) =>
+            item.id === notificationId ? updated : item
+          )
+        },
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("notification.update_failed");
+    }
+  }
+
+  return {
+    ...state,
+    saveNotification
+  };
 }

@@ -1,7 +1,16 @@
-import type { ManagedUserList, PropertyCode, PropertySettings } from "@tps/types";
+import type {
+  ManagedUserList,
+  PropertyCode,
+  PropertySettings,
+  PropertySettingsUpdate
+} from "@tps/types";
 import { useEffect, useState } from "react";
 
-import { fetchManagedUsers, fetchPropertySettings } from "../lib/api.js";
+import {
+  fetchManagedUsers,
+  fetchPropertySettings,
+  updatePropertySettings
+} from "../lib/api.js";
 import { demoManagedUsers, demoPropertySettings } from "../lib/session.js";
 
 interface PropertyDataState {
@@ -9,6 +18,8 @@ interface PropertyDataState {
   users: ManagedUserList;
   source: "api" | "fallback";
   isLoading: boolean;
+  isSaving: boolean;
+  saveSettings: (update: PropertySettingsUpdate) => Promise<void>;
 }
 
 export function usePropertyData(propertyCode: PropertyCode): PropertyDataState {
@@ -16,7 +27,9 @@ export function usePropertyData(propertyCode: PropertyCode): PropertyDataState {
     settings: demoPropertySettings[propertyCode],
     users: demoManagedUsers[propertyCode],
     source: "fallback",
-    isLoading: true
+    isLoading: true,
+    isSaving: false,
+    saveSettings: async () => undefined
   });
 
   useEffect(() => {
@@ -26,7 +39,9 @@ export function usePropertyData(propertyCode: PropertyCode): PropertyDataState {
       settings: demoPropertySettings[propertyCode],
       users: demoManagedUsers[propertyCode],
       source: "fallback",
-      isLoading: true
+      isLoading: true,
+      isSaving: false,
+      saveSettings: state.saveSettings
     });
 
     void Promise.all([
@@ -39,7 +54,9 @@ export function usePropertyData(propertyCode: PropertyCode): PropertyDataState {
             settings,
             users,
             source: "api",
-            isLoading: false
+            isLoading: false,
+            isSaving: false,
+            saveSettings: state.saveSettings
           });
         }
       })
@@ -49,7 +66,9 @@ export function usePropertyData(propertyCode: PropertyCode): PropertyDataState {
             settings: demoPropertySettings[propertyCode],
             users: demoManagedUsers[propertyCode],
             source: "fallback",
-            isLoading: false
+            isLoading: false,
+            isSaving: false,
+            saveSettings: state.saveSettings
           });
         }
       });
@@ -59,5 +78,31 @@ export function usePropertyData(propertyCode: PropertyCode): PropertyDataState {
     };
   }, [propertyCode]);
 
-  return state;
+  async function saveSettings(update: PropertySettingsUpdate): Promise<void> {
+    setState((current) => ({
+      ...current,
+      isSaving: true
+    }));
+
+    try {
+      const settings = await updatePropertySettings(propertyCode, update);
+      setState((current) => ({
+        ...current,
+        settings,
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({
+        ...current,
+        isSaving: false
+      }));
+      throw new Error("settings.update_failed");
+    }
+  }
+
+  return {
+    ...state,
+    saveSettings
+  };
 }

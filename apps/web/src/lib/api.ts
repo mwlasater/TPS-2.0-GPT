@@ -1,23 +1,34 @@
 import type {
+  AttendanceException,
   AttendanceExceptionList,
+  AttendanceExceptionUpdate,
   AppBootstrap,
   ConsistEquipmentList,
   CrewAssignmentList,
   DelayEventList,
   FileServiceList,
+  JobProfile,
   JobProfileList,
+  JobProfileUpdate,
   ManagedUserDetail,
   ManagedUserList,
   NotificationList,
+  NotificationItem,
+  NotificationUpdate,
   PermissionGroupList,
   PowerBiEmbedList,
   PropertyCode,
   PropertySettings,
+  PropertySettingsUpdate,
   ReferenceDataset,
   ReportConfigList,
+  ReportConfigRow,
+  ReportConfigUpdate,
   StationStopList,
   TrainRunList,
   TrainScheduleList,
+  UserPermissionGroupUpdate,
+  UserPropertyAccessUpdate,
   UserAdminActionList
 } from "@tps/types";
 
@@ -53,8 +64,38 @@ async function fetchPropertyScoped<T>(path: string, propertyCode: PropertyCode):
   return (await response.json()) as T;
 }
 
+async function mutatePropertyScoped<T>(
+  path: string,
+  propertyCode: PropertyCode,
+  method: "PUT",
+  body: unknown
+): Promise<T> {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${developmentToken}`,
+      "Content-Type": "application/json",
+      "X-Property": propertyCode
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    throw new Error(`request.failed.${response.status}`);
+  }
+
+  return (await response.json()) as T;
+}
+
 export function fetchPropertySettings(propertyCode: PropertyCode): Promise<PropertySettings> {
   return fetchPropertyScoped<PropertySettings>("/settings/property", propertyCode);
+}
+
+export function updatePropertySettings(
+  propertyCode: PropertyCode,
+  payload: PropertySettingsUpdate
+): Promise<PropertySettings> {
+  return mutatePropertyScoped<PropertySettings>("/settings/property", propertyCode, "PUT", payload);
 }
 
 export function fetchManagedUsers(propertyCode: PropertyCode): Promise<ManagedUserList> {
@@ -66,6 +107,32 @@ export function fetchManagedUserDetail(
   userId: string
 ): Promise<ManagedUserDetail> {
   return fetchPropertyScoped<ManagedUserDetail>(`/users/${userId}`, propertyCode);
+}
+
+export function updateManagedUserPropertyAccess(
+  propertyCode: PropertyCode,
+  userId: string,
+  payload: UserPropertyAccessUpdate
+): Promise<ManagedUserDetail> {
+  return mutatePropertyScoped<ManagedUserDetail>(
+    `/users/${userId}/property-access`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
+export function updateManagedUserPermissionGroups(
+  propertyCode: PropertyCode,
+  userId: string,
+  payload: UserPermissionGroupUpdate
+): Promise<ManagedUserDetail> {
+  return mutatePropertyScoped<ManagedUserDetail>(
+    `/users/${userId}/permission-groups`,
+    propertyCode,
+    "PUT",
+    payload
+  );
 }
 
 export function fetchUserAdminActions(
@@ -83,8 +150,29 @@ export function fetchReportConfig(propertyCode: PropertyCode): Promise<ReportCon
   return fetchPropertyScoped<ReportConfigList>("/report-config", propertyCode);
 }
 
+export function updateReportConfig(
+  propertyCode: PropertyCode,
+  reportId: string,
+  payload: ReportConfigUpdate
+): Promise<ReportConfigRow> {
+  return mutatePropertyScoped<ReportConfigRow>(
+    `/report-config/${reportId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
 export function fetchJobProfiles(propertyCode: PropertyCode): Promise<JobProfileList> {
   return fetchPropertyScoped<JobProfileList>("/job-profiles", propertyCode);
+}
+
+export function updateJobProfile(
+  propertyCode: PropertyCode,
+  profileId: string,
+  payload: JobProfileUpdate
+): Promise<JobProfile> {
+  return mutatePropertyScoped<JobProfile>(`/job-profiles/${profileId}`, propertyCode, "PUT", payload);
 }
 
 export function fetchAttendanceExceptions(
@@ -93,12 +181,38 @@ export function fetchAttendanceExceptions(
   return fetchPropertyScoped<AttendanceExceptionList>("/attendance-exceptions", propertyCode);
 }
 
+export function updateAttendanceException(
+  propertyCode: PropertyCode,
+  exceptionId: string,
+  payload: AttendanceExceptionUpdate
+): Promise<AttendanceException> {
+  return mutatePropertyScoped<AttendanceException>(
+    `/attendance-exceptions/${exceptionId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
 export function fetchFiles(propertyCode: PropertyCode): Promise<FileServiceList> {
   return fetchPropertyScoped<FileServiceList>("/files", propertyCode);
 }
 
 export function fetchNotifications(propertyCode: PropertyCode): Promise<NotificationList> {
   return fetchPropertyScoped<NotificationList>("/notifications", propertyCode);
+}
+
+export function updateNotification(
+  propertyCode: PropertyCode,
+  notificationId: string,
+  payload: NotificationUpdate
+): Promise<NotificationItem> {
+  return mutatePropertyScoped<NotificationItem>(
+    `/notifications/${notificationId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
 }
 
 export function fetchPowerBi(propertyCode: PropertyCode): Promise<PowerBiEmbedList> {

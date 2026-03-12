@@ -1,7 +1,12 @@
-import type { PermissionGroupList, PropertyCode, ReportConfigList } from "@tps/types";
+import type {
+  PermissionGroupList,
+  PropertyCode,
+  ReportConfigList,
+  ReportConfigUpdate
+} from "@tps/types";
 import { useEffect, useState } from "react";
 
-import { fetchPermissionGroups, fetchReportConfig } from "../lib/api.js";
+import { fetchPermissionGroups, fetchReportConfig, updateReportConfig } from "../lib/api.js";
 import { demoPermissionGroups, demoReportConfig } from "../lib/session.js";
 
 interface AdminDataState {
@@ -9,6 +14,8 @@ interface AdminDataState {
   reportConfig: ReportConfigList;
   source: "api" | "fallback";
   isLoading: boolean;
+  isSaving: boolean;
+  saveReportConfig: (reportId: string, update: ReportConfigUpdate) => Promise<void>;
 }
 
 export function useAdminData(propertyCode: PropertyCode): AdminDataState {
@@ -16,7 +23,9 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     permissionGroups: demoPermissionGroups[propertyCode],
     reportConfig: demoReportConfig[propertyCode],
     source: "fallback",
-    isLoading: true
+    isLoading: true,
+    isSaving: false,
+    saveReportConfig: async () => undefined
   });
 
   useEffect(() => {
@@ -26,7 +35,9 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
       permissionGroups: demoPermissionGroups[propertyCode],
       reportConfig: demoReportConfig[propertyCode],
       source: "fallback",
-      isLoading: true
+      isLoading: true,
+      isSaving: false,
+      saveReportConfig: state.saveReportConfig
     });
 
     void Promise.all([
@@ -39,7 +50,9 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             permissionGroups,
             reportConfig,
             source: "api",
-            isLoading: false
+            isLoading: false,
+            isSaving: false,
+            saveReportConfig: state.saveReportConfig
           });
         }
       })
@@ -49,7 +62,9 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             permissionGroups: demoPermissionGroups[propertyCode],
             reportConfig: demoReportConfig[propertyCode],
             source: "fallback",
-            isLoading: false
+            isLoading: false,
+            isSaving: false,
+            saveReportConfig: state.saveReportConfig
           });
         }
       });
@@ -59,5 +74,27 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     };
   }, [propertyCode]);
 
-  return state;
+  async function saveReportConfig(reportId: string, update: ReportConfigUpdate): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const updated = await updateReportConfig(propertyCode, reportId, update);
+      setState((current) => ({
+        ...current,
+        reportConfig: {
+          items: current.reportConfig.items.map((item) => (item.id === reportId ? updated : item))
+        },
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("report_config.update_failed");
+    }
+  }
+
+  return {
+    ...state,
+    saveReportConfig
+  };
 }
