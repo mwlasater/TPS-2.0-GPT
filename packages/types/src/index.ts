@@ -93,6 +93,10 @@ export interface UserPropertyAccessUpdate {
   propertyAccess: PropertyCode[];
 }
 
+export interface UserPermissionGroupUpdate {
+  groups: string[];
+}
+
 export interface UserAdminAction {
   id: string;
   label: string;

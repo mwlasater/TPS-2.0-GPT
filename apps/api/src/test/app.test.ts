@@ -367,6 +367,45 @@ describe("app contracts", () => {
     });
   });
 
+  it("updates managed user permission groups", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/users/ops-manager/permission-groups",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        groups: ["Dispatch Leadership"]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: "ops-manager",
+      groups: ["Dispatch Leadership"]
+    });
+  });
+
+  it("rejects invalid managed user permission group payloads", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/users/ops-manager/permission-groups",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        groups: [""]
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: "validation.failed"
+    });
+  });
+
   it("returns reference data for authorized property context", async () => {
     const response = await app.inject({
       method: "GET",

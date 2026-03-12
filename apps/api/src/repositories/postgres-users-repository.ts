@@ -9,6 +9,7 @@ import type {
   PermissionGroup,
   PermissionGroupList,
   PropertyCode,
+  UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
   UserAdminActionList
 } from "@tps/types";
@@ -210,6 +211,38 @@ export class PostgresUsersRepository implements UserRepository {
       `,
       [userId, update.propertyAccess]
     );
+
+    return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
+  }
+
+  async updateUserPermissionGroups(
+    userId: string,
+    propertyCode: PropertyCode,
+    update: UserPermissionGroupUpdate
+  ): Promise<ManagedUserDetail> {
+    await this.db.query(
+      `
+        DELETE FROM shared.user_permission_group upg
+        USING shared.permission_group pg
+        WHERE upg.permission_group_id = pg.id
+          AND upg.user_id = $1
+          AND pg.railroad_code = $2
+      `,
+      [userId, propertyCode]
+    );
+
+    if (update.groups.length > 0) {
+      await this.db.query(
+        `
+          INSERT INTO shared.user_permission_group (user_id, permission_group_id)
+          SELECT $1, pg.id
+          FROM shared.permission_group pg
+          WHERE pg.railroad_code = $2
+            AND pg.name = ANY($3::TEXT[])
+        `,
+        [userId, propertyCode, update.groups]
+      );
+    }
 
     return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
   }

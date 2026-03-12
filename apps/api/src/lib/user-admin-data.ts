@@ -1,6 +1,7 @@
 import type {
   ManagedUserDetail,
   PropertyCode,
+  UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
   UserAdminActionList
 } from "@tps/types";
@@ -64,11 +65,18 @@ const propertyAccessByUser: Partial<Record<string, PropertyCode[]>> = {
   "reporting-admin": ["caltrain"]
 };
 
+const groupsByUser: Partial<Record<string, string[]>> = {
+  "ops-manager": ["Operations Admin", "Dispatch Leadership"],
+  "dispatcher-1": ["Dispatcher"],
+  "reporting-admin": ["Reporting Admin"]
+};
+
 export function getManagedUserDetail(userId: string, propertyCode: PropertyCode): ManagedUserDetail {
   const base = userDetails[userId] ?? userDetails["ops-manager"]!;
   return {
     ...base,
-    propertyAccess: propertyAccessByUser[userId] ?? [propertyCode]
+    propertyAccess: propertyAccessByUser[userId] ?? [propertyCode],
+    groups: groupsByUser[userId] ?? base.groups
   };
 }
 
@@ -78,6 +86,15 @@ export function updateManagedUserPropertyAccess(
   update: UserPropertyAccessUpdate
 ): ManagedUserDetail {
   propertyAccessByUser[userId] = [...update.propertyAccess];
+  return getManagedUserDetail(userId, propertyCode);
+}
+
+export function updateManagedUserPermissionGroups(
+  userId: string,
+  propertyCode: PropertyCode,
+  update: UserPermissionGroupUpdate
+): ManagedUserDetail {
+  groupsByUser[userId] = [...update.groups];
   return getManagedUserDetail(userId, propertyCode);
 }
 

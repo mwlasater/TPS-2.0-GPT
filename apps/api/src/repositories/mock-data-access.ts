@@ -11,6 +11,7 @@ import { listConsistEquipment, listCrewAssignments } from "../lib/run-resource-d
 import {
   getManagedUserDetail,
   listUserAdminActions,
+  updateManagedUserPermissionGroups,
   updateManagedUserPropertyAccess
 } from "../lib/user-admin-data.js";
 
@@ -27,6 +28,7 @@ export function createMockDataAccess(): DataAccess {
       listUsers: listManagedUsers,
       getUserDetail: getManagedUserDetail,
       updateUserPropertyAccess: updateManagedUserPropertyAccess,
+      updateUserPermissionGroups: updateManagedUserPermissionGroups,
       listUserAdminActions,
       listPermissionGroups,
       listJobProfiles,

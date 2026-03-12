@@ -163,6 +163,54 @@ describe("PostgresUsersRepository", () => {
     );
   });
 
+  it("updates user permission groups for a property and returns refreshed detail", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "ops-manager",
+            display_name: "Jordan Reyes",
+            email: "jordan.reyes@herzog.com",
+            status: "active",
+            role_label: "Operations Manager",
+            last_seen_at: new Date("2026-03-06T14:10:00Z"),
+            last_action_text: "Password reset sent on 2026-03-01"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ railroad_code: "caltrain" }, { railroad_code: "capmetro" }]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ name: "Dispatch Leadership" }]
+      });
+
+    const repository = new PostgresUsersRepository({ query });
+    const user = await repository.updateUserPermissionGroups("ops-manager", "caltrain", {
+      groups: ["Dispatch Leadership"]
+    });
+
+    expect(user).toEqual({
+      id: "ops-manager",
+      displayName: "Jordan Reyes",
+      email: "jordan.reyes@herzog.com",
+      status: "active",
+      roleLabel: "Operations Manager",
+      lastSeen: "2026-03-06T14:10:00.000Z",
+      propertyAccess: ["caltrain", "capmetro"],
+      groups: ["Dispatch Leadership"],
+      lastAction: "Password reset sent on 2026-03-01"
+    });
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("INSERT INTO shared.user_permission_group"),
+      ["ops-manager", "caltrain", ["Dispatch Leadership"]]
+    );
+  });
+
   it("maps job profile rows", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [
