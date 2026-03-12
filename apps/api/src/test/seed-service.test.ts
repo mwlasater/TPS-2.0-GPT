@@ -13,7 +13,8 @@ describe("seed service", () => {
       "0003_user_admin",
       "0004_platform_admin",
       "0005_baseline_admin",
-      "0006_reference_admin_actions"
+      "0006_reference_admin_actions",
+      "0007_fare_enforcement_locks"
     ]);
   });
 });

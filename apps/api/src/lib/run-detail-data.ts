@@ -1,5 +1,7 @@
 import type {
+  DelayEvent,
   DelayEventList,
+  DelayEventUpdate,
   PropertyCode,
   StationStopList
 } from "@tps/types";
@@ -59,36 +61,7 @@ const streetcarStops: StationStopList = {
   ]
 };
 
-const defaultDelays: DelayEventList = {
-  items: [
-    {
-      id: "delay-1",
-      category: "Signal delay",
-      minutes: 4,
-      notes: "Signal clearance held at interlocking.",
-      reportedAt: "2026-03-06T06:19:00Z"
-    },
-    {
-      id: "delay-2",
-      category: "Passenger loading",
-      minutes: 3,
-      notes: "Heavy boarding volume at central station.",
-      reportedAt: "2026-03-06T06:24:00Z"
-    }
-  ]
-};
-
-const streetcarDelays: DelayEventList = {
-  items: [
-    {
-      id: "street-delay-1",
-      category: "Traffic hold",
-      minutes: 2,
-      notes: "Signalized crossing blocked by downtown traffic.",
-      reportedAt: "2026-03-06T07:19:00Z"
-    }
-  ]
-};
+const delayCatalog: Partial<Record<PropertyCode, DelayEventList>> = {};
 
 const streetcarProperties = new Set<PropertyCode>([
   "kcstreetcar",
@@ -105,9 +78,57 @@ export function listStationStops(propertyCode: PropertyCode, runId: string): Sta
 }
 
 export function listDelayEvents(propertyCode: PropertyCode, runId: string): DelayEventList {
-  if (runId.includes("streetcar") || streetcarProperties.has(propertyCode)) {
-    return streetcarDelays;
+  if (!delayCatalog[propertyCode]) {
+    delayCatalog[propertyCode] = runId.includes("streetcar") || streetcarProperties.has(propertyCode)
+      ? {
+          items: [
+            {
+              id: "street-delay-1",
+              category: "Traffic hold",
+              minutes: 2,
+              notes: "Signalized crossing blocked by downtown traffic.",
+              reportedAt: "2026-03-06T07:19:00Z"
+            }
+          ]
+        }
+      : {
+          items: [
+            {
+              id: "delay-1",
+              category: "Signal delay",
+              minutes: 4,
+              notes: "Signal clearance held at interlocking.",
+              reportedAt: "2026-03-06T06:19:00Z"
+            },
+            {
+              id: "delay-2",
+              category: "Passenger loading",
+              minutes: 3,
+              notes: "Heavy boarding volume at central station.",
+              reportedAt: "2026-03-06T06:24:00Z"
+            }
+          ]
+        };
   }
 
-  return defaultDelays;
+  return delayCatalog[propertyCode]!;
+}
+
+export function updateDelayEvent(
+  propertyCode: PropertyCode,
+  delayId: string,
+  update: DelayEventUpdate
+): DelayEvent {
+  const row = listDelayEvents(propertyCode, "").items.find((candidate) => candidate.id === delayId);
+
+  if (!row) {
+    throw new Error("delay_event.not_found");
+  }
+
+  row.category = update.category;
+  row.minutes = update.minutes;
+  row.notes = update.notes;
+  row.reportedAt = update.reportedAt;
+
+  return row;
 }

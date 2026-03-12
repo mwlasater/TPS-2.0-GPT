@@ -100,11 +100,16 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
   });
 
   app.setErrorHandler((error, _request, reply) => {
+    const inferredMessage = error instanceof Error ? error.message : "internal.error";
     const statusCode =
       error instanceof HttpError
         ? error.statusCode
         : error instanceof ZodError
           ? 400
+          : inferredMessage.endsWith(".not_found")
+            ? 404
+            : inferredMessage.endsWith(".locked")
+              ? 403
         : typeof error === "object" && error !== null && "statusCode" in error
           ? Number((error as { statusCode: number }).statusCode)
           : 500;
@@ -112,7 +117,7 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
       error instanceof ZodError
         ? "validation.failed"
         : error instanceof Error
-          ? error.message
+          ? inferredMessage
           : "internal.error";
     reply.status(statusCode).send(createErrorResponse(statusCode, message));
   });

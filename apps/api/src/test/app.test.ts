@@ -620,7 +620,8 @@ describe("app contracts", () => {
       trainNumber: "101"
     });
     expect(runsResponse.json().items[0]).toMatchObject({
-      status: "in_progress"
+      status: "in_progress",
+      isApproved: false
     });
   });
 
@@ -653,6 +654,49 @@ describe("app contracts", () => {
     });
   });
 
+  it("approves train runs for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/approval",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        isApproved: true
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: "caltrain-run-1",
+      status: "approved",
+      isApproved: true
+    });
+  });
+
+  it("rejects delay updates for approved train runs", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/capmetro-run-1/delays/delay-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "capmetro"
+      },
+      payload: {
+        category: "Traffic hold",
+        minutes: 3,
+        notes: "Attempted update should be blocked.",
+        reportedAt: "2026-03-06T07:21:00Z"
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "train_run.locked"
+    });
+  });
+
   it("returns consist and crew assignments for authorized property context", async () => {
     const consistResponse = await app.inject({
       method: "GET",
@@ -679,6 +723,45 @@ describe("app contracts", () => {
     });
     expect(crewResponse.json().items[0]).toMatchObject({
       role: "Engineer"
+    });
+  });
+
+  it("returns and updates fare enforcement for authorized property context", async () => {
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/fare-enforcement?runId=caltrain-run-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const updateResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/fare-enforcement/fare-caltrain-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        inspectorName: "Morgan Lee",
+        firstLocation: "SFC",
+        secondLocation: "SJC",
+        activityCount: 18,
+        notes: "Extended inspection coverage through San Jose.",
+        capturedAt: "2026-03-06T06:31:00Z"
+      }
+    });
+
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json().items[0]).toMatchObject({
+      inspectorName: "Morgan Lee"
+    });
+    expect(updateResponse.statusCode).toBe(200);
+    expect(updateResponse.json()).toMatchObject({
+      id: "fare-caltrain-1",
+      secondLocation: "SJC",
+      activityCount: 18
     });
   });
 });

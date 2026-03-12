@@ -1,6 +1,7 @@
 import type {
   PropertyCode,
   TrainRun,
+  TrainRunApprovalUpdate,
   TrainRunList,
   TrainSchedule,
   TrainScheduleList
@@ -83,26 +84,27 @@ const scheduleCatalog: Record<PropertyCode, TrainSchedule[]> = {
   silverline: []
 };
 
-const defaultRuns: TrainRun[] = [
-  {
-    id: "run-1",
-    scheduleId: "ct-101",
-    trainNumber: "101",
-    operatingDate: "2026-03-06",
-    status: "in_progress",
-    delayMinutes: 7,
-    crewAssigned: 3
-  },
-  {
-    id: "run-2",
-    scheduleId: "ct-154",
-    trainNumber: "154",
-    operatingDate: "2026-03-06",
-    status: "approved",
-    delayMinutes: 0,
-    crewAssigned: 3
-  }
-];
+const runCatalog: Partial<Record<PropertyCode, TrainRun[]>> = {};
+
+function buildRuns(propertyCode: PropertyCode): TrainRun[] {
+  const schedules = scheduleCatalog[propertyCode];
+
+  return schedules.map((schedule, index) => {
+    const isApproved = propertyCode === "capmetro" || index > 0;
+
+    return {
+      id: `${propertyCode}-run-${index + 1}`,
+      scheduleId: schedule.id,
+      trainNumber: schedule.trainNumber,
+      operatingDate: "2026-03-06",
+      status: isApproved ? "approved" : "in_progress",
+      delayMinutes: isApproved ? 2 : 7,
+      crewAssigned: propertyCode === "capmetro" ? 2 : 3,
+      isApproved,
+      approvedAt: isApproved ? "2026-03-06T12:15:00Z" : null
+    };
+  });
+}
 
 export function listTrainSchedules(propertyCode: PropertyCode): TrainScheduleList {
   return {
@@ -111,23 +113,30 @@ export function listTrainSchedules(propertyCode: PropertyCode): TrainScheduleLis
 }
 
 export function listTrainRuns(propertyCode: PropertyCode): TrainRunList {
-  const schedules = scheduleCatalog[propertyCode];
-
-  if (!schedules.length) {
-    return { items: [] };
+  if (!runCatalog[propertyCode]) {
+    runCatalog[propertyCode] = buildRuns(propertyCode);
   }
 
   return {
-    items: schedules.map((schedule, index) => {
-      const defaultRun = defaultRuns[index % defaultRuns.length]!;
-
-      return {
-        ...defaultRun,
-        id: `${propertyCode}-run-${index + 1}`,
-        scheduleId: schedule.id,
-        trainNumber: schedule.trainNumber,
-        status: index === 0 ? "in_progress" : "approved"
-      };
-    })
+    items: runCatalog[propertyCode] ?? []
   };
+}
+
+export function updateTrainRunApproval(
+  propertyCode: PropertyCode,
+  runId: string,
+  update: TrainRunApprovalUpdate
+): TrainRun {
+  const runs = listTrainRuns(propertyCode).items;
+  const run = runs.find((candidate) => candidate.id === runId) ?? runs[0];
+
+  if (!run) {
+    throw new Error("train_run.not_found");
+  }
+
+  run.isApproved = update.isApproved;
+  run.approvedAt = update.isApproved ? "2026-03-06T12:30:00Z" : null;
+  run.status = update.isApproved ? "approved" : "in_progress";
+
+  return run;
 }

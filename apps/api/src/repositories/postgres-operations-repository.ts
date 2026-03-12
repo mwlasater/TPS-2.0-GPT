@@ -5,15 +5,21 @@ import type {
   CrewAssignmentList,
   DelayEvent,
   DelayEventList,
+  DelayEventUpdate,
+  FareEnforcementList,
+  FareEnforcementRecord,
+  FareEnforcementUpdate,
   PropertyCode,
   StationStop,
   StationStopList,
   TrainRun,
+  TrainRunApprovalUpdate,
   TrainRunList,
   TrainSchedule,
   TrainScheduleList
 } from "@tps/types";
 
+import { listFareEnforcement } from "../lib/fare-enforcement-data.js";
 import { listConsistEquipment, listCrewAssignments } from "../lib/run-resource-data.js";
 import { listDelayEvents, listStationStops } from "../lib/run-detail-data.js";
 
@@ -37,6 +43,8 @@ interface TrainRunRow {
   status: TrainRun["status"];
   delay_minutes: number;
   crew_assigned: number;
+  is_approved: boolean;
+  approved_at: string | Date | null;
 }
 
 interface StationStopRow {
@@ -73,6 +81,17 @@ interface CrewAssignmentRow {
   status: CrewAssignment["status"];
 }
 
+interface FareEnforcementRow {
+  id: string;
+  train_run_id: string;
+  inspector_name: string;
+  first_location: string;
+  second_location: string;
+  activity_count: number;
+  notes: string;
+  captured_at: string | Date;
+}
+
 function toIsoDate(value: string | Date): string {
   if (value instanceof Date) {
     return value.toISOString().slice(0, 10);
@@ -91,6 +110,28 @@ function toIsoTimestamp(value: string | Date): string {
 
 export class PostgresOperationsRepository implements OperationsRepository {
   constructor(private readonly db: Queryable) {}
+
+  private async assertRunMutable(propertyCode: PropertyCode, runId: string): Promise<void> {
+    const result = await this.db.query<{ is_approved: boolean }>(
+      `
+        SELECT is_approved
+        FROM shared.train_run
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, runId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("train_run.not_found");
+    }
+
+    if (row.is_approved) {
+      throw new Error("train_run.locked");
+    }
+  }
 
   async listTrainSchedules(propertyCode: PropertyCode): Promise<TrainScheduleList> {
     const result = await this.db.query<TrainScheduleRow>(
@@ -133,7 +174,9 @@ export class PostgresOperationsRepository implements OperationsRepository {
           tr.operating_date,
           tr.status,
           tr.delay_minutes,
-          tr.crew_assigned
+          tr.crew_assigned,
+          tr.is_approved,
+          tr.approved_at
         FROM shared.train_run tr
         JOIN shared.train_schedule ts ON ts.id = tr.schedule_id
         WHERE tr.railroad_code = $1
@@ -151,9 +194,62 @@ export class PostgresOperationsRepository implements OperationsRepository {
           operatingDate: toIsoDate(row.operating_date),
           status: row.status,
           delayMinutes: row.delay_minutes,
-          crewAssigned: row.crew_assigned
+          crewAssigned: row.crew_assigned,
+          isApproved: row.is_approved,
+          approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null
         })
       )
+    };
+  }
+
+  async updateTrainRunApproval(
+    propertyCode: PropertyCode,
+    runId: string,
+    update: TrainRunApprovalUpdate
+  ): Promise<TrainRun> {
+    const result = await this.db.query<TrainRunRow>(
+      `
+        UPDATE shared.train_run
+        SET
+          is_approved = $3,
+          approved_at = CASE WHEN $3 THEN COALESCE(approved_at, NOW()) ELSE NULL END,
+          status = CASE
+            WHEN $3 THEN 'approved'
+            WHEN status = 'approved' THEN 'in_progress'
+            ELSE status
+          END
+        WHERE railroad_code = $1
+          AND id = $2
+        RETURNING
+          id,
+          schedule_id,
+          (SELECT train_number FROM shared.train_schedule WHERE id = schedule_id) AS train_number,
+          operating_date,
+          status,
+          delay_minutes,
+          crew_assigned,
+          is_approved,
+          approved_at
+      `,
+      [propertyCode, runId, update.isApproved]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("train_run.not_found");
+    }
+
+    return {
+      id: row.id,
+      scheduleId: row.schedule_id,
+      trainNumber: row.train_number,
+      operatingDate: toIsoDate(row.operating_date),
+      status: row.status,
+      delayMinutes: row.delay_minutes,
+      crewAssigned: row.crew_assigned,
+      isApproved: row.is_approved,
+      approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null
     };
   }
 
@@ -231,6 +327,65 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
+  async updateDelayEvent(
+    propertyCode: PropertyCode,
+    runId: string,
+    delayId: string,
+    update: DelayEventUpdate
+  ): Promise<DelayEvent> {
+    await this.assertRunMutable(propertyCode, runId);
+
+    const result = await this.db.query<DelayEventRow>(
+      `
+        UPDATE shared.delay_event de
+        SET
+          category = $3,
+          minutes = $4,
+          notes = $5,
+          reported_at = $6
+        FROM shared.train_run tr
+        WHERE tr.id = de.train_run_id
+          AND tr.railroad_code = $1
+          AND de.train_run_id = $2
+          AND de.id = $7
+        RETURNING
+          de.id,
+          de.category,
+          de.minutes,
+          de.notes,
+          de.reported_at
+      `,
+      [propertyCode, runId, update.category, update.minutes, update.notes, update.reportedAt, delayId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("delay_event.not_found");
+    }
+
+    await this.db.query(
+      `
+        UPDATE shared.train_run
+        SET delay_minutes = (
+          SELECT COALESCE(SUM(minutes), 0)
+          FROM shared.delay_event
+          WHERE train_run_id = $1
+        )
+        WHERE id = $1
+      `,
+      [runId]
+    );
+
+    return {
+      id: row.id,
+      category: row.category,
+      minutes: row.minutes,
+      notes: row.notes,
+      reportedAt: toIsoTimestamp(row.reported_at)
+    };
+  }
+
   async listConsistEquipment(
     propertyCode: PropertyCode,
     runId: string
@@ -304,6 +459,106 @@ export class PostgresOperationsRepository implements OperationsRepository {
           status: row.status
         })
       )
+    };
+  }
+
+  async listFareEnforcement(propertyCode: PropertyCode, runId?: string): Promise<FareEnforcementList> {
+    const result = await this.db.query<FareEnforcementRow>(
+      `
+        SELECT
+          fe.id,
+          fe.train_run_id,
+          fe.inspector_name,
+          fe.first_location,
+          fe.second_location,
+          fe.activity_count,
+          fe.notes,
+          fe.captured_at
+        FROM shared.fare_enforcement fe
+        JOIN shared.train_run tr ON tr.id = fe.train_run_id
+        WHERE tr.railroad_code = $1
+          AND ($2::TEXT IS NULL OR fe.train_run_id = $2)
+        ORDER BY fe.captured_at
+      `,
+      [propertyCode, runId ?? null]
+    );
+
+    if (!result.rows.length) {
+      return listFareEnforcement(propertyCode, runId);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): FareEnforcementRecord => ({
+          id: row.id,
+          runId: row.train_run_id,
+          inspectorName: row.inspector_name,
+          firstLocation: row.first_location,
+          secondLocation: row.second_location,
+          activityCount: row.activity_count,
+          notes: row.notes,
+          capturedAt: toIsoTimestamp(row.captured_at)
+        })
+      )
+    };
+  }
+
+  async updateFareEnforcement(
+    propertyCode: PropertyCode,
+    recordId: string,
+    update: FareEnforcementUpdate
+  ): Promise<FareEnforcementRecord> {
+    const result = await this.db.query<FareEnforcementRow>(
+      `
+        UPDATE shared.fare_enforcement fe
+        SET
+          inspector_name = $2,
+          first_location = $3,
+          second_location = $4,
+          activity_count = $5,
+          notes = $6,
+          captured_at = $7
+        FROM shared.train_run tr
+        WHERE tr.id = fe.train_run_id
+          AND tr.railroad_code = $1
+          AND fe.id = $8
+        RETURNING
+          fe.id,
+          fe.train_run_id,
+          fe.inspector_name,
+          fe.first_location,
+          fe.second_location,
+          fe.activity_count,
+          fe.notes,
+          fe.captured_at
+      `,
+      [
+        propertyCode,
+        update.inspectorName,
+        update.firstLocation,
+        update.secondLocation,
+        update.activityCount,
+        update.notes,
+        update.capturedAt,
+        recordId
+      ]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("fare_enforcement.not_found");
+    }
+
+    return {
+      id: row.id,
+      runId: row.train_run_id,
+      inspectorName: row.inspector_name,
+      firstLocation: row.first_location,
+      secondLocation: row.second_location,
+      activityCount: row.activity_count,
+      notes: row.notes,
+      capturedAt: toIsoTimestamp(row.captured_at)
     };
   }
 }

@@ -6,6 +6,10 @@ import type {
   ConsistEquipmentList,
   CrewAssignmentList,
   DelayEventList,
+  DelayEventUpdate,
+  FareEnforcementList,
+  FareEnforcementRecord,
+  FareEnforcementUpdate,
   FileServiceList,
   JobProfile,
   JobProfileList,
@@ -26,6 +30,8 @@ import type {
   ReportConfigUpdate,
   StationStopList,
   TrainRunList,
+  TrainRun,
+  TrainRunApprovalUpdate,
   TrainScheduleList,
   UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
@@ -231,6 +237,14 @@ export function fetchTrainRuns(propertyCode: PropertyCode): Promise<TrainRunList
   return fetchPropertyScoped<TrainRunList>("/train-runs", propertyCode);
 }
 
+export function updateTrainRunApproval(
+  propertyCode: PropertyCode,
+  runId: string,
+  payload: TrainRunApprovalUpdate
+): Promise<TrainRun> {
+  return mutatePropertyScoped<TrainRun>(`/train-runs/${runId}/approval`, propertyCode, "PUT", payload);
+}
+
 export function fetchStationStops(
   propertyCode: PropertyCode,
   runId: string
@@ -245,6 +259,20 @@ export function fetchDelayEvents(
   return fetchPropertyScoped<DelayEventList>(`/train-runs/${runId}/delays`, propertyCode);
 }
 
+export function updateDelayEvent(
+  propertyCode: PropertyCode,
+  runId: string,
+  delayId: string,
+  payload: DelayEventUpdate
+): Promise<DelayEventList["items"][number]> {
+  return mutatePropertyScoped<DelayEventList["items"][number]>(
+    `/train-runs/${runId}/delays/${delayId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
 export function fetchConsistEquipment(
   propertyCode: PropertyCode,
   runId: string
@@ -257,4 +285,25 @@ export function fetchCrewAssignments(
   runId: string
 ): Promise<CrewAssignmentList> {
   return fetchPropertyScoped<CrewAssignmentList>(`/train-runs/${runId}/crew`, propertyCode);
+}
+
+export function fetchFareEnforcement(
+  propertyCode: PropertyCode,
+  runId?: string
+): Promise<FareEnforcementList> {
+  const query = runId ? `?runId=${encodeURIComponent(runId)}` : "";
+  return fetchPropertyScoped<FareEnforcementList>(`/fare-enforcement${query}`, propertyCode);
+}
+
+export function updateFareEnforcement(
+  propertyCode: PropertyCode,
+  recordId: string,
+  payload: FareEnforcementUpdate
+): Promise<FareEnforcementRecord> {
+  return mutatePropertyScoped<FareEnforcementRecord>(
+    `/fare-enforcement/${recordId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
 }

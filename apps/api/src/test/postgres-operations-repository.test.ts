@@ -44,7 +44,9 @@ describe("PostgresOperationsRepository", () => {
           operating_date: new Date("2026-03-06T00:00:00Z"),
           status: "in_progress",
           delay_minutes: 7,
-          crew_assigned: 3
+          crew_assigned: 3,
+          is_approved: false,
+          approved_at: null
         }
       ]
     });
@@ -61,9 +63,46 @@ describe("PostgresOperationsRepository", () => {
           operatingDate: "2026-03-06",
           status: "in_progress",
           delayMinutes: 7,
-          crewAssigned: 3
+          crewAssigned: 3,
+          isApproved: false,
+          approvedAt: null
         }
       ]
+    });
+  });
+
+  it("maps approval updates into train runs", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "caltrain-run-1",
+          schedule_id: "ct-101",
+          train_number: "101",
+          operating_date: new Date("2026-03-06T00:00:00Z"),
+          status: "approved",
+          delay_minutes: 7,
+          crew_assigned: 3,
+          is_approved: true,
+          approved_at: new Date("2026-03-06T12:30:00Z")
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const run = await repository.updateTrainRunApproval("caltrain", "caltrain-run-1", {
+      isApproved: true
+    });
+
+    expect(run).toEqual({
+      id: "caltrain-run-1",
+      scheduleId: "ct-101",
+      trainNumber: "101",
+      operatingDate: "2026-03-06",
+      status: "approved",
+      delayMinutes: 7,
+      crewAssigned: 3,
+      isApproved: true,
+      approvedAt: "2026-03-06T12:30:00.000Z"
     });
   });
 
@@ -188,6 +227,41 @@ describe("PostgresOperationsRepository", () => {
           role: "Engineer",
           onDutyTime: "05:30",
           status: "assigned"
+        }
+      ]
+    });
+  });
+
+  it("maps fare enforcement rows into records", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "fare-1",
+          train_run_id: "caltrain-run-1",
+          inspector_name: "Morgan Lee",
+          first_location: "SFC",
+          second_location: "PAO",
+          activity_count: 16,
+          notes: "Peak boarding checks completed before Palo Alto.",
+          captured_at: new Date("2026-03-06T06:28:00Z")
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const fare = await repository.listFareEnforcement("caltrain", "caltrain-run-1");
+
+    expect(fare).toEqual({
+      items: [
+        {
+          id: "fare-1",
+          runId: "caltrain-run-1",
+          inspectorName: "Morgan Lee",
+          firstLocation: "SFC",
+          secondLocation: "PAO",
+          activityCount: 16,
+          notes: "Peak boarding checks completed before Palo Alto.",
+          capturedAt: "2026-03-06T06:28:00.000Z"
         }
       ]
     });

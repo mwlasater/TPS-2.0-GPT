@@ -62,9 +62,14 @@ export function App() {
               consist={operationsData.consist}
               crew={operationsData.crew}
               delayEvents={operationsData.delayEvents}
+              fareEnforcement={operationsData.fareEnforcement}
+              isSaving={operationsData.isSaving}
               property={activeProperty}
               referenceData={operationsData.referenceData}
               runs={operationsData.runs}
+              saveDelay={operationsData.saveDelay}
+              saveFare={operationsData.saveFare}
+              saveRunApproval={operationsData.saveRunApproval}
               schedules={operationsData.schedules}
               stationStops={operationsData.stationStops}
               source={operationsData.source}

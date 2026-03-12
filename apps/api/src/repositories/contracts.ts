@@ -18,7 +18,14 @@ import type {
   ReportConfigList,
   ReportConfigUpdate,
   DelayEventList,
+  DelayEvent,
+  DelayEventUpdate,
+  FareEnforcementList,
+  FareEnforcementRecord,
+  FareEnforcementUpdate,
   StationStopList,
+  TrainRun,
+  TrainRunApprovalUpdate,
   TrainRunList,
   TrainScheduleList,
   NotificationUpdate,
@@ -89,8 +96,19 @@ export interface PlatformRepository {
 export interface OperationsRepository {
   listTrainSchedules(propertyCode: PropertyCode): MaybePromise<TrainScheduleList>;
   listTrainRuns(propertyCode: PropertyCode): MaybePromise<TrainRunList>;
+  updateTrainRunApproval(
+    propertyCode: PropertyCode,
+    runId: string,
+    update: TrainRunApprovalUpdate
+  ): MaybePromise<TrainRun>;
   listStationStops(propertyCode: PropertyCode, runId: string): MaybePromise<StationStopList>;
   listDelayEvents(propertyCode: PropertyCode, runId: string): MaybePromise<DelayEventList>;
+  updateDelayEvent(
+    propertyCode: PropertyCode,
+    runId: string,
+    delayId: string,
+    update: DelayEventUpdate
+  ): MaybePromise<DelayEvent>;
   listConsistEquipment(
     propertyCode: PropertyCode,
     runId: string
@@ -99,6 +117,15 @@ export interface OperationsRepository {
     propertyCode: PropertyCode,
     runId: string
   ): MaybePromise<import("@tps/types").CrewAssignmentList>;
+  listFareEnforcement(
+    propertyCode: PropertyCode,
+    runId?: string
+  ): MaybePromise<FareEnforcementList>;
+  updateFareEnforcement(
+    propertyCode: PropertyCode,
+    recordId: string,
+    update: FareEnforcementUpdate
+  ): MaybePromise<FareEnforcementRecord>;
 }
 
 export interface DataAccess {

@@ -131,11 +131,17 @@ export const trainRunSchema = z.object({
   operatingDate: z.string(),
   status: z.enum(["scheduled", "in_progress", "approved", "delayed"]),
   delayMinutes: z.number(),
-  crewAssigned: z.number()
+  crewAssigned: z.number(),
+  isApproved: z.boolean(),
+  approvedAt: z.string().nullable()
 });
 
 export const trainRunListSchema = z.object({
   items: z.array(trainRunSchema)
+});
+
+export const trainRunApprovalUpdateSchema = z.object({
+  isApproved: z.boolean()
 });
 
 export const stationStopSchema = z.object({
@@ -164,6 +170,13 @@ export const delayEventListSchema = z.object({
   items: z.array(delayEventSchema)
 });
 
+export const delayEventUpdateSchema = z.object({
+  category: z.string().min(1),
+  minutes: z.number().int().nonnegative(),
+  notes: z.string().min(1),
+  reportedAt: z.string().min(1)
+});
+
 export const consistEquipmentSchema = z.object({
   id: z.string(),
   equipmentNumber: z.string(),
@@ -186,6 +199,30 @@ export const crewAssignmentSchema = z.object({
 
 export const crewAssignmentListSchema = z.object({
   items: z.array(crewAssignmentSchema)
+});
+
+export const fareEnforcementRecordSchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  inspectorName: z.string(),
+  firstLocation: z.string(),
+  secondLocation: z.string(),
+  activityCount: z.number(),
+  notes: z.string(),
+  capturedAt: z.string()
+});
+
+export const fareEnforcementListSchema = z.object({
+  items: z.array(fareEnforcementRecordSchema)
+});
+
+export const fareEnforcementUpdateSchema = z.object({
+  inspectorName: z.string().min(1),
+  firstLocation: z.string().min(1),
+  secondLocation: z.string().min(1),
+  activityCount: z.number().int().nonnegative(),
+  notes: z.string().min(1),
+  capturedAt: z.string().min(1)
 });
 
 export const permissionGroupSchema = z.object({

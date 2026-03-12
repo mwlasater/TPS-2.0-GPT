@@ -134,10 +134,16 @@ export interface TrainRun {
   status: "scheduled" | "in_progress" | "approved" | "delayed";
   delayMinutes: number;
   crewAssigned: number;
+  isApproved: boolean;
+  approvedAt: string | null;
 }
 
 export interface TrainRunList {
   items: TrainRun[];
+}
+
+export interface TrainRunApprovalUpdate {
+  isApproved: boolean;
 }
 
 export interface StationStop {
@@ -166,6 +172,13 @@ export interface DelayEventList {
   items: DelayEvent[];
 }
 
+export interface DelayEventUpdate {
+  category: string;
+  minutes: number;
+  notes: string;
+  reportedAt: string;
+}
+
 export interface ConsistEquipment {
   id: string;
   equipmentNumber: string;
@@ -188,6 +201,30 @@ export interface CrewAssignment {
 
 export interface CrewAssignmentList {
   items: CrewAssignment[];
+}
+
+export interface FareEnforcementRecord {
+  id: string;
+  runId: string;
+  inspectorName: string;
+  firstLocation: string;
+  secondLocation: string;
+  activityCount: number;
+  notes: string;
+  capturedAt: string;
+}
+
+export interface FareEnforcementList {
+  items: FareEnforcementRecord[];
+}
+
+export interface FareEnforcementUpdate {
+  inspectorName: string;
+  firstLocation: string;
+  secondLocation: string;
+  activityCount: number;
+  notes: string;
+  capturedAt: string;
 }
 
 export interface PermissionGroup {

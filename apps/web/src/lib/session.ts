@@ -4,6 +4,7 @@ import type {
   ConsistEquipmentList,
   CrewAssignmentList,
   DelayEventList,
+  FareEnforcementList,
   FileServiceList,
   JobProfileList,
   ManagedUserDetail,
@@ -410,7 +411,9 @@ export const demoTrainRuns: Record<PropertyCode, TrainRunList> = {
         operatingDate: "2026-03-06",
         status: "in_progress",
         delayMinutes: 7,
-        crewAssigned: 3
+        crewAssigned: 3,
+        isApproved: false,
+        approvedAt: null
       },
       {
         id: "caltrain-run-2",
@@ -419,7 +422,9 @@ export const demoTrainRuns: Record<PropertyCode, TrainRunList> = {
         operatingDate: "2026-03-06",
         status: "approved",
         delayMinutes: 0,
-        crewAssigned: 3
+        crewAssigned: 3,
+        isApproved: true,
+        approvedAt: "2026-03-06T12:15:00Z"
       }
     ]
   },
@@ -433,7 +438,9 @@ export const demoTrainRuns: Record<PropertyCode, TrainRunList> = {
         operatingDate: "2026-03-06",
         status: "in_progress",
         delayMinutes: 4,
-        crewAssigned: 3
+        crewAssigned: 3,
+        isApproved: false,
+        approvedAt: null
       }
     ]
   },
@@ -448,9 +455,11 @@ export const demoTrainRuns: Record<PropertyCode, TrainRunList> = {
         scheduleId: "cm-701",
         trainNumber: "701",
         operatingDate: "2026-03-06",
-        status: "scheduled",
-        delayMinutes: 0,
-        crewAssigned: 2
+        status: "approved",
+        delayMinutes: 2,
+        crewAssigned: 2,
+        isApproved: true,
+        approvedAt: "2026-03-06T07:26:00Z"
       }
     ]
   },
@@ -463,7 +472,9 @@ export const demoTrainRuns: Record<PropertyCode, TrainRunList> = {
         operatingDate: "2026-03-06",
         status: "in_progress",
         delayMinutes: 2,
-        crewAssigned: 1
+        crewAssigned: 1,
+        isApproved: false,
+        approvedAt: null
       }
     ]
   },
@@ -589,6 +600,61 @@ export const demoDelayEvents: Record<PropertyCode, DelayEventList> = {
   octastreetcar: streetcarDelayEvents,
   metrolinkarrow: commuterDelayEvents,
   silverline: commuterDelayEvents
+};
+
+export const demoFareEnforcement: Record<PropertyCode, FareEnforcementList> = {
+  caltrain: {
+    items: [
+      {
+        id: "fare-caltrain-1",
+        runId: "caltrain-run-1",
+        inspectorName: "Morgan Lee",
+        firstLocation: "SFC",
+        secondLocation: "PAO",
+        activityCount: 16,
+        notes: "Peak boarding checks completed before Palo Alto.",
+        capturedAt: "2026-03-06T06:28:00Z"
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: {
+    items: [
+      {
+        id: "fare-tre-1",
+        runId: "tre-run-1",
+        inspectorName: "Taylor Brooks",
+        firstLocation: "DAL",
+        secondLocation: "CEN",
+        activityCount: 12,
+        notes: "Manual validation after dispatch hold.",
+        capturedAt: "2026-03-06T08:08:00Z"
+      }
+    ]
+  },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "fare-capmetro-1",
+        runId: "capmetro-run-1",
+        inspectorName: "Jordan Reyes",
+        firstLocation: "LNR",
+        secondLocation: "MLK",
+        activityCount: 9,
+        notes: "Morning commuter inspection pass.",
+        capturedAt: "2026-03-06T07:24:00Z"
+      }
+    ]
+  },
+  kcstreetcar: { items: [] },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
 };
 
 const commuterConsist: ConsistEquipmentList = {
