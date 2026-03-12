@@ -9,6 +9,7 @@ Initial SQL persistence tooling for TPS 2.0.
 - `seeds/0002_run_resources.sql`: consist and crew records for seeded train runs
 - `seeds/0003_user_admin.sql`: managed users, property access, permission groups, and memberships
 - `seeds/0004_platform_admin.sql`: report config plus file, notification, and Power BI records
+- `seeds/0005_baseline_admin.sql`: job profiles and attendance exceptions
 
 Commands:
 

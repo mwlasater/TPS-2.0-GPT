@@ -11,7 +11,8 @@ describe("seed service", () => {
       "0001_bootstrap",
       "0002_run_resources",
       "0003_user_admin",
-      "0004_platform_admin"
+      "0004_platform_admin",
+      "0005_baseline_admin"
     ]);
   });
 });

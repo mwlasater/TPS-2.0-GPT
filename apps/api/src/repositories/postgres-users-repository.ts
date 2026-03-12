@@ -1,4 +1,8 @@
 import type {
+  AttendanceException,
+  AttendanceExceptionList,
+  JobProfile,
+  JobProfileList,
   ManagedUser,
   ManagedUserDetail,
   ManagedUserList,
@@ -41,6 +45,23 @@ interface PermissionGroupRow {
   member_count: number;
 }
 
+interface JobProfileRow {
+  id: string;
+  title: string;
+  department: string;
+  minimum_headcount: number;
+  relief_required: boolean;
+}
+
+interface AttendanceExceptionRow {
+  id: string;
+  employee_name: string;
+  exception_type: AttendanceException["exceptionType"];
+  start_date: string | Date;
+  status: AttendanceException["status"];
+  notes: string;
+}
+
 function toIsoTimestamp(value: string | Date | null): string {
   if (!value) {
     return "";
@@ -48,6 +69,14 @@ function toIsoTimestamp(value: string | Date | null): string {
 
   if (value instanceof Date) {
     return value.toISOString();
+  }
+
+  return value;
+}
+
+function toIsoDate(value: string | Date): string {
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
   }
 
   return value;
@@ -191,11 +220,71 @@ export class PostgresUsersRepository implements UserRepository {
     };
   }
 
-  listJobProfiles(propertyCode: PropertyCode) {
-    return listJobProfiles(propertyCode);
+  async listJobProfiles(propertyCode: PropertyCode): Promise<JobProfileList> {
+    const result = await this.db.query<JobProfileRow>(
+      `
+        SELECT
+          id,
+          title,
+          department,
+          minimum_headcount,
+          relief_required
+        FROM shared.job_profile
+        WHERE railroad_code = $1
+        ORDER BY title
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listJobProfiles(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): JobProfile => ({
+          id: row.id,
+          title: row.title,
+          department: row.department,
+          minimumHeadcount: row.minimum_headcount,
+          reliefRequired: row.relief_required
+        })
+      )
+    };
   }
 
-  listAttendanceExceptions(propertyCode: PropertyCode) {
-    return listAttendanceExceptions(propertyCode);
+  async listAttendanceExceptions(propertyCode: PropertyCode): Promise<AttendanceExceptionList> {
+    const result = await this.db.query<AttendanceExceptionRow>(
+      `
+        SELECT
+          id,
+          employee_name,
+          exception_type,
+          start_date,
+          status,
+          notes
+        FROM shared.attendance_exception
+        WHERE railroad_code = $1
+        ORDER BY start_date DESC, employee_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listAttendanceExceptions(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): AttendanceException => ({
+          id: row.id,
+          employeeName: row.employee_name,
+          exceptionType: row.exception_type,
+          startDate: toIsoDate(row.start_date),
+          status: row.status,
+          notes: row.notes
+        })
+      )
+    };
   }
 }

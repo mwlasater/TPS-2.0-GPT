@@ -111,4 +111,64 @@ describe("PostgresUsersRepository", () => {
       ]
     });
   });
+
+  it("maps job profile rows", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "job_caltrain_engineer",
+          title: "Engineer",
+          department: "Transportation",
+          minimum_headcount: 1,
+          relief_required: true
+        }
+      ]
+    });
+
+    const repository = new PostgresUsersRepository({ query });
+    const profiles = await repository.listJobProfiles("caltrain");
+
+    expect(profiles).toEqual({
+      items: [
+        {
+          id: "job_caltrain_engineer",
+          title: "Engineer",
+          department: "Transportation",
+          minimumHeadcount: 1,
+          reliefRequired: true
+        }
+      ]
+    });
+  });
+
+  it("maps attendance exception rows", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "att_caltrain_1",
+          employee_name: "Casey Morgan",
+          exception_type: "absence",
+          start_date: new Date("2026-03-06T00:00:00Z"),
+          status: "approved",
+          notes: "Approved medical leave."
+        }
+      ]
+    });
+
+    const repository = new PostgresUsersRepository({ query });
+    const exceptions = await repository.listAttendanceExceptions("caltrain");
+
+    expect(exceptions).toEqual({
+      items: [
+        {
+          id: "att_caltrain_1",
+          employeeName: "Casey Morgan",
+          exceptionType: "absence",
+          startDate: "2026-03-06",
+          status: "approved",
+          notes: "Approved medical leave."
+        }
+      ]
+    });
+  });
 });
