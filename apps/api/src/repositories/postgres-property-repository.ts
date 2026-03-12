@@ -1,4 +1,9 @@
-import type { PropertyCode, PropertySettings, PropertySettingsUpdate } from "@tps/types";
+import type {
+  PropertyCode,
+  PropertySettings,
+  PropertySettingsUpdate,
+  ReferenceDataset
+} from "@tps/types";
 
 import { getReferenceData } from "../lib/reference-data.js";
 
@@ -20,6 +25,48 @@ interface PropertySettingsRow {
 
 export class PostgresPropertyRepository implements PropertyRepository {
   constructor(private readonly db: Queryable) {}
+
+  async getReferenceData(propertyCode: PropertyCode): Promise<ReferenceDataset> {
+    const [delayReasons, crewRoles, stationCodes] = await Promise.all([
+      this.db.query<{ reason_text: string }>(
+        `
+          SELECT reason_text
+          FROM shared.reference_delay_reason
+          WHERE railroad_code = $1
+          ORDER BY reason_text
+        `,
+        [propertyCode]
+      ),
+      this.db.query<{ role_name: string }>(
+        `
+          SELECT role_name
+          FROM shared.reference_crew_role
+          WHERE railroad_code = $1
+          ORDER BY role_name
+        `,
+        [propertyCode]
+      ),
+      this.db.query<{ station_code: string }>(
+        `
+          SELECT station_code
+          FROM shared.reference_station_code
+          WHERE railroad_code = $1
+          ORDER BY station_code
+        `,
+        [propertyCode]
+      )
+    ]);
+
+    if (!delayReasons.rows.length && !crewRoles.rows.length && !stationCodes.rows.length) {
+      return getReferenceData(propertyCode);
+    }
+
+    return {
+      delayReasons: delayReasons.rows.map((row) => row.reason_text),
+      crewRoles: crewRoles.rows.map((row) => row.role_name),
+      stationCodes: stationCodes.rows.map((row) => row.station_code)
+    };
+  }
 
   async getSettings(propertyCode: PropertyCode): Promise<PropertySettings> {
     const result = await this.db.query<PropertySettingsRow>(
@@ -63,10 +110,6 @@ export class PostgresPropertyRepository implements PropertyRepository {
         cmms: row.cmms_enabled
       }
     };
-  }
-
-  getReferenceData(propertyCode: PropertyCode) {
-    return getReferenceData(propertyCode);
   }
 
   async updateSettings(

@@ -12,7 +12,8 @@ describe("migration service", () => {
       "0002_operations",
       "0003_admin_platform",
       "0004_run_resources",
-      "0005_user_admin"
+      "0005_user_admin",
+      "0006_reference_admin_actions"
     ]);
   });
 });

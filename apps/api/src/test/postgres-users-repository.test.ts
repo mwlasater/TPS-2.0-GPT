@@ -211,6 +211,31 @@ describe("PostgresUsersRepository", () => {
     );
   });
 
+  it("maps persisted user admin actions", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "reset-password",
+          label: "Reset Password",
+          style: "primary"
+        }
+      ]
+    });
+
+    const repository = new PostgresUsersRepository({ query });
+    const actions = await repository.listUserAdminActions();
+
+    expect(actions).toEqual({
+      items: [
+        {
+          id: "reset-password",
+          label: "Reset Password",
+          style: "primary"
+        }
+      ]
+    });
+  });
+
   it("maps job profile rows", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [

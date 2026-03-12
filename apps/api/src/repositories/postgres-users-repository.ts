@@ -11,6 +11,7 @@ import type {
   PermissionGroup,
   PermissionGroupList,
   PropertyCode,
+  UserAdminAction,
   UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
   UserAdminActionList
@@ -64,6 +65,12 @@ interface AttendanceExceptionRow {
   start_date: string | Date;
   status: AttendanceException["status"];
   notes: string;
+}
+
+interface UserAdminActionRow {
+  id: string;
+  label: string;
+  style: UserAdminAction["style"];
 }
 
 function toIsoTimestamp(value: string | Date | null): string {
@@ -249,8 +256,29 @@ export class PostgresUsersRepository implements UserRepository {
     return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
   }
 
-  listUserAdminActions(): UserAdminActionList {
-    return listUserAdminActions();
+  async listUserAdminActions(): Promise<UserAdminActionList> {
+    const result = await this.db.query<UserAdminActionRow>(
+      `
+        SELECT
+          id,
+          label,
+          style
+        FROM shared.user_admin_action
+        ORDER BY display_order, id
+      `
+    );
+
+    if (!result.rows.length) {
+      return listUserAdminActions();
+    }
+
+    return {
+      items: result.rows.map((row) => ({
+        id: row.id,
+        label: row.label,
+        style: row.style
+      }))
+    };
   }
 
   async listPermissionGroups(propertyCode: PropertyCode): Promise<PermissionGroupList> {

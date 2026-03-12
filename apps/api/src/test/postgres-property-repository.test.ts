@@ -109,4 +109,27 @@ describe("PostgresPropertyRepository", () => {
       ]
     );
   });
+
+  it("maps persisted reference data", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [{ reason_text: "Mechanical" }, { reason_text: "Signal delay" }]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ role_name: "Conductor" }, { role_name: "Engineer" }]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ station_code: "STA" }, { station_code: "STB" }]
+      });
+
+    const repository = new PostgresPropertyRepository({ query });
+    const reference = await repository.getReferenceData("caltrain");
+
+    expect(reference).toEqual({
+      delayReasons: ["Mechanical", "Signal delay"],
+      crewRoles: ["Conductor", "Engineer"],
+      stationCodes: ["STA", "STB"]
+    });
+  });
 });
