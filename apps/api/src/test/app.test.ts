@@ -207,6 +207,50 @@ describe("app contracts", () => {
     });
   });
 
+  it("updates report configuration for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/report-config/report-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        audience: "Dispatch Leadership",
+        embedEnabled: false,
+        schedule: "07:00 daily"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      audience: "Dispatch Leadership",
+      embedEnabled: false,
+      schedule: "07:00 daily"
+    });
+  });
+
+  it("rejects invalid report configuration payloads", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/report-config/report-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        audience: "",
+        embedEnabled: false,
+        schedule: ""
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: "validation.failed"
+    });
+  });
+
   it("returns job profiles and attendance exceptions for authorized property context", async () => {
     const profilesResponse = await app.inject({
       method: "GET",
@@ -275,6 +319,50 @@ describe("app contracts", () => {
     });
     expect(powerBiResponse.json().items[0]).toMatchObject({
       reportName: "Daily OTP"
+    });
+  });
+
+  it("updates notifications for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/notifications/notif-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        channel: "in_app",
+        recipientGroup: "Operations Leadership",
+        enabled: false
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      channel: "in_app",
+      recipientGroup: "Operations Leadership",
+      enabled: false
+    });
+  });
+
+  it("rejects invalid notification payloads", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/notifications/notif-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        channel: "email",
+        recipientGroup: "",
+        enabled: true
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: "validation.failed"
     });
   });
 

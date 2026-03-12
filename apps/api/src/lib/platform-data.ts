@@ -1,6 +1,8 @@
 import type {
   FileServiceList,
+  NotificationItem,
   NotificationList,
+  NotificationUpdate,
   PowerBiEmbedList,
   PropertyCode
 } from "@tps/types";
@@ -110,6 +112,25 @@ export function listFiles(propertyCode: PropertyCode): FileServiceList {
 
 export function listNotifications(propertyCode: PropertyCode): NotificationList {
   return streetcarProperties.has(propertyCode) ? streetcarNotifications : commuterNotifications;
+}
+
+export function updateNotification(
+  propertyCode: PropertyCode,
+  notificationId: string,
+  update: NotificationUpdate
+): NotificationItem {
+  const source = streetcarProperties.has(propertyCode) ? streetcarNotifications : commuterNotifications;
+  const row = source.items.find((item) => item.id === notificationId) ?? source.items[0];
+
+  if (!row) {
+    throw new Error("notification.not_found");
+  }
+
+  row.channel = update.channel;
+  row.recipientGroup = update.recipientGroup;
+  row.enabled = update.enabled;
+
+  return row;
 }
 
 export function listPowerBiEmbeds(propertyCode: PropertyCode): PowerBiEmbedList {

@@ -2,10 +2,15 @@ import { listAttendanceExceptions, listJobProfiles } from "../lib/baseline-data.
 import { listManagedUsers } from "../lib/managed-users.js";
 import { listTrainRuns, listTrainSchedules } from "../lib/operations-data.js";
 import { listPermissionGroups } from "../lib/permission-groups.js";
-import { listFiles, listNotifications, listPowerBiEmbeds } from "../lib/platform-data.js";
+import {
+  listFiles,
+  listNotifications,
+  listPowerBiEmbeds,
+  updateNotification
+} from "../lib/platform-data.js";
 import { getPropertySettings, updatePropertySettings } from "../lib/property-settings.js";
 import { getReferenceData } from "../lib/reference-data.js";
-import { listReportConfig } from "../lib/report-config.js";
+import { listReportConfig, updateReportConfig } from "../lib/report-config.js";
 import { listDelayEvents, listStationStops } from "../lib/run-detail-data.js";
 import { listConsistEquipment, listCrewAssignments } from "../lib/run-resource-data.js";
 import {
@@ -36,8 +41,10 @@ export function createMockDataAccess(): DataAccess {
     },
     platform: {
       listReportConfig,
+      updateReportConfig,
       listFiles,
       listNotifications,
+      updateNotification,
       listPowerBiEmbeds
     },
     operations: {

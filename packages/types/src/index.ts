@@ -210,6 +210,12 @@ export interface ReportConfigRow {
   schedule: string;
 }
 
+export interface ReportConfigUpdate {
+  audience: string;
+  embedEnabled: boolean;
+  schedule: string;
+}
+
 export interface ReportConfigList {
   items: ReportConfigRow[];
 }
@@ -255,6 +261,12 @@ export interface NotificationItem {
   id: string;
   channel: "email" | "in_app";
   templateName: string;
+  recipientGroup: string;
+  enabled: boolean;
+}
+
+export interface NotificationUpdate {
+  channel: "email" | "in_app";
   recipientGroup: string;
   enabled: boolean;
 }

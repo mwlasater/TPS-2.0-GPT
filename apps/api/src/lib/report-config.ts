@@ -1,4 +1,4 @@
-import type { PropertyCode, ReportConfigList } from "@tps/types";
+import type { PropertyCode, ReportConfigList, ReportConfigRow, ReportConfigUpdate } from "@tps/types";
 
 const commuterReports: ReportConfigList = {
   items: [
@@ -53,4 +53,23 @@ const streetcarProperties = new Set<PropertyCode>([
 
 export function listReportConfig(propertyCode: PropertyCode): ReportConfigList {
   return streetcarProperties.has(propertyCode) ? streetcarReports : commuterReports;
+}
+
+export function updateReportConfig(
+  propertyCode: PropertyCode,
+  reportId: string,
+  update: ReportConfigUpdate
+): ReportConfigRow {
+  const source = streetcarProperties.has(propertyCode) ? streetcarReports : commuterReports;
+  const row = source.items.find((item) => item.id === reportId) ?? source.items[0];
+
+  if (!row) {
+    throw new Error("report_config.not_found");
+  }
+
+  row.audience = update.audience;
+  row.embedEnabled = update.embedEnabled;
+  row.schedule = update.schedule;
+
+  return row;
 }

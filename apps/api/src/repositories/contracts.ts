@@ -4,6 +4,7 @@ import type {
   JobProfileList,
   ManagedUserDetail,
   ManagedUserList,
+  NotificationItem,
   NotificationList,
   PermissionGroupList,
   PowerBiEmbedList,
@@ -11,11 +12,14 @@ import type {
   PropertySettings,
   PropertySettingsUpdate,
   ReferenceDataset,
+  ReportConfigRow,
   ReportConfigList,
+  ReportConfigUpdate,
   DelayEventList,
   StationStopList,
   TrainRunList,
   TrainScheduleList,
+  NotificationUpdate,
   UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
   UserAdminActionList
@@ -53,8 +57,18 @@ export interface UserRepository {
 
 export interface PlatformRepository {
   listReportConfig(propertyCode: PropertyCode): MaybePromise<ReportConfigList>;
+  updateReportConfig(
+    propertyCode: PropertyCode,
+    reportId: string,
+    update: ReportConfigUpdate
+  ): MaybePromise<ReportConfigRow>;
   listFiles(propertyCode: PropertyCode): MaybePromise<FileServiceList>;
   listNotifications(propertyCode: PropertyCode): MaybePromise<NotificationList>;
+  updateNotification(
+    propertyCode: PropertyCode,
+    notificationId: string,
+    update: NotificationUpdate
+  ): MaybePromise<NotificationItem>;
   listPowerBiEmbeds(propertyCode: PropertyCode): MaybePromise<PowerBiEmbedList>;
 }
 

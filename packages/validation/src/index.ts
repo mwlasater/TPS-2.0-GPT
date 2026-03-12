@@ -208,6 +208,12 @@ export const reportConfigRowSchema = z.object({
   schedule: z.string()
 });
 
+export const reportConfigUpdateSchema = z.object({
+  audience: z.string().min(1),
+  embedEnabled: z.boolean(),
+  schedule: z.string().min(1)
+});
+
 export const reportConfigListSchema = z.object({
   items: z.array(reportConfigRowSchema)
 });
@@ -254,6 +260,12 @@ export const notificationItemSchema = z.object({
   channel: z.enum(["email", "in_app"]),
   templateName: z.string(),
   recipientGroup: z.string(),
+  enabled: z.boolean()
+});
+
+export const notificationUpdateSchema = z.object({
+  channel: z.enum(["email", "in_app"]),
+  recipientGroup: z.string().min(1),
   enabled: z.boolean()
 });
 

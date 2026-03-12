@@ -3,11 +3,13 @@ import type {
   FileServiceList,
   NotificationItem,
   NotificationList,
+  NotificationUpdate,
   PowerBiEmbed,
   PowerBiEmbedList,
   PropertyCode,
   ReportConfigList,
-  ReportConfigRow
+  ReportConfigRow,
+  ReportConfigUpdate
 } from "@tps/types";
 
 import { listFiles, listNotifications, listPowerBiEmbeds } from "../lib/platform-data.js";
@@ -92,6 +94,54 @@ export class PostgresPlatformRepository implements PlatformRepository {
     };
   }
 
+  async updateReportConfig(
+    propertyCode: PropertyCode,
+    reportId: string,
+    update: ReportConfigUpdate
+  ): Promise<ReportConfigRow> {
+    const numericId = Number(reportId);
+    await this.db.query(
+      `
+        UPDATE shared.report_config
+        SET
+          audience = $3,
+          embed_enabled = $4,
+          schedule_text = $5
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, numericId, update.audience, update.embedEnabled, update.schedule]
+    );
+
+    const result = await this.db.query<ReportConfigDbRow>(
+      `
+        SELECT
+          id,
+          report_name,
+          audience,
+          embed_enabled,
+          schedule_text
+        FROM shared.report_config
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, numericId]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      throw new Error("report_config.not_found");
+    }
+
+    return {
+      id: String(row.id),
+      reportName: row.report_name,
+      audience: row.audience,
+      embedEnabled: row.embed_enabled,
+      schedule: row.schedule_text
+    };
+  }
+
   async listFiles(propertyCode: PropertyCode): Promise<FileServiceList> {
     const result = await this.db.query<FileServiceDbRow>(
       `
@@ -155,6 +205,59 @@ export class PostgresPlatformRepository implements PlatformRepository {
           enabled: row.enabled
         })
       )
+    };
+  }
+
+  async updateNotification(
+    propertyCode: PropertyCode,
+    notificationId: string,
+    update: NotificationUpdate
+  ): Promise<NotificationItem> {
+    await this.db.query(
+      `
+        UPDATE shared.notification_template
+        SET
+          channel = $3,
+          recipient_group = $4,
+          enabled = $5
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [
+        propertyCode,
+        notificationId,
+        update.channel,
+        update.recipientGroup,
+        update.enabled
+      ]
+    );
+
+    const result = await this.db.query<NotificationDbRow>(
+      `
+        SELECT
+          id,
+          channel,
+          template_name,
+          recipient_group,
+          enabled
+        FROM shared.notification_template
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, notificationId]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      throw new Error("notification.not_found");
+    }
+
+    return {
+      id: row.id,
+      channel: row.channel,
+      templateName: row.template_name,
+      recipientGroup: row.recipient_group,
+      enabled: row.enabled
     };
   }
 

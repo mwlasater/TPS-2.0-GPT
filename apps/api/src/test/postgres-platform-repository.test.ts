@@ -118,4 +118,68 @@ describe("PostgresPlatformRepository", () => {
       ]
     });
   });
+
+  it("updates report config rows", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 101,
+            report_name: "Daily OTP",
+            audience: "Dispatch Leadership",
+            embed_enabled: false,
+            schedule_text: "07:00 daily"
+          }
+        ]
+      });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const report = await repository.updateReportConfig("caltrain", "101", {
+      audience: "Dispatch Leadership",
+      embedEnabled: false,
+      schedule: "07:00 daily"
+    });
+
+    expect(report).toEqual({
+      id: "101",
+      reportName: "Daily OTP",
+      audience: "Dispatch Leadership",
+      embedEnabled: false,
+      schedule: "07:00 daily"
+    });
+  });
+
+  it("updates notification rows", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "notif_caltrain_1",
+            channel: "in_app",
+            template_name: "Delay Escalation",
+            recipient_group: "Operations Leadership",
+            enabled: false
+          }
+        ]
+      });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const notification = await repository.updateNotification("caltrain", "notif_caltrain_1", {
+      channel: "in_app",
+      recipientGroup: "Operations Leadership",
+      enabled: false
+    });
+
+    expect(notification).toEqual({
+      id: "notif_caltrain_1",
+      channel: "in_app",
+      templateName: "Delay Escalation",
+      recipientGroup: "Operations Leadership",
+      enabled: false
+    });
+  });
 });
