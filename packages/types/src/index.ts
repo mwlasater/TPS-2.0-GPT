@@ -228,6 +228,12 @@ export interface JobProfile {
   reliefRequired: boolean;
 }
 
+export interface JobProfileUpdate {
+  department: string;
+  minimumHeadcount: number;
+  reliefRequired: boolean;
+}
+
 export interface JobProfileList {
   items: JobProfile[];
 }
@@ -237,6 +243,11 @@ export interface AttendanceException {
   employeeName: string;
   exceptionType: "absence" | "tardy";
   startDate: string;
+  status: "open" | "approved" | "resolved";
+  notes: string;
+}
+
+export interface AttendanceExceptionUpdate {
   status: "open" | "approved" | "resolved";
   notes: string;
 }

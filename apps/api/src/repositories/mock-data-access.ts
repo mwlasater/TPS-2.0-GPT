@@ -1,4 +1,9 @@
-import { listAttendanceExceptions, listJobProfiles } from "../lib/baseline-data.js";
+import {
+  listAttendanceExceptions,
+  listJobProfiles,
+  updateAttendanceException,
+  updateJobProfile
+} from "../lib/baseline-data.js";
 import { listManagedUsers } from "../lib/managed-users.js";
 import { listTrainRuns, listTrainSchedules } from "../lib/operations-data.js";
 import { listPermissionGroups } from "../lib/permission-groups.js";
@@ -37,7 +42,9 @@ export function createMockDataAccess(): DataAccess {
       listUserAdminActions,
       listPermissionGroups,
       listJobProfiles,
-      listAttendanceExceptions
+      updateJobProfile,
+      listAttendanceExceptions,
+      updateAttendanceException
     },
     platform: {
       listReportConfig,

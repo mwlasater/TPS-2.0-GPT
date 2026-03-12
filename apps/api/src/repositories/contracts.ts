@@ -1,6 +1,8 @@
 import type {
+  AttendanceException,
   AttendanceExceptionList,
   FileServiceList,
+  JobProfile,
   JobProfileList,
   ManagedUserDetail,
   ManagedUserList,
@@ -20,6 +22,8 @@ import type {
   TrainRunList,
   TrainScheduleList,
   NotificationUpdate,
+  AttendanceExceptionUpdate,
+  JobProfileUpdate,
   UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
   UserAdminActionList
@@ -52,7 +56,17 @@ export interface UserRepository {
   listUserAdminActions(): MaybePromise<UserAdminActionList>;
   listPermissionGroups(propertyCode: PropertyCode): MaybePromise<PermissionGroupList>;
   listJobProfiles(propertyCode: PropertyCode): MaybePromise<JobProfileList>;
+  updateJobProfile(
+    propertyCode: PropertyCode,
+    profileId: string,
+    update: JobProfileUpdate
+  ): MaybePromise<JobProfile>;
   listAttendanceExceptions(propertyCode: PropertyCode): MaybePromise<AttendanceExceptionList>;
+  updateAttendanceException(
+    propertyCode: PropertyCode,
+    exceptionId: string,
+    update: AttendanceExceptionUpdate
+  ): MaybePromise<AttendanceException>;
 }
 
 export interface PlatformRepository {

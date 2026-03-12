@@ -280,6 +280,91 @@ describe("app contracts", () => {
     });
   });
 
+  it("updates job profiles for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/job-profiles/engineer",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        department: "Operations Control",
+        minimumHeadcount: 2,
+        reliefRequired: false
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      department: "Operations Control",
+      minimumHeadcount: 2,
+      reliefRequired: false
+    });
+  });
+
+  it("rejects invalid job profile payloads", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/job-profiles/engineer",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        department: "",
+        minimumHeadcount: 0,
+        reliefRequired: false
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: "validation.failed"
+    });
+  });
+
+  it("updates attendance exceptions for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/attendance-exceptions/att-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        status: "resolved",
+        notes: "Cleared for duty."
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      status: "resolved",
+      notes: "Cleared for duty."
+    });
+  });
+
+  it("rejects invalid attendance exception payloads", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/attendance-exceptions/att-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        status: "resolved",
+        notes: ""
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: "validation.failed"
+    });
+  });
+
   it("returns platform integrations for authorized property context", async () => {
     const filesResponse = await app.inject({
       method: "GET",

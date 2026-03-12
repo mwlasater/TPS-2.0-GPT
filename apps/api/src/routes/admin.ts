@@ -1,9 +1,16 @@
 import {
+  attendanceExceptionUpdateSchema,
+  jobProfileUpdateSchema,
   notificationUpdateSchema,
   reportConfigUpdateSchema
 } from "@tps/validation";
 import type { FastifyInstance } from "fastify";
-import type { NotificationUpdate, ReportConfigUpdate } from "@tps/types";
+import type {
+  AttendanceExceptionUpdate,
+  JobProfileUpdate,
+  NotificationUpdate,
+  ReportConfigUpdate
+} from "@tps/types";
 
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   app.get(
@@ -45,12 +52,42 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     async (request) => app.dataAccess.users.listJobProfiles(request.property)
   );
 
+  app.put(
+    "/job-profiles/:profileId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = jobProfileUpdateSchema.parse(request.body) as JobProfileUpdate;
+      return app.dataAccess.users.updateJobProfile(
+        request.property,
+        (request.params as { profileId: string }).profileId,
+        payload
+      );
+    }
+  );
+
   app.get(
     "/attendance-exceptions",
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => app.dataAccess.users.listAttendanceExceptions(request.property)
+  );
+
+  app.put(
+    "/attendance-exceptions/:exceptionId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = attendanceExceptionUpdateSchema.parse(request.body) as AttendanceExceptionUpdate;
+      return app.dataAccess.users.updateAttendanceException(
+        request.property,
+        (request.params as { exceptionId: string }).exceptionId,
+        payload
+      );
+    }
   );
 
   app.get(

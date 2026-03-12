@@ -1,8 +1,10 @@
 import type {
   AttendanceException,
   AttendanceExceptionList,
+  AttendanceExceptionUpdate,
   JobProfile,
   JobProfileList,
+  JobProfileUpdate,
   ManagedUser,
   ManagedUserDetail,
   ManagedUserList,
@@ -320,6 +322,59 @@ export class PostgresUsersRepository implements UserRepository {
     };
   }
 
+  async updateJobProfile(
+    propertyCode: PropertyCode,
+    profileId: string,
+    update: JobProfileUpdate
+  ): Promise<JobProfile> {
+    await this.db.query(
+      `
+        UPDATE shared.job_profile
+        SET
+          department = $3,
+          minimum_headcount = $4,
+          relief_required = $5
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [
+        propertyCode,
+        profileId,
+        update.department,
+        update.minimumHeadcount,
+        update.reliefRequired
+      ]
+    );
+
+    const result = await this.db.query<JobProfileRow>(
+      `
+        SELECT
+          id,
+          title,
+          department,
+          minimum_headcount,
+          relief_required
+        FROM shared.job_profile
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, profileId]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      throw new Error("job_profile.not_found");
+    }
+
+    return {
+      id: row.id,
+      title: row.title,
+      department: row.department,
+      minimumHeadcount: row.minimum_headcount,
+      reliefRequired: row.relief_required
+    };
+  }
+
   async listAttendanceExceptions(propertyCode: PropertyCode): Promise<AttendanceExceptionList> {
     const result = await this.db.query<AttendanceExceptionRow>(
       `
@@ -352,6 +407,54 @@ export class PostgresUsersRepository implements UserRepository {
           notes: row.notes
         })
       )
+    };
+  }
+
+  async updateAttendanceException(
+    propertyCode: PropertyCode,
+    exceptionId: string,
+    update: AttendanceExceptionUpdate
+  ): Promise<AttendanceException> {
+    await this.db.query(
+      `
+        UPDATE shared.attendance_exception
+        SET
+          status = $3,
+          notes = $4
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, exceptionId, update.status, update.notes]
+    );
+
+    const result = await this.db.query<AttendanceExceptionRow>(
+      `
+        SELECT
+          id,
+          employee_name,
+          exception_type,
+          start_date,
+          status,
+          notes
+        FROM shared.attendance_exception
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, exceptionId]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      throw new Error("attendance_exception.not_found");
+    }
+
+    return {
+      id: row.id,
+      employeeName: row.employee_name,
+      exceptionType: row.exception_type,
+      startDate: toIsoDate(row.start_date),
+      status: row.status,
+      notes: row.notes
     };
   }
 }

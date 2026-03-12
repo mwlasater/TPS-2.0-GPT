@@ -240,6 +240,38 @@ describe("PostgresUsersRepository", () => {
     });
   });
 
+  it("updates job profile rows", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "job_caltrain_engineer",
+            title: "Engineer",
+            department: "Operations Control",
+            minimum_headcount: 2,
+            relief_required: false
+          }
+        ]
+      });
+
+    const repository = new PostgresUsersRepository({ query });
+    const profile = await repository.updateJobProfile("caltrain", "job_caltrain_engineer", {
+      department: "Operations Control",
+      minimumHeadcount: 2,
+      reliefRequired: false
+    });
+
+    expect(profile).toEqual({
+      id: "job_caltrain_engineer",
+      title: "Engineer",
+      department: "Operations Control",
+      minimumHeadcount: 2,
+      reliefRequired: false
+    });
+  });
+
   it("maps attendance exception rows", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [
@@ -268,6 +300,39 @@ describe("PostgresUsersRepository", () => {
           notes: "Approved medical leave."
         }
       ]
+    });
+  });
+
+  it("updates attendance exception rows", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "att_caltrain_1",
+            employee_name: "Casey Morgan",
+            exception_type: "absence",
+            start_date: new Date("2026-03-06T00:00:00Z"),
+            status: "resolved",
+            notes: "Cleared for duty."
+          }
+        ]
+      });
+
+    const repository = new PostgresUsersRepository({ query });
+    const exception = await repository.updateAttendanceException("caltrain", "att_caltrain_1", {
+      status: "resolved",
+      notes: "Cleared for duty."
+    });
+
+    expect(exception).toEqual({
+      id: "att_caltrain_1",
+      employeeName: "Casey Morgan",
+      exceptionType: "absence",
+      startDate: "2026-03-06",
+      status: "resolved",
+      notes: "Cleared for duty."
     });
   });
 });

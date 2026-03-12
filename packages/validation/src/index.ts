@@ -226,6 +226,12 @@ export const jobProfileSchema = z.object({
   reliefRequired: z.boolean()
 });
 
+export const jobProfileUpdateSchema = z.object({
+  department: z.string().min(1),
+  minimumHeadcount: z.number().int().positive(),
+  reliefRequired: z.boolean()
+});
+
 export const jobProfileListSchema = z.object({
   items: z.array(jobProfileSchema)
 });
@@ -237,6 +243,11 @@ export const attendanceExceptionSchema = z.object({
   startDate: z.string(),
   status: z.enum(["open", "approved", "resolved"]),
   notes: z.string()
+});
+
+export const attendanceExceptionUpdateSchema = z.object({
+  status: z.enum(["open", "approved", "resolved"]),
+  notes: z.string().min(1)
 });
 
 export const attendanceExceptionListSchema = z.object({

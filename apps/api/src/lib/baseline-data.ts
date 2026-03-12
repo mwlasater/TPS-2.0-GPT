@@ -1,6 +1,10 @@
 import type {
+  AttendanceException,
   AttendanceExceptionList,
+  AttendanceExceptionUpdate,
+  JobProfile,
   JobProfileList,
+  JobProfileUpdate,
   PropertyCode
 } from "@tps/types";
 
@@ -93,6 +97,43 @@ export function listJobProfiles(propertyCode: PropertyCode): JobProfileList {
   return streetcarProperties.has(propertyCode) ? streetcarProfiles : commuterProfiles;
 }
 
+export function updateJobProfile(
+  propertyCode: PropertyCode,
+  profileId: string,
+  update: JobProfileUpdate
+): JobProfile {
+  const source = streetcarProperties.has(propertyCode) ? streetcarProfiles : commuterProfiles;
+  const row = source.items.find((item) => item.id === profileId) ?? source.items[0];
+
+  if (!row) {
+    throw new Error("job_profile.not_found");
+  }
+
+  row.department = update.department;
+  row.minimumHeadcount = update.minimumHeadcount;
+  row.reliefRequired = update.reliefRequired;
+
+  return row;
+}
+
 export function listAttendanceExceptions(propertyCode: PropertyCode): AttendanceExceptionList {
   return streetcarProperties.has(propertyCode) ? streetcarAttendance : commuterAttendance;
+}
+
+export function updateAttendanceException(
+  propertyCode: PropertyCode,
+  exceptionId: string,
+  update: AttendanceExceptionUpdate
+): AttendanceException {
+  const source = streetcarProperties.has(propertyCode) ? streetcarAttendance : commuterAttendance;
+  const row = source.items.find((item) => item.id === exceptionId) ?? source.items[0];
+
+  if (!row) {
+    throw new Error("attendance_exception.not_found");
+  }
+
+  row.status = update.status;
+  row.notes = update.notes;
+
+  return row;
 }
