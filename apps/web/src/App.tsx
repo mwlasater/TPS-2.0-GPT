@@ -75,6 +75,7 @@ export function App() {
               saveConsist={operationsData.saveConsist}
               saveCrew={operationsData.saveCrew}
               saveDelay={operationsData.saveDelay}
+              saveBatchRunApproval={operationsData.saveBatchRunApproval}
               createFare={operationsData.createFare}
               saveFare={operationsData.saveFare}
               saveRunApproval={operationsData.saveRunApproval}

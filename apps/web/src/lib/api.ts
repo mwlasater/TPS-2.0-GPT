@@ -38,6 +38,8 @@ import type {
   StationStopUpdate,
   TrainRunList,
   TrainRun,
+  TrainRunBatchApprovalResult,
+  TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
   TrainScheduleList,
@@ -251,6 +253,18 @@ export function updateTrainRunApproval(
   payload: TrainRunApprovalUpdate
 ): Promise<TrainRun> {
   return mutatePropertyScoped<TrainRun>(`/train-runs/${runId}/approval`, propertyCode, "PUT", payload);
+}
+
+export function updateTrainRunApprovalBatch(
+  propertyCode: PropertyCode,
+  payload: TrainRunBatchApprovalUpdate
+): Promise<TrainRunBatchApprovalResult> {
+  return mutatePropertyScoped<TrainRunBatchApprovalResult>(
+    "/train-runs/approval/batch",
+    propertyCode,
+    "PUT",
+    payload
+  );
 }
 
 export function fetchTrainRunApprovalHistory(

@@ -148,6 +148,20 @@ export interface TrainRunApprovalUpdate {
   notes: string;
 }
 
+export interface TrainRunBatchApprovalUpdate {
+  runIds: string[];
+  isApproved: boolean;
+  notes: string;
+}
+
+export interface TrainRunBatchApprovalResult {
+  updatedRuns: TrainRun[];
+  blockedRuns: Array<{
+    runId: string;
+    blockers: string[];
+  }>;
+}
+
 export interface TrainRunApprovalHistoryEntry {
   id: string;
   runId: string;

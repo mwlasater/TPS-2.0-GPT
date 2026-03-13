@@ -16,6 +16,8 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunBatchApprovalResult,
+  TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
   TrainRunList,
@@ -41,6 +43,7 @@ import {
   updateDelayEvent,
   updateFareEnforcement,
   updateStationStop,
+  updateTrainRunApprovalBatch,
   updateTrainRunApproval
 } from "../lib/api.js";
 import {
@@ -147,6 +150,9 @@ interface OperationsDataState {
   isSaving: boolean;
   selectRun: (runId: string) => Promise<void>;
   saveRunApproval: (runId: string, update: TrainRunApprovalUpdate) => Promise<TrainRun | undefined>;
+  saveBatchRunApproval: (
+    update: TrainRunBatchApprovalUpdate
+  ) => Promise<TrainRunBatchApprovalResult | undefined>;
   saveStop: (
     runId: string,
     stopId: string,
@@ -195,6 +201,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     isSaving: false,
     selectRun: async () => undefined,
     saveRunApproval: async () => undefined,
+    saveBatchRunApproval: async () => undefined,
     saveStop: async () => undefined,
     saveDelay: async () => undefined,
     saveConsist: async () => undefined,
@@ -227,6 +234,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       isSaving: false,
       selectRun: state.selectRun,
       saveRunApproval: state.saveRunApproval,
+      saveBatchRunApproval: state.saveBatchRunApproval,
       saveStop: state.saveStop,
       saveDelay: state.saveDelay,
       saveConsist: state.saveConsist,
@@ -283,6 +291,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             isSaving: false,
             selectRun: state.selectRun,
             saveRunApproval: state.saveRunApproval,
+            saveBatchRunApproval: state.saveBatchRunApproval,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
             saveConsist: state.saveConsist,
@@ -315,6 +324,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             isSaving: false,
             selectRun: state.selectRun,
             saveRunApproval: state.saveRunApproval,
+            saveBatchRunApproval: state.saveBatchRunApproval,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
             saveConsist: state.saveConsist,
@@ -403,6 +413,44 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         isSaving: false
       }));
       return run;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function saveBatchRunApproval(update: TrainRunBatchApprovalUpdate) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const result = await updateTrainRunApprovalBatch(propertyCode, update);
+      setState((current) => ({
+        ...current,
+        runs: {
+          items: current.runs.items.map((item) => {
+            const updated = result.updatedRuns.find((run) => run.id === item.id);
+            return updated ?? item;
+          })
+        },
+        approvalHistory:
+          current.selectedRunId && result.updatedRuns.some((run) => run.id === current.selectedRunId)
+            ? {
+                items: [
+                  {
+                    id: `${current.selectedRunId}-${update.isApproved ? "approved" : "unapproved"}-batch-local`,
+                    runId: current.selectedRunId,
+                    action: update.isApproved ? "approved" : "unapproved",
+                    actorName: "Local Development User",
+                    notes: update.notes,
+                    createdAt: "2026-03-06T12:30:00Z"
+                  },
+                  ...current.approvalHistory.items
+                ]
+              }
+            : current.approvalHistory,
+        isSaving: false
+      }));
+      return result;
     } catch (error) {
       setState((current) => ({ ...current, isSaving: false }));
       throw error;
@@ -582,6 +630,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     ...state,
     selectRun,
     saveRunApproval,
+    saveBatchRunApproval,
     saveStop,
     saveDelay,
     saveConsist,

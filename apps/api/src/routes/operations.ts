@@ -5,6 +5,7 @@ import {
   delayEventUpdateSchema,
   fareEnforcementUpdateSchema,
   stationStopUpdateSchema,
+  trainRunBatchApprovalUpdateSchema,
   trainRunApprovalUpdateSchema
 } from "@tps/validation";
 import type { FastifyInstance } from "fastify";
@@ -15,6 +16,7 @@ import type {
   DelayEventUpdate,
   FareEnforcementUpdate,
   StationStopUpdate,
+  TrainRunBatchApprovalUpdate,
   TrainRunApprovalUpdate
 } from "@tps/types";
 
@@ -33,6 +35,23 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => app.dataAccess.operations.listTrainRuns(request.property)
+  );
+
+  app.put(
+    "/train-runs/approval/batch",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = trainRunBatchApprovalUpdateSchema.parse(
+        request.body
+      ) as TrainRunBatchApprovalUpdate;
+      return app.dataAccess.operations.updateTrainRunApprovalBatch(
+        request.property,
+        payload,
+        request.user.displayName
+      );
+    }
   );
 
   app.put(

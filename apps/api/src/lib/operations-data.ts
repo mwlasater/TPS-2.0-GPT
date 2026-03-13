@@ -1,6 +1,8 @@
 import type {
   PropertyCode,
   TrainRun,
+  TrainRunBatchApprovalResult,
+  TrainRunBatchApprovalUpdate,
   TrainRunApprovalUpdate,
   TrainRunList,
   TrainSchedule,
@@ -157,4 +159,45 @@ export function updateTrainRunApproval(
   run.status = update.isApproved ? "approved" : "in_progress";
 
   return run;
+}
+
+export function updateTrainRunApprovalBatch(
+  propertyCode: PropertyCode,
+  update: TrainRunBatchApprovalUpdate
+): TrainRunBatchApprovalResult {
+  const runs = listTrainRuns(propertyCode).items;
+  const updatedRuns: TrainRun[] = [];
+  const blockedRuns: TrainRunBatchApprovalResult["blockedRuns"] = [];
+
+  for (const runId of update.runIds) {
+    const run = runs.find((candidate) => candidate.id === runId);
+
+    if (!run) {
+      blockedRuns.push({
+        runId,
+        blockers: ["Train run not found."]
+      });
+      continue;
+    }
+
+    if (update.isApproved && run.approvalBlockers.length) {
+      blockedRuns.push({
+        runId,
+        blockers: run.approvalBlockers
+      });
+      continue;
+    }
+
+    updatedRuns.push(
+      updateTrainRunApproval(propertyCode, runId, {
+        isApproved: update.isApproved,
+        notes: update.notes
+      })
+    );
+  }
+
+  return {
+    updatedRuns,
+    blockedRuns
+  };
 }

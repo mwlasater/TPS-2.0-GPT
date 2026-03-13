@@ -12,7 +12,12 @@ import {
   updateJobProfile
 } from "../lib/baseline-data.js";
 import { listManagedUsers } from "../lib/managed-users.js";
-import { listTrainRuns, listTrainSchedules, updateTrainRunApproval } from "../lib/operations-data.js";
+import {
+  listTrainRuns,
+  listTrainSchedules,
+  updateTrainRunApproval,
+  updateTrainRunApprovalBatch
+} from "../lib/operations-data.js";
 import { listPermissionGroups } from "../lib/permission-groups.js";
 import {
   listFiles,
@@ -90,6 +95,23 @@ export function createMockDataAccess(): DataAccess {
         const run = updateTrainRunApproval(propertyCode, runId, update);
         recordTrainRunApprovalHistory(propertyCode, runId, update, actorName);
         return run;
+      },
+      updateTrainRunApprovalBatch(propertyCode, update, actorName) {
+        const result = updateTrainRunApprovalBatch(propertyCode, update);
+
+        for (const run of result.updatedRuns) {
+          recordTrainRunApprovalHistory(
+            propertyCode,
+            run.id,
+            {
+              isApproved: update.isApproved,
+              notes: update.notes
+            },
+            actorName
+          );
+        }
+
+        return result;
       },
       listTrainRunApprovalHistory,
       listStationStops,

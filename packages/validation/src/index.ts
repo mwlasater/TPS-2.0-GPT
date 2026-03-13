@@ -146,6 +146,12 @@ export const trainRunApprovalUpdateSchema = z.object({
   notes: z.string().min(1)
 });
 
+export const trainRunBatchApprovalUpdateSchema = z.object({
+  runIds: z.array(z.string().min(1)).min(1),
+  isApproved: z.boolean(),
+  notes: z.string().min(1)
+});
+
 export const trainRunApprovalHistoryEntrySchema = z.object({
   id: z.string(),
   runId: z.string(),

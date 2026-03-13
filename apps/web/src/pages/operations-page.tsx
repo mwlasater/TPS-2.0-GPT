@@ -16,6 +16,8 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunBatchApprovalResult,
+  TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
   TrainRunList,
@@ -67,6 +69,9 @@ interface OperationsPageProps {
     runId: string,
     update: TrainRunApprovalUpdate
   ) => Promise<TrainRun | undefined>;
+  saveBatchRunApproval: (
+    update: TrainRunBatchApprovalUpdate
+  ) => Promise<TrainRunBatchApprovalResult | undefined>;
   saveStop: (
     runId: string,
     stopId: string,
@@ -97,6 +102,7 @@ export function OperationsPage({
   createFare,
   saveFare,
   saveRunApproval,
+  saveBatchRunApproval,
   saveStop,
   stationStops,
   source
@@ -107,6 +113,9 @@ export function OperationsPage({
   const selectedSchedule =
     schedules.items.find((schedule) => schedule.id === selectedRun?.scheduleId) ?? schedules.items[0];
   const scheduleRuns = runs.items.filter((run) => run.scheduleId === selectedSchedule?.id);
+  const batchReadyRunIds = scheduleRuns
+    .filter((run) => !run.isApproved && run.approvalBlockers.length === 0)
+    .map((run) => run.id);
 
   const [selectedStopId, setSelectedStopId] = useState<string | null>(stationStops.items[0]?.id ?? null);
   const [selectedDelayId, setSelectedDelayId] = useState<string | null>(delayEvents.items[0]?.id ?? null);
@@ -383,6 +392,31 @@ export function OperationsPage({
                     type="button"
                   >
                     Approve selected run
+                  </button>
+                  <button
+                    className="action-button"
+                    disabled={isSaving || batchReadyRunIds.length === 0}
+                    onClick={() => {
+                      void runAction(
+                        async () => {
+                          const result = await saveBatchRunApproval({
+                            runIds: batchReadyRunIds,
+                            isApproved: true,
+                            notes: approvalNotes
+                          });
+
+                          if (result?.blockedRuns.length) {
+                            throw new Error(
+                              `batch blocked for ${result.blockedRuns.map((entry) => entry.runId).join(", ")}`
+                            );
+                          }
+                        },
+                        `Approved ${batchReadyRunIds.length} run(s) for this schedule.`
+                      );
+                    }}
+                    type="button"
+                  >
+                    Approve ready runs in schedule
                   </button>
                   {selectedRun.isApproved ? (
                     <button

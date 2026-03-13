@@ -20,6 +20,8 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunBatchApprovalResult,
+  TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryEntry,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
@@ -378,6 +380,50 @@ export class PostgresOperationsRepository implements OperationsRepository {
       isApproved: row.is_approved,
       approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null,
       approvalBlockers: this.getApprovalBlockers(row)
+    };
+  }
+
+  async updateTrainRunApprovalBatch(
+    propertyCode: PropertyCode,
+    update: TrainRunBatchApprovalUpdate,
+    actorName: string
+  ): Promise<TrainRunBatchApprovalResult> {
+    const updatedRuns: TrainRun[] = [];
+    const blockedRuns: TrainRunBatchApprovalResult["blockedRuns"] = [];
+
+    for (const runId of update.runIds) {
+      try {
+        updatedRuns.push(
+          await this.updateTrainRunApproval(
+            propertyCode,
+            runId,
+            {
+              isApproved: update.isApproved,
+              notes: update.notes
+            },
+            actorName
+          )
+        );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "train_run.approval_blocked" &&
+          update.isApproved
+        ) {
+          blockedRuns.push({
+            runId,
+            blockers: await this.loadApprovalBlockers(propertyCode, runId)
+          });
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    return {
+      updatedRuns,
+      blockedRuns
     };
   }
 

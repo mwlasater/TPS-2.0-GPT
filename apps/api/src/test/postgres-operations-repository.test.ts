@@ -193,6 +193,77 @@ describe("PostgresOperationsRepository", () => {
     ).rejects.toThrow("train_run.approval_blocked");
   });
 
+  it("maps batch approval results into updated and blocked runs", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [{ stop_count: 3, consist_count: 3, crew_count: 3 }]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "caltrain-run-1",
+            schedule_id: "ct-101",
+            train_number: "101",
+            operating_date: new Date("2026-03-06T00:00:00Z"),
+            status: "approved",
+            delay_minutes: 7,
+            crew_assigned: 3,
+            is_approved: true,
+            approved_at: new Date("2026-03-06T12:30:00Z"),
+            stop_count: 3,
+            consist_count: 3,
+            crew_count: 3
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ stop_count: 0, consist_count: 0, crew_count: 0 }]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ stop_count: 0, consist_count: 0, crew_count: 0 }]
+      });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const result = await repository.updateTrainRunApprovalBatch(
+      "caltrain",
+      {
+        runIds: ["caltrain-run-1", "caltrain-run-2"],
+        isApproved: true,
+        notes: "Batch ready for dispatch closeout."
+      },
+      "Jordan Reyes"
+    );
+
+    expect(result).toEqual({
+      updatedRuns: [
+        {
+          id: "caltrain-run-1",
+          scheduleId: "ct-101",
+          trainNumber: "101",
+          operatingDate: "2026-03-06",
+          status: "approved",
+          delayMinutes: 7,
+          crewAssigned: 3,
+          isApproved: true,
+          approvedAt: "2026-03-06T12:30:00.000Z",
+          approvalBlockers: []
+        }
+      ],
+      blockedRuns: [
+        {
+          runId: "caltrain-run-2",
+          blockers: [
+            "Crew assignment required before approval.",
+            "Consist assignment required before approval.",
+            "Station stop records required before approval."
+          ]
+        }
+      ]
+    });
+  });
+
   it("maps approval history rows into entries", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [

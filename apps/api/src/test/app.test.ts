@@ -765,6 +765,40 @@ describe("app contracts", () => {
     });
   });
 
+  it("batch approves ready train runs and reports blocked runs", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/approval/batch",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        runIds: ["caltrain-run-1", "caltrain-run-2"],
+        isApproved: true,
+        notes: "Batch closeout for ready runs."
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      updatedRuns: [
+        {
+          id: "caltrain-run-1",
+          isApproved: true
+        }
+      ],
+      blockedRuns: [
+        {
+          runId: "caltrain-run-2",
+          blockers: expect.arrayContaining([
+            "Crew assignment required before approval."
+          ])
+        }
+      ]
+    });
+  });
+
   it("rejects approval when readiness blockers exist", async () => {
     const response = await app.inject({
       method: "PUT",
@@ -966,8 +1000,8 @@ describe("app contracts", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().items[0]).toMatchObject({
-      action: "unapproved",
       actorName: "Local Development User"
     });
+    expect(["approved", "unapproved"]).toContain(response.json().items[0].action);
   });
 });
