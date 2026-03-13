@@ -241,6 +241,15 @@ export const delayTemplateCreateRequestSchema = z.object({
   reportedAt: z.string().datetime()
 });
 
+export const delayTemplateUpdateSchema = z.object({
+  name: z.string().min(1),
+  category: z.string().min(1),
+  minutes: z.number().int().nonnegative(),
+  notes: z.string().min(1),
+  notableDelayType: z.string().min(1),
+  specialMovementId: z.string().nullable()
+});
+
 export const delayEventDeleteResultSchema = z.object({
   deletedId: z.string(),
   runId: z.string(),
@@ -257,6 +266,11 @@ export const delayCommonLocationListSchema = z.object({
   items: z.array(delayCommonLocationSchema)
 });
 
+export const delayCommonLocationUpdateSchema = z.object({
+  label: z.string().min(1),
+  usageCount: z.number().int().nonnegative()
+});
+
 export const specialMovementSchema = z.object({
   id: z.string(),
   label: z.string(),
@@ -265,6 +279,11 @@ export const specialMovementSchema = z.object({
 
 export const specialMovementListSchema = z.object({
   items: z.array(specialMovementSchema)
+});
+
+export const specialMovementUpdateSchema = z.object({
+  label: z.string().min(1),
+  description: z.string().min(1)
 });
 
 export const delayAdditionalInfoSchema = z.object({

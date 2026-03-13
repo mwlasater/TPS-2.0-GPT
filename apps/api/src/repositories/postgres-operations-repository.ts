@@ -14,12 +14,14 @@ import type {
   DelayEventBatchCreate,
   DelayCommonLocation,
   DelayCommonLocationList,
+  DelayCommonLocationUpdate,
   DelayEventDeleteResult,
   DelayEvent,
   DelayEventList,
   DelayTemplate,
   DelayTemplateCreateRequest,
   DelayTemplateList,
+  DelayTemplateUpdate,
   DelayEventUpdate,
   FareEnforcementList,
   FareEnforcementRecord,
@@ -32,6 +34,7 @@ import type {
   ResourceSwapRequest,
   SpecialMovement,
   SpecialMovementList,
+  SpecialMovementUpdate,
   StationStop,
   StationStopList,
   StationStopUpdate,
@@ -920,6 +923,63 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
+  async updateDelayCommonLocation(
+    propertyCode: PropertyCode,
+    locationId: string,
+    update: DelayCommonLocationUpdate
+  ): Promise<void> {
+    const result = await this.db.query(
+      `
+        UPDATE shared.delay_common_location
+        SET
+          location_label = $3,
+          usage_count = $4
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, locationId, update.label, update.usageCount]
+    );
+
+    if (!result.rowCount) {
+      throw new Error("delay_common_location.not_found");
+    }
+  }
+
+  async updateDelayTemplate(
+    propertyCode: PropertyCode,
+    templateId: string,
+    update: DelayTemplateUpdate
+  ): Promise<void> {
+    const result = await this.db.query(
+      `
+        UPDATE shared.delay_template
+        SET
+          template_name = $3,
+          category = $4,
+          minutes = $5,
+          notes = $6,
+          notable_delay_type = $7,
+          special_movement_id = $8
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [
+        propertyCode,
+        templateId,
+        update.name,
+        update.category,
+        update.minutes,
+        update.notes,
+        update.notableDelayType,
+        update.specialMovementId
+      ]
+    );
+
+    if (!result.rowCount) {
+      throw new Error("delay_template.not_found");
+    }
+  }
+
   async listSpecialMovements(propertyCode: PropertyCode): Promise<SpecialMovementList> {
     const result = await this.db.query<SpecialMovementRow>(
       `
@@ -944,6 +1004,28 @@ export class PostgresOperationsRepository implements OperationsRepository {
         })
       )
     };
+  }
+
+  async updateSpecialMovement(
+    propertyCode: PropertyCode,
+    movementId: string,
+    update: SpecialMovementUpdate
+  ): Promise<void> {
+    const result = await this.db.query(
+      `
+        UPDATE shared.special_movement
+        SET
+          movement_label = $3,
+          description = $4
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, movementId, update.label, update.description]
+    );
+
+    if (!result.rowCount) {
+      throw new Error("special_movement.not_found");
+    }
   }
 
   async getDelayAdditionalInfo(propertyCode: PropertyCode, delayId: string): Promise<DelayAdditionalInfo> {

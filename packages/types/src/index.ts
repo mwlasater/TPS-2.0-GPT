@@ -246,6 +246,15 @@ export interface DelayTemplateList {
   items: DelayTemplate[];
 }
 
+export interface DelayTemplateUpdate {
+  name: string;
+  category: string;
+  minutes: number;
+  notes: string;
+  notableDelayType: string;
+  specialMovementId: string | null;
+}
+
 export interface DelayTemplateCreateRequest {
   templateId: string;
   reportedAt: string;
@@ -267,6 +276,11 @@ export interface DelayCommonLocationList {
   items: DelayCommonLocation[];
 }
 
+export interface DelayCommonLocationUpdate {
+  label: string;
+  usageCount: number;
+}
+
 export interface SpecialMovement {
   id: string;
   label: string;
@@ -275,6 +289,11 @@ export interface SpecialMovement {
 
 export interface SpecialMovementList {
   items: SpecialMovement[];
+}
+
+export interface SpecialMovementUpdate {
+  label: string;
+  description: string;
 }
 
 export interface DelayAdditionalInfo {

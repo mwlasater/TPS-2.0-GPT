@@ -1,15 +1,21 @@
 import {
   attendanceExceptionUpdateSchema,
+  delayCommonLocationUpdateSchema,
+  delayTemplateUpdateSchema,
   jobProfileUpdateSchema,
   notificationUpdateSchema,
-  reportConfigUpdateSchema
+  reportConfigUpdateSchema,
+  specialMovementUpdateSchema
 } from "@tps/validation";
 import type { FastifyInstance } from "fastify";
 import type {
   AttendanceExceptionUpdate,
+  DelayCommonLocationUpdate,
+  DelayTemplateUpdate,
   JobProfileUpdate,
   NotificationUpdate,
-  ReportConfigUpdate
+  ReportConfigUpdate,
+  SpecialMovementUpdate
 } from "@tps/types";
 
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
@@ -96,6 +102,80 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => app.dataAccess.platform.listFiles(request.property)
+  );
+
+  app.get(
+    "/delay-common-locations",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listDelayCommonLocations(request.property)
+  );
+
+  app.put(
+    "/delay-common-locations/:locationId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = delayCommonLocationUpdateSchema.parse(
+        request.body
+      ) as DelayCommonLocationUpdate;
+      await app.dataAccess.operations.updateDelayCommonLocation(
+        request.property,
+        (request.params as { locationId: string }).locationId,
+        payload
+      );
+      return { ok: true };
+    }
+  );
+
+  app.get(
+    "/delay-templates",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listDelayTemplates(request.property)
+  );
+
+  app.put(
+    "/delay-templates/:templateId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = delayTemplateUpdateSchema.parse(request.body) as DelayTemplateUpdate;
+      await app.dataAccess.operations.updateDelayTemplate(
+        request.property,
+        (request.params as { templateId: string }).templateId,
+        payload
+      );
+      return { ok: true };
+    }
+  );
+
+  app.get(
+    "/special-movements",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listSpecialMovements(request.property)
+  );
+
+  app.put(
+    "/special-movements/:movementId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = specialMovementUpdateSchema.parse(request.body) as SpecialMovementUpdate;
+      await app.dataAccess.operations.updateSpecialMovement(
+        request.property,
+        (request.params as { movementId: string }).movementId,
+        payload
+      );
+      return { ok: true };
+    }
   );
 
   app.get(

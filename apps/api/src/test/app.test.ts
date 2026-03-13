@@ -806,6 +806,58 @@ describe("app contracts", () => {
     });
   });
 
+  it("updates admin delay catalogs for authorized property context", async () => {
+    const commonLocationResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/delay-common-locations/loc-sfc",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        label: "San Francisco Terminal",
+        usageCount: 21
+      }
+    });
+
+    const templateResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/delay-templates/delay-template-signal",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        name: "Signal Hold Updated",
+        category: "Signal delay",
+        minutes: 5,
+        notes: "Signal clearance held at interlocking. Supervisor review added.",
+        notableDelayType: "Interlocking failure",
+        specialMovementId: "movement-single-track"
+      }
+    });
+
+    const movementResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/special-movements/movement-single-track",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        label: "Single-track meet Updated",
+        description: "Temporary meet requiring dispatch coordination. Updated for admin workflow."
+      }
+    });
+
+    expect(commonLocationResponse.statusCode).toBe(200);
+    expect(templateResponse.statusCode).toBe(200);
+    expect(movementResponse.statusCode).toBe(200);
+    expect(commonLocationResponse.json()).toMatchObject({ ok: true });
+    expect(templateResponse.json()).toMatchObject({ ok: true });
+    expect(movementResponse.json()).toMatchObject({ ok: true });
+  });
+
   it("updates delay additional info for authorized property context", async () => {
     const response = await app.inject({
       method: "PUT",

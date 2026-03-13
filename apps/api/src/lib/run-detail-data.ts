@@ -2,8 +2,10 @@ import type {
   DelayAdditionalInfo,
   DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
+  DelayCommonLocationUpdate,
   DelayTemplateCreateRequest,
   DelayTemplateList,
+  DelayTemplateUpdate,
   DelayCommonLocationList,
   DelayEventDeleteResult,
   DelayEvent,
@@ -11,6 +13,7 @@ import type {
   DelayEventUpdate,
   PropertyCode,
   SpecialMovementList,
+  SpecialMovementUpdate,
   StationStop,
   StationStopList
 } from "@tps/types";
@@ -158,6 +161,9 @@ const streetcarDelayTemplates: DelayTemplateList = {
 const stopCatalog: Partial<Record<PropertyCode, Partial<Record<string, StationStopList>>>> = {};
 const additionalInfoCatalog: Partial<Record<PropertyCode, Partial<Record<string, DelayAdditionalInfo>>>> =
   {};
+const commonLocationCatalog: Partial<Record<PropertyCode, DelayCommonLocationList>> = {};
+const specialMovementCatalog: Partial<Record<PropertyCode, SpecialMovementList>> = {};
+const delayTemplateCatalog: Partial<Record<PropertyCode, DelayTemplateList>> = {};
 
 function getRunStops(propertyCode: PropertyCode, runId: string): StationStopList {
   if (!stopCatalog[propertyCode]) {
@@ -281,15 +287,82 @@ export function listDelayEvents(propertyCode: PropertyCode, runId: string): Dela
 }
 
 export function listDelayCommonLocations(propertyCode: PropertyCode): DelayCommonLocationList {
-  return streetcarProperties.has(propertyCode) ? streetcarCommonLocations : commuterCommonLocations;
+  if (!commonLocationCatalog[propertyCode]) {
+    commonLocationCatalog[propertyCode] = streetcarProperties.has(propertyCode)
+      ? { items: streetcarCommonLocations.items.map((item) => ({ ...item })) }
+      : { items: commuterCommonLocations.items.map((item) => ({ ...item })) };
+  }
+
+  return commonLocationCatalog[propertyCode]!;
 }
 
 export function listDelayTemplates(propertyCode: PropertyCode): DelayTemplateList {
-  return streetcarProperties.has(propertyCode) ? streetcarDelayTemplates : commuterDelayTemplates;
+  if (!delayTemplateCatalog[propertyCode]) {
+    delayTemplateCatalog[propertyCode] = streetcarProperties.has(propertyCode)
+      ? { items: streetcarDelayTemplates.items.map((item) => ({ ...item })) }
+      : { items: commuterDelayTemplates.items.map((item) => ({ ...item })) };
+  }
+
+  return delayTemplateCatalog[propertyCode]!;
 }
 
 export function listSpecialMovements(propertyCode: PropertyCode): SpecialMovementList {
-  return streetcarProperties.has(propertyCode) ? streetcarSpecialMovements : commuterSpecialMovements;
+  if (!specialMovementCatalog[propertyCode]) {
+    specialMovementCatalog[propertyCode] = streetcarProperties.has(propertyCode)
+      ? { items: streetcarSpecialMovements.items.map((item) => ({ ...item })) }
+      : { items: commuterSpecialMovements.items.map((item) => ({ ...item })) };
+  }
+
+  return specialMovementCatalog[propertyCode]!;
+}
+
+export function updateDelayCommonLocation(
+  propertyCode: PropertyCode,
+  locationId: string,
+  update: DelayCommonLocationUpdate
+): void {
+  const location = listDelayCommonLocations(propertyCode).items.find((item) => item.id === locationId);
+
+  if (!location) {
+    throw new Error("delay_common_location.not_found");
+  }
+
+  location.label = update.label;
+  location.usageCount = update.usageCount;
+}
+
+export function updateDelayTemplate(
+  propertyCode: PropertyCode,
+  templateId: string,
+  update: DelayTemplateUpdate
+): void {
+  const template = listDelayTemplates(propertyCode).items.find((item) => item.id === templateId);
+
+  if (!template) {
+    throw new Error("delay_template.not_found");
+  }
+
+  template.name = update.name;
+  template.category = update.category;
+  template.minutes = update.minutes;
+  template.notes = update.notes;
+  template.notableDelayType = update.notableDelayType;
+  template.specialMovementId = update.specialMovementId;
+}
+
+export function updateSpecialMovement(
+  propertyCode: PropertyCode,
+  movementId: string,
+  update: SpecialMovementUpdate
+): void {
+  const movement = listSpecialMovements(propertyCode).items.find((item) => item.id === movementId);
+
+  if (!movement) {
+    throw new Error("special_movement.not_found");
+  }
+
+  movement.label = update.label;
+  movement.description = update.description;
 }
 
 export function getDelayAdditionalInfo(propertyCode: PropertyCode, delayId: string): DelayAdditionalInfo {
@@ -485,5 +558,17 @@ export function resetRunDetailData(): void {
 
   for (const propertyCode of Object.keys(additionalInfoCatalog) as PropertyCode[]) {
     delete additionalInfoCatalog[propertyCode];
+  }
+
+  for (const propertyCode of Object.keys(commonLocationCatalog) as PropertyCode[]) {
+    delete commonLocationCatalog[propertyCode];
+  }
+
+  for (const propertyCode of Object.keys(specialMovementCatalog) as PropertyCode[]) {
+    delete specialMovementCatalog[propertyCode];
+  }
+
+  for (const propertyCode of Object.keys(delayTemplateCatalog) as PropertyCode[]) {
+    delete delayTemplateCatalog[propertyCode];
   }
 }

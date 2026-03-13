@@ -13,10 +13,12 @@ import type {
   DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
   DelayCommonLocationList,
+  DelayCommonLocationUpdate,
   DelayEventDeleteResult,
   DelayEventList,
   DelayTemplateCreateRequest,
   DelayTemplateList,
+  DelayTemplateUpdate,
   DelayEventUpdate,
   FareEnforcementCreate,
   FareEnforcementDashboard,
@@ -44,6 +46,7 @@ import type {
   ReportConfigRow,
   ReportConfigUpdate,
   SpecialMovementList,
+  SpecialMovementUpdate,
   StationStop,
   StationStopList,
   StationStopUpdate,
@@ -179,6 +182,59 @@ export function fetchPermissionGroups(propertyCode: PropertyCode): Promise<Permi
 
 export function fetchReportConfig(propertyCode: PropertyCode): Promise<ReportConfigList> {
   return fetchPropertyScoped<ReportConfigList>("/report-config", propertyCode);
+}
+
+export function fetchAdminDelayCommonLocations(
+  propertyCode: PropertyCode
+): Promise<DelayCommonLocationList> {
+  return fetchPropertyScoped<DelayCommonLocationList>("/delay-common-locations", propertyCode);
+}
+
+export function updateAdminDelayCommonLocation(
+  propertyCode: PropertyCode,
+  locationId: string,
+  payload: DelayCommonLocationUpdate
+): Promise<{ ok: true }> {
+  return mutatePropertyScoped<{ ok: true }>(
+    `/delay-common-locations/${locationId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
+export function fetchAdminDelayTemplates(propertyCode: PropertyCode): Promise<DelayTemplateList> {
+  return fetchPropertyScoped<DelayTemplateList>("/delay-templates", propertyCode);
+}
+
+export function updateAdminDelayTemplate(
+  propertyCode: PropertyCode,
+  templateId: string,
+  payload: DelayTemplateUpdate
+): Promise<{ ok: true }> {
+  return mutatePropertyScoped<{ ok: true }>(
+    `/delay-templates/${templateId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
+export function fetchAdminSpecialMovements(propertyCode: PropertyCode): Promise<SpecialMovementList> {
+  return fetchPropertyScoped<SpecialMovementList>("/special-movements", propertyCode);
+}
+
+export function updateAdminSpecialMovement(
+  propertyCode: PropertyCode,
+  movementId: string,
+  payload: SpecialMovementUpdate
+): Promise<{ ok: true }> {
+  return mutatePropertyScoped<{ ok: true }>(
+    `/special-movements/${movementId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
 }
 
 export function updateReportConfig(

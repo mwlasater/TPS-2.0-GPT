@@ -1,6 +1,10 @@
 import type {
   AttendanceExceptionUpdate,
   AttendanceExceptionList,
+  DelayCommonLocationList,
+  DelayCommonLocationUpdate,
+  DelayTemplateList,
+  DelayTemplateUpdate,
   FileServiceList,
   JobProfileUpdate,
   JobProfileList,
@@ -15,6 +19,8 @@ import type {
   PropertySummary,
   ReportConfigList,
   ReportConfigUpdate,
+  SpecialMovementList,
+  SpecialMovementUpdate,
   UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
   UserAdminActionList
@@ -26,6 +32,8 @@ import { StatusBadge } from "../components/status-badge.js";
 
 interface SettingsPageProps {
   attendance: AttendanceExceptionList;
+  delayCommonLocations: DelayCommonLocationList;
+  delayTemplates: DelayTemplateList;
   files: FileServiceList;
   isSaving: boolean;
   jobProfiles: JobProfileList;
@@ -36,6 +44,8 @@ interface SettingsPageProps {
   powerBi: PowerBiEmbedList;
   property: PropertySummary;
   reportConfig: ReportConfigList;
+  saveDelayCommonLocation: (locationId: string, update: DelayCommonLocationUpdate) => Promise<void>;
+  saveDelayTemplate: (templateId: string, update: DelayTemplateUpdate) => Promise<void>;
   saveAttendance: (exceptionId: string, update: AttendanceExceptionUpdate) => Promise<void>;
   saveJobProfile: (profileId: string, update: JobProfileUpdate) => Promise<void>;
   saveNotification: (notificationId: string, update: NotificationUpdate) => Promise<void>;
@@ -43,13 +53,17 @@ interface SettingsPageProps {
   savePropertyAccess: (update: UserPropertyAccessUpdate) => Promise<void>;
   saveReportConfig: (reportId: string, update: ReportConfigUpdate) => Promise<void>;
   saveSettings: (update: PropertySettingsUpdate) => Promise<void>;
+  saveSpecialMovement: (movementId: string, update: SpecialMovementUpdate) => Promise<void>;
   settings: PropertySettings;
+  specialMovements: SpecialMovementList;
   source: "api" | "fallback";
   users: ManagedUserList;
 }
 
 export function SettingsPage({
   attendance,
+  delayCommonLocations,
+  delayTemplates,
   files,
   isSaving,
   jobProfiles,
@@ -60,6 +74,8 @@ export function SettingsPage({
   powerBi,
   property,
   reportConfig,
+  saveDelayCommonLocation,
+  saveDelayTemplate,
   saveAttendance,
   saveJobProfile,
   saveNotification,
@@ -67,7 +83,9 @@ export function SettingsPage({
   savePropertyAccess,
   saveReportConfig,
   saveSettings,
+  saveSpecialMovement,
   settings,
+  specialMovements,
   source,
   users
 }: SettingsPageProps) {
@@ -238,6 +256,102 @@ export function SettingsPage({
                 label={action.label}
               />
             ))}
+          </div>
+        </Panel>
+      </div>
+      <div className="two-column-grid">
+        <Panel title="Delay templates" eyebrow={`${delayTemplates.items.length} templates`}>
+          <div className="list-stack">
+            {delayTemplates.items.map((template) => (
+              <article className="list-row" key={template.id}>
+                <div>
+                  <strong>{template.name}</strong>
+                  <p>
+                    {template.category} · {template.minutes} min
+                  </p>
+                </div>
+                <div className="list-meta">
+                  <span>{template.notableDelayType}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+          {delayTemplates.items[0] ? (
+            <button
+              type="button"
+              onClick={() =>
+                void runAction(
+                  () =>
+                    saveDelayTemplate(delayTemplates.items[0]!.id, {
+                      name: `${delayTemplates.items[0]!.name} Updated`,
+                      category: delayTemplates.items[0]!.category,
+                      minutes: delayTemplates.items[0]!.minutes + 1,
+                      notes: `${delayTemplates.items[0]!.notes} Supervisor review added.`,
+                      notableDelayType: delayTemplates.items[0]!.notableDelayType,
+                      specialMovementId: delayTemplates.items[0]!.specialMovementId
+                    }),
+                  "Delay template updated."
+                )
+              }
+            >
+              Update first delay template
+            </button>
+          ) : null}
+        </Panel>
+        <Panel title="Delay catalogs" eyebrow="Delay admin">
+          <div className="list-stack">
+            {delayCommonLocations.items.map((location) => (
+              <article className="list-row" key={location.id}>
+                <div>
+                  <strong>{location.label}</strong>
+                  <p>Usage count {location.usageCount}</p>
+                </div>
+              </article>
+            ))}
+            {specialMovements.items.map((movement) => (
+              <article className="list-row" key={movement.id}>
+                <div>
+                  <strong>{movement.label}</strong>
+                  <p>{movement.description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="button-row">
+            {delayCommonLocations.items[0] ? (
+              <button
+                type="button"
+                onClick={() =>
+                  void runAction(
+                    () =>
+                      saveDelayCommonLocation(delayCommonLocations.items[0]!.id, {
+                        label: `${delayCommonLocations.items[0]!.label} Updated`,
+                        usageCount: delayCommonLocations.items[0]!.usageCount + 1
+                      }),
+                    "Delay common location updated."
+                  )
+                }
+              >
+                Update first common location
+              </button>
+            ) : null}
+            {specialMovements.items[0] ? (
+              <button
+                type="button"
+                onClick={() =>
+                  void runAction(
+                    () =>
+                      saveSpecialMovement(specialMovements.items[0]!.id, {
+                        label: `${specialMovements.items[0]!.label} Updated`,
+                        description: `${specialMovements.items[0]!.description} Updated for admin workflow.`
+                      }),
+                    "Special movement updated."
+                  )
+                }
+              >
+                Update first special movement
+              </button>
+            ) : null}
           </div>
         </Panel>
       </div>

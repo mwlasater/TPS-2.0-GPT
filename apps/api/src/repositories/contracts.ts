@@ -13,9 +13,11 @@ import type {
   DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
   DelayCommonLocationList,
+  DelayCommonLocationUpdate,
   DelayEventDeleteResult,
   DelayTemplateCreateRequest,
   DelayTemplateList,
+  DelayTemplateUpdate,
   FileServiceList,
   JobProfile,
   JobProfileList,
@@ -34,6 +36,7 @@ import type {
   ReportConfigList,
   ReportConfigUpdate,
   SpecialMovementList,
+  SpecialMovementUpdate,
   DelayEventList,
   DelayEvent,
   DelayEventUpdate,
@@ -160,6 +163,21 @@ export interface OperationsRepository {
   listDelayCommonLocations(propertyCode: PropertyCode): MaybePromise<DelayCommonLocationList>;
   listDelayTemplates(propertyCode: PropertyCode): MaybePromise<DelayTemplateList>;
   listSpecialMovements(propertyCode: PropertyCode): MaybePromise<SpecialMovementList>;
+  updateDelayCommonLocation(
+    propertyCode: PropertyCode,
+    locationId: string,
+    update: DelayCommonLocationUpdate
+  ): MaybePromise<void>;
+  updateDelayTemplate(
+    propertyCode: PropertyCode,
+    templateId: string,
+    update: DelayTemplateUpdate
+  ): MaybePromise<void>;
+  updateSpecialMovement(
+    propertyCode: PropertyCode,
+    movementId: string,
+    update: SpecialMovementUpdate
+  ): MaybePromise<void>;
   getDelayAdditionalInfo(
     propertyCode: PropertyCode,
     delayId: string

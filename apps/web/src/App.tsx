@@ -107,6 +107,8 @@ export function App() {
           element={
             <SettingsPage
               attendance={baselineData.attendance}
+              delayCommonLocations={adminData.delayCommonLocations}
+              delayTemplates={adminData.delayTemplates}
               files={platformData.files}
               jobProfiles={baselineData.jobProfiles}
               isSaving={
@@ -123,6 +125,8 @@ export function App() {
               powerBi={platformData.powerBi}
               property={activeProperty}
               reportConfig={adminData.reportConfig}
+              saveDelayCommonLocation={adminData.saveDelayCommonLocation}
+              saveDelayTemplate={adminData.saveDelayTemplate}
               saveAttendance={baselineData.saveAttendance}
               saveJobProfile={baselineData.saveJobProfile}
               saveNotification={platformData.saveNotification}
@@ -130,7 +134,9 @@ export function App() {
               savePropertyAccess={userAdminData.savePropertyAccess}
               saveReportConfig={adminData.saveReportConfig}
               saveSettings={propertyData.saveSettings}
+              saveSpecialMovement={adminData.saveSpecialMovement}
               settings={propertyData.settings}
+              specialMovements={adminData.specialMovements}
               source={propertyData.source}
               users={propertyData.users}
             />

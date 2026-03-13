@@ -44,8 +44,11 @@ import {
   listSpecialMovements,
   listStationStops,
   resetRunDetailState,
+  updateDelayCommonLocation,
   updateDelayAdditionalInfo,
   updateDelayEvent,
+  updateDelayTemplate,
+  updateSpecialMovement,
   updateStationStop
 } from "../lib/run-detail-data.js";
 import {
@@ -170,6 +173,9 @@ export function createMockDataAccess(): DataAccess {
       listDelayCommonLocations,
       listDelayTemplates,
       listSpecialMovements,
+      updateDelayCommonLocation,
+      updateDelayTemplate,
+      updateSpecialMovement,
       getDelayAdditionalInfo,
       updateDelayAdditionalInfo,
       createDelayFromTemplate(propertyCode, runId, input) {

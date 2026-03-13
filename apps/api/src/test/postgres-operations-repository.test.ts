@@ -771,6 +771,18 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("updates delay common locations", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    await expect(
+      repository.updateDelayCommonLocation("caltrain", "loc-sfc", {
+        label: "San Francisco Terminal",
+        usageCount: 21
+      })
+    ).resolves.toBeUndefined();
+  });
+
   it("maps delay template rows into records", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [
@@ -827,6 +839,34 @@ describe("PostgresOperationsRepository", () => {
         }
       ]
     });
+  });
+
+  it("updates delay templates", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    await expect(
+      repository.updateDelayTemplate("caltrain", "delay-template-signal", {
+        name: "Signal Hold Updated",
+        category: "Signal delay",
+        minutes: 5,
+        notes: "Signal clearance held at interlocking. Supervisor review added.",
+        notableDelayType: "Interlocking failure",
+        specialMovementId: "movement-single-track"
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it("updates special movements", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    await expect(
+      repository.updateSpecialMovement("caltrain", "movement-single-track", {
+        label: "Single-track meet Updated",
+        description: "Temporary meet requiring dispatch coordination. Updated for admin workflow."
+      })
+    ).resolves.toBeUndefined();
   });
 
   it("maps delay additional info into records", async () => {
