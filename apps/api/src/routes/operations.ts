@@ -1,12 +1,18 @@
 import {
+  consistEquipmentUpdateSchema,
+  crewAssignmentUpdateSchema,
   delayEventUpdateSchema,
   fareEnforcementUpdateSchema,
+  stationStopUpdateSchema,
   trainRunApprovalUpdateSchema
 } from "@tps/validation";
 import type { FastifyInstance } from "fastify";
 import type {
+  ConsistEquipmentUpdate,
+  CrewAssignmentUpdate,
   DelayEventUpdate,
   FareEnforcementUpdate,
+  StationStopUpdate,
   TrainRunApprovalUpdate
 } from "@tps/types";
 
@@ -53,6 +59,24 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     )
   );
 
+  app.put(
+    "/train-runs/:runId/stops/:stopId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = stationStopUpdateSchema.parse(request.body) as StationStopUpdate;
+      const params = request.params as { runId: string; stopId: string };
+
+      return app.dataAccess.operations.updateStationStop(
+        request.property,
+        params.runId,
+        params.stopId,
+        payload
+      );
+    }
+  );
+
   app.get(
     "/train-runs/:runId/delays",
     {
@@ -93,6 +117,24 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     )
   );
 
+  app.put(
+    "/train-runs/:runId/consist/:equipmentId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = consistEquipmentUpdateSchema.parse(request.body) as ConsistEquipmentUpdate;
+      const params = request.params as { runId: string; equipmentId: string };
+
+      return app.dataAccess.operations.updateConsistEquipment(
+        request.property,
+        params.runId,
+        params.equipmentId,
+        payload
+      );
+    }
+  );
+
   app.get(
     "/train-runs/:runId/crew",
     {
@@ -102,6 +144,24 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       request.property,
       (request.params as { runId: string }).runId
     )
+  );
+
+  app.put(
+    "/train-runs/:runId/crew/:assignmentId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = crewAssignmentUpdateSchema.parse(request.body) as CrewAssignmentUpdate;
+      const params = request.params as { runId: string; assignmentId: string };
+
+      return app.dataAccess.operations.updateCrewAssignment(
+        request.property,
+        params.runId,
+        params.assignmentId,
+        payload
+      );
+    }
   );
 
   app.get(

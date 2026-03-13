@@ -139,6 +139,41 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("maps stop updates into station stops", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [{ is_approved: false }]
+    }).mockResolvedValueOnce({
+      rows: [
+        {
+          id: "stop-1",
+          station_code: "SFC",
+          stop_sequence: 1,
+          scheduled_time: "06:05",
+          actual_time: "06:07",
+          boardings: 45,
+          alightings: 3
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const stop = await repository.updateStationStop("caltrain", "caltrain-run-1", "stop-1", {
+      actualTime: "06:07",
+      boardings: 45,
+      alightings: 3
+    });
+
+    expect(stop).toEqual({
+      id: "stop-1",
+      stationCode: "SFC",
+      sequence: 1,
+      scheduledTime: "06:05",
+      actualTime: "06:07",
+      boardings: 45,
+      alightings: 3
+    });
+  });
+
   it("maps delay rows into delay events", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [
@@ -200,6 +235,41 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("maps consist updates into consist equipment", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [{ is_approved: false }]
+    }).mockResolvedValueOnce({
+      rows: [
+        {
+          id: "equip-1",
+          equipment_number: "CAB-901",
+          equipment_type: "Cab Car",
+          position_index: 1,
+          status: "spare"
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const equipment = await repository.updateConsistEquipment(
+      "caltrain",
+      "caltrain-run-1",
+      "equip-1",
+      {
+        position: 1,
+        status: "spare"
+      }
+    );
+
+    expect(equipment).toEqual({
+      id: "equip-1",
+      equipmentNumber: "CAB-901",
+      equipmentType: "Cab Car",
+      position: 1,
+      status: "spare"
+    });
+  });
+
   it("maps crew rows into crew assignments", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [
@@ -229,6 +299,42 @@ describe("PostgresOperationsRepository", () => {
           status: "assigned"
         }
       ]
+    });
+  });
+
+  it("maps crew updates into crew assignments", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [{ is_approved: false }]
+    }).mockResolvedValueOnce({
+      rows: [
+        {
+          id: "crew-1",
+          employee_name: "Jordan Reyes",
+          role_name: "Engineer",
+          on_duty_time: "05:45",
+          status: "pending_relief"
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const crew = await repository.updateCrewAssignment(
+      "caltrain",
+      "caltrain-run-1",
+      "crew-1",
+      {
+        role: "Engineer",
+        onDutyTime: "05:45",
+        status: "pending_relief"
+      }
+    );
+
+    expect(crew).toEqual({
+      id: "crew-1",
+      employeeName: "Jordan Reyes",
+      role: "Engineer",
+      onDutyTime: "05:45",
+      status: "pending_relief"
     });
   });
 

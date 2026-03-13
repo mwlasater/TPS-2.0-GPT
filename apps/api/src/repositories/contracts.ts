@@ -1,6 +1,12 @@
 import type {
   AttendanceException,
   AttendanceExceptionList,
+  ConsistEquipment,
+  ConsistEquipmentList,
+  ConsistEquipmentUpdate,
+  CrewAssignment,
+  CrewAssignmentList,
+  CrewAssignmentUpdate,
   FileServiceList,
   JobProfile,
   JobProfileList,
@@ -23,7 +29,9 @@ import type {
   FareEnforcementList,
   FareEnforcementRecord,
   FareEnforcementUpdate,
+  StationStop,
   StationStopList,
+  StationStopUpdate,
   TrainRun,
   TrainRunApprovalUpdate,
   TrainRunList,
@@ -102,6 +110,12 @@ export interface OperationsRepository {
     update: TrainRunApprovalUpdate
   ): MaybePromise<TrainRun>;
   listStationStops(propertyCode: PropertyCode, runId: string): MaybePromise<StationStopList>;
+  updateStationStop(
+    propertyCode: PropertyCode,
+    runId: string,
+    stopId: string,
+    update: StationStopUpdate
+  ): MaybePromise<StationStop>;
   listDelayEvents(propertyCode: PropertyCode, runId: string): MaybePromise<DelayEventList>;
   updateDelayEvent(
     propertyCode: PropertyCode,
@@ -112,11 +126,23 @@ export interface OperationsRepository {
   listConsistEquipment(
     propertyCode: PropertyCode,
     runId: string
-  ): MaybePromise<import("@tps/types").ConsistEquipmentList>;
+  ): MaybePromise<ConsistEquipmentList>;
+  updateConsistEquipment(
+    propertyCode: PropertyCode,
+    runId: string,
+    equipmentId: string,
+    update: ConsistEquipmentUpdate
+  ): MaybePromise<ConsistEquipment>;
   listCrewAssignments(
     propertyCode: PropertyCode,
     runId: string
-  ): MaybePromise<import("@tps/types").CrewAssignmentList>;
+  ): MaybePromise<CrewAssignmentList>;
+  updateCrewAssignment(
+    propertyCode: PropertyCode,
+    runId: string,
+    assignmentId: string,
+    update: CrewAssignmentUpdate
+  ): MaybePromise<CrewAssignment>;
   listFareEnforcement(
     propertyCode: PropertyCode,
     runId?: string

@@ -1,13 +1,17 @@
 import type {
   ConsistEquipmentList,
+  ConsistEquipmentUpdate,
   CrewAssignmentList,
+  CrewAssignmentUpdate,
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementList,
   FareEnforcementUpdate,
   PropertyCode,
   ReferenceDataset,
+  StationStop,
   StationStopList,
+  StationStopUpdate,
   TrainRun,
   TrainRunApprovalUpdate,
   TrainRunList,
@@ -24,8 +28,11 @@ import {
   fetchStationStops,
   fetchTrainRuns,
   fetchTrainSchedules,
+  updateConsistEquipment,
+  updateCrewAssignment,
   updateDelayEvent,
   updateFareEnforcement,
+  updateStationStop,
   updateTrainRunApproval
 } from "../lib/api.js";
 import {
@@ -52,11 +59,26 @@ interface OperationsDataState {
   isLoading: boolean;
   isSaving: boolean;
   saveRunApproval: (runId: string, update: TrainRunApprovalUpdate) => Promise<TrainRun | undefined>;
+  saveStop: (
+    runId: string,
+    stopId: string,
+    update: StationStopUpdate
+  ) => Promise<StationStop | undefined>;
   saveDelay: (
     runId: string,
     delayId: string,
     update: DelayEventUpdate
   ) => Promise<DelayEventList["items"][number] | undefined>;
+  saveConsist: (
+    runId: string,
+    equipmentId: string,
+    update: ConsistEquipmentUpdate
+  ) => Promise<ConsistEquipmentList["items"][number] | undefined>;
+  saveCrew: (
+    runId: string,
+    assignmentId: string,
+    update: CrewAssignmentUpdate
+  ) => Promise<CrewAssignmentList["items"][number] | undefined>;
   saveFare: (
     recordId: string,
     update: FareEnforcementUpdate
@@ -77,7 +99,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     isLoading: true,
     isSaving: false,
     saveRunApproval: async () => undefined,
+    saveStop: async () => undefined,
     saveDelay: async () => undefined,
+    saveConsist: async () => undefined,
+    saveCrew: async () => undefined,
     saveFare: async () => undefined
   });
 
@@ -97,7 +122,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       isLoading: true,
       isSaving: false,
       saveRunApproval: state.saveRunApproval,
+      saveStop: state.saveStop,
       saveDelay: state.saveDelay,
+      saveConsist: state.saveConsist,
+      saveCrew: state.saveCrew,
       saveFare: state.saveFare
     });
 
@@ -138,7 +166,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             isLoading: false,
             isSaving: false,
             saveRunApproval: state.saveRunApproval,
+            saveStop: state.saveStop,
             saveDelay: state.saveDelay,
+            saveConsist: state.saveConsist,
+            saveCrew: state.saveCrew,
             saveFare: state.saveFare
           });
         }
@@ -158,7 +189,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             isLoading: false,
             isSaving: false,
             saveRunApproval: state.saveRunApproval,
+            saveStop: state.saveStop,
             saveDelay: state.saveDelay,
+            saveConsist: state.saveConsist,
+            saveCrew: state.saveCrew,
             saveFare: state.saveFare
           });
         }
@@ -182,6 +216,25 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         isSaving: false
       }));
       return run;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function saveStop(runId: string, stopId: string, update: StationStopUpdate) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const stop = await updateStationStop(propertyCode, runId, stopId, update);
+      setState((current) => ({
+        ...current,
+        stationStops: {
+          items: current.stationStops.items.map((item) => (item.id === stopId ? stop : item))
+        },
+        isSaving: false
+      }));
+      return stop;
     } catch (error) {
       setState((current) => ({ ...current, isSaving: false }));
       throw error;
@@ -219,6 +272,50 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     }
   }
 
+  async function saveConsist(
+    runId: string,
+    equipmentId: string,
+    update: ConsistEquipmentUpdate
+  ) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const equipment = await updateConsistEquipment(propertyCode, runId, equipmentId, update);
+      setState((current) => ({
+        ...current,
+        consist: {
+          items: current.consist.items
+            .map((item) => (item.id === equipmentId ? equipment : item))
+            .sort((left, right) => left.position - right.position)
+        },
+        isSaving: false
+      }));
+      return equipment;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function saveCrew(runId: string, assignmentId: string, update: CrewAssignmentUpdate) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const assignment = await updateCrewAssignment(propertyCode, runId, assignmentId, update);
+      setState((current) => ({
+        ...current,
+        crew: {
+          items: current.crew.items.map((item) => (item.id === assignmentId ? assignment : item))
+        },
+        isSaving: false
+      }));
+      return assignment;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
   async function saveFare(recordId: string, update: FareEnforcementUpdate) {
     setState((current) => ({ ...current, isSaving: true }));
 
@@ -241,7 +338,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
   return {
     ...state,
     saveRunApproval,
+    saveStop,
     saveDelay,
+    saveConsist,
+    saveCrew,
     saveFare
   };
 }

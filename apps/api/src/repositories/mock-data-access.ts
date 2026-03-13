@@ -17,8 +17,18 @@ import {
 import { getPropertySettings, updatePropertySettings } from "../lib/property-settings.js";
 import { getReferenceData } from "../lib/reference-data.js";
 import { listReportConfig, updateReportConfig } from "../lib/report-config.js";
-import { listDelayEvents, listStationStops, updateDelayEvent } from "../lib/run-detail-data.js";
-import { listConsistEquipment, listCrewAssignments } from "../lib/run-resource-data.js";
+import {
+  listDelayEvents,
+  listStationStops,
+  updateDelayEvent,
+  updateStationStop
+} from "../lib/run-detail-data.js";
+import {
+  listConsistEquipment,
+  listCrewAssignments,
+  updateConsistEquipment,
+  updateCrewAssignment
+} from "../lib/run-resource-data.js";
 import {
   getManagedUserDetail,
   listUserAdminActions,
@@ -29,6 +39,18 @@ import {
 import type { DataAccess } from "./contracts.js";
 
 export function createMockDataAccess(): DataAccess {
+  function assertRunMutable(propertyCode: Parameters<typeof listTrainRuns>[0], runId: string): void {
+    const run = listTrainRuns(propertyCode).items.find((candidate) => candidate.id === runId);
+
+    if (!run) {
+      throw new Error("train_run.not_found");
+    }
+
+    if (run.isApproved) {
+      throw new Error("train_run.locked");
+    }
+  }
+
   return {
     property: {
       getSettings: getPropertySettings,
@@ -60,22 +82,25 @@ export function createMockDataAccess(): DataAccess {
       listTrainRuns,
       updateTrainRunApproval,
       listStationStops,
+      updateStationStop(propertyCode, runId, stopId, update) {
+        assertRunMutable(propertyCode, runId);
+        return updateStationStop(propertyCode, stopId, update);
+      },
       listDelayEvents,
       updateDelayEvent(propertyCode, runId, delayId, update) {
-        const run = listTrainRuns(propertyCode).items.find((candidate) => candidate.id === runId);
-
-        if (!run) {
-          throw new Error("train_run.not_found");
-        }
-
-        if (run.isApproved) {
-          throw new Error("train_run.locked");
-        }
-
+        assertRunMutable(propertyCode, runId);
         return updateDelayEvent(propertyCode, delayId, update);
       },
       listConsistEquipment,
+      updateConsistEquipment(propertyCode, runId, equipmentId, update) {
+        assertRunMutable(propertyCode, runId);
+        return updateConsistEquipment(propertyCode, equipmentId, update);
+      },
       listCrewAssignments,
+      updateCrewAssignment(propertyCode, runId, assignmentId, update) {
+        assertRunMutable(propertyCode, runId);
+        return updateCrewAssignment(propertyCode, assignmentId, update);
+      },
       listFareEnforcement,
       updateFareEnforcement
     }

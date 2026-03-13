@@ -3,6 +3,7 @@ import type {
   DelayEventList,
   DelayEventUpdate,
   PropertyCode,
+  StationStop,
   StationStopList
 } from "@tps/types";
 
@@ -69,12 +70,21 @@ const streetcarProperties = new Set<PropertyCode>([
   "octastreetcar"
 ]);
 
+const stopCatalog: Partial<Record<PropertyCode, StationStopList>> = {};
+
 export function listStationStops(propertyCode: PropertyCode, runId: string): StationStopList {
-  if (runId.includes("streetcar") || streetcarProperties.has(propertyCode)) {
-    return streetcarStops;
+  if (!stopCatalog[propertyCode]) {
+    stopCatalog[propertyCode] =
+      runId.includes("streetcar") || streetcarProperties.has(propertyCode)
+        ? {
+            items: streetcarStops.items.map((stop) => ({ ...stop }))
+          }
+        : {
+            items: defaultStops.items.map((stop) => ({ ...stop }))
+          };
   }
 
-  return defaultStops;
+  return stopCatalog[propertyCode]!;
 }
 
 export function listDelayEvents(propertyCode: PropertyCode, runId: string): DelayEventList {
@@ -129,6 +139,28 @@ export function updateDelayEvent(
   row.minutes = update.minutes;
   row.notes = update.notes;
   row.reportedAt = update.reportedAt;
+
+  return row;
+}
+
+export function updateStationStop(
+  propertyCode: PropertyCode,
+  stopId: string,
+  update: {
+    actualTime: string | null;
+    boardings: number;
+    alightings: number;
+  }
+): StationStop {
+  const row = listStationStops(propertyCode, "").items.find((candidate) => candidate.id === stopId);
+
+  if (!row) {
+    throw new Error("station_stop.not_found");
+  }
+
+  row.actualTime = update.actualTime;
+  row.boardings = update.boardings;
+  row.alightings = update.alightings;
 
   return row;
 }

@@ -4,7 +4,9 @@ import type {
   AttendanceExceptionUpdate,
   AppBootstrap,
   ConsistEquipmentList,
+  ConsistEquipmentUpdate,
   CrewAssignmentList,
+  CrewAssignmentUpdate,
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementList,
@@ -28,7 +30,9 @@ import type {
   ReportConfigList,
   ReportConfigRow,
   ReportConfigUpdate,
+  StationStop,
   StationStopList,
+  StationStopUpdate,
   TrainRunList,
   TrainRun,
   TrainRunApprovalUpdate,
@@ -252,6 +256,20 @@ export function fetchStationStops(
   return fetchPropertyScoped<StationStopList>(`/train-runs/${runId}/stops`, propertyCode);
 }
 
+export function updateStationStop(
+  propertyCode: PropertyCode,
+  runId: string,
+  stopId: string,
+  payload: StationStopUpdate
+): Promise<StationStop> {
+  return mutatePropertyScoped<StationStop>(
+    `/train-runs/${runId}/stops/${stopId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
 export function fetchDelayEvents(
   propertyCode: PropertyCode,
   runId: string
@@ -280,11 +298,39 @@ export function fetchConsistEquipment(
   return fetchPropertyScoped<ConsistEquipmentList>(`/train-runs/${runId}/consist`, propertyCode);
 }
 
+export function updateConsistEquipment(
+  propertyCode: PropertyCode,
+  runId: string,
+  equipmentId: string,
+  payload: ConsistEquipmentUpdate
+): Promise<ConsistEquipmentList["items"][number]> {
+  return mutatePropertyScoped<ConsistEquipmentList["items"][number]>(
+    `/train-runs/${runId}/consist/${equipmentId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
 export function fetchCrewAssignments(
   propertyCode: PropertyCode,
   runId: string
 ): Promise<CrewAssignmentList> {
   return fetchPropertyScoped<CrewAssignmentList>(`/train-runs/${runId}/crew`, propertyCode);
+}
+
+export function updateCrewAssignment(
+  propertyCode: PropertyCode,
+  runId: string,
+  assignmentId: string,
+  payload: CrewAssignmentUpdate
+): Promise<CrewAssignmentList["items"][number]> {
+  return mutatePropertyScoped<CrewAssignmentList["items"][number]>(
+    `/train-runs/${runId}/crew/${assignmentId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
 }
 
 export function fetchFareEnforcement(

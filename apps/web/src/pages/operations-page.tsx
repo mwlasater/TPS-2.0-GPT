@@ -1,13 +1,17 @@
 import type {
   ConsistEquipmentList,
+  ConsistEquipmentUpdate,
   CrewAssignmentList,
+  CrewAssignmentUpdate,
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementList,
   FareEnforcementUpdate,
   PropertySummary,
   ReferenceDataset,
+  StationStop,
   StationStopList,
+  StationStopUpdate,
   TrainRun,
   TrainRunApprovalUpdate,
   TrainRunList,
@@ -28,6 +32,16 @@ interface OperationsPageProps {
   isSaving: boolean;
   referenceData: ReferenceDataset;
   runs: TrainRunList;
+  saveConsist: (
+    runId: string,
+    equipmentId: string,
+    update: ConsistEquipmentUpdate
+  ) => Promise<ConsistEquipmentList["items"][number] | undefined>;
+  saveCrew: (
+    runId: string,
+    assignmentId: string,
+    update: CrewAssignmentUpdate
+  ) => Promise<CrewAssignmentList["items"][number] | undefined>;
   saveDelay: (
     runId: string,
     delayId: string,
@@ -41,6 +55,11 @@ interface OperationsPageProps {
     runId: string,
     update: TrainRunApprovalUpdate
   ) => Promise<TrainRun | undefined>;
+  saveStop: (
+    runId: string,
+    stopId: string,
+    update: StationStopUpdate
+  ) => Promise<StationStop | undefined>;
   schedules: TrainScheduleList;
   stationStops: StationStopList;
   source: "api" | "fallback";
@@ -55,9 +74,12 @@ export function OperationsPage({
   property,
   referenceData,
   runs,
+  saveConsist,
+  saveCrew,
   saveDelay,
   saveFare,
   saveRunApproval,
+  saveStop,
   schedules,
   stationStops,
   source
@@ -196,6 +218,33 @@ export function OperationsPage({
               </article>
             ))}
           </div>
+          {selectedRun && consist.items[0] ? (
+            <div className="action-row">
+              <button
+                className="action-button"
+                disabled={selectedRun.isApproved || isSaving}
+                onClick={() => {
+                  const firstEquipment = consist.items[0];
+
+                  if (!firstEquipment) {
+                    return;
+                  }
+
+                  void runAction(
+                    () =>
+                      saveConsist(selectedRun.id, firstEquipment.id, {
+                        position: firstEquipment.position,
+                        status: firstEquipment.status === "active" ? "spare" : "active"
+                      }),
+                    "Consist equipment updated."
+                  );
+                }}
+                type="button"
+              >
+                Toggle first consist status
+              </button>
+            </div>
+          ) : null}
         </Panel>
         <Panel title="Crew assignment" eyebrow={`${crew.items.length} assigned`}>
           <div className="list-stack">
@@ -222,6 +271,35 @@ export function OperationsPage({
               </article>
             ))}
           </div>
+          {selectedRun && crew.items[0] ? (
+            <div className="action-row">
+              <button
+                className="action-button"
+                disabled={selectedRun.isApproved || isSaving}
+                onClick={() => {
+                  const firstAssignment = crew.items[0];
+
+                  if (!firstAssignment) {
+                    return;
+                  }
+
+                  void runAction(
+                    () =>
+                      saveCrew(selectedRun.id, firstAssignment.id, {
+                        role: firstAssignment.role,
+                        onDutyTime: firstAssignment.onDutyTime,
+                        status:
+                          firstAssignment.status === "assigned" ? "pending_relief" : "assigned"
+                      }),
+                    "Crew assignment updated."
+                  );
+                }}
+                type="button"
+              >
+                Toggle first crew status
+              </button>
+            </div>
+          ) : null}
         </Panel>
       </div>
       <div className="two-column-grid">
@@ -245,6 +323,34 @@ export function OperationsPage({
               </article>
             ))}
           </div>
+          {selectedRun && stationStops.items[0] ? (
+            <div className="action-row">
+              <button
+                className="action-button"
+                disabled={selectedRun.isApproved || isSaving}
+                onClick={() => {
+                  const firstStop = stationStops.items[0];
+
+                  if (!firstStop) {
+                    return;
+                  }
+
+                  void runAction(
+                    () =>
+                      saveStop(selectedRun.id, firstStop.id, {
+                        actualTime: firstStop.actualTime ?? firstStop.scheduledTime,
+                        boardings: firstStop.boardings + 3,
+                        alightings: firstStop.alightings
+                      }),
+                    "Station stop updated."
+                  );
+                }}
+                type="button"
+              >
+                Add boardings to first stop
+              </button>
+            </div>
+          ) : null}
         </Panel>
         <Panel title="Delay log" eyebrow={`${delayEvents.items.length} events`}>
           <div className="list-stack">

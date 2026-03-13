@@ -158,6 +158,12 @@ export const stationStopListSchema = z.object({
   items: z.array(stationStopSchema)
 });
 
+export const stationStopUpdateSchema = z.object({
+  actualTime: z.string().nullable(),
+  boardings: z.number().int().nonnegative(),
+  alightings: z.number().int().nonnegative()
+});
+
 export const delayEventSchema = z.object({
   id: z.string(),
   category: z.string(),
@@ -189,6 +195,11 @@ export const consistEquipmentListSchema = z.object({
   items: z.array(consistEquipmentSchema)
 });
 
+export const consistEquipmentUpdateSchema = z.object({
+  position: z.number().int().positive(),
+  status: z.enum(["active", "bad_order", "spare"])
+});
+
 export const crewAssignmentSchema = z.object({
   id: z.string(),
   employeeName: z.string(),
@@ -199,6 +210,12 @@ export const crewAssignmentSchema = z.object({
 
 export const crewAssignmentListSchema = z.object({
   items: z.array(crewAssignmentSchema)
+});
+
+export const crewAssignmentUpdateSchema = z.object({
+  role: z.string().min(1),
+  onDutyTime: z.string().min(1),
+  status: z.enum(["assigned", "pending_relief", "complete"])
 });
 
 export const fareEnforcementRecordSchema = z.object({

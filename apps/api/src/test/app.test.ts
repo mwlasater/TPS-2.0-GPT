@@ -654,6 +654,70 @@ describe("app contracts", () => {
     });
   });
 
+  it("updates station stops for editable train runs", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/stops/stop-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        actualTime: "06:07",
+        boardings: 45,
+        alightings: 3
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: "stop-1",
+      actualTime: "06:07",
+      boardings: 45
+    });
+  });
+
+  it("updates consist and crew assignments for editable train runs", async () => {
+    const consistResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/consist/equip-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        position: 1,
+        status: "spare"
+      }
+    });
+
+    const crewResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/crew/crew-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        role: "Engineer",
+        onDutyTime: "05:45",
+        status: "pending_relief"
+      }
+    });
+
+    expect(consistResponse.statusCode).toBe(200);
+    expect(crewResponse.statusCode).toBe(200);
+    expect(consistResponse.json()).toMatchObject({
+      id: "equip-1",
+      status: "spare"
+    });
+    expect(crewResponse.json()).toMatchObject({
+      id: "crew-1",
+      status: "pending_relief",
+      onDutyTime: "05:45"
+    });
+  });
+
   it("approves train runs for authorized property context", async () => {
     const response = await app.inject({
       method: "PUT",

@@ -1,6 +1,10 @@
 import type {
+  ConsistEquipment,
   ConsistEquipmentList,
+  ConsistEquipmentUpdate,
+  CrewAssignment,
   CrewAssignmentList,
+  CrewAssignmentUpdate,
   PropertyCode
 } from "@tps/types";
 
@@ -93,18 +97,72 @@ const streetcarProperties = new Set<PropertyCode>([
   "octastreetcar"
 ]);
 
+const consistCatalog: Partial<Record<PropertyCode, ConsistEquipmentList>> = {};
+const crewCatalog: Partial<Record<PropertyCode, CrewAssignmentList>> = {};
+
 export function listConsistEquipment(propertyCode: PropertyCode, runId: string): ConsistEquipmentList {
-  if (runId.includes("streetcar") || streetcarProperties.has(propertyCode)) {
-    return streetcarConsist;
+  if (!consistCatalog[propertyCode]) {
+    consistCatalog[propertyCode] =
+      runId.includes("streetcar") || streetcarProperties.has(propertyCode)
+        ? {
+            items: streetcarConsist.items.map((equipment) => ({ ...equipment }))
+          }
+        : {
+            items: commuterConsist.items.map((equipment) => ({ ...equipment }))
+          };
   }
 
-  return commuterConsist;
+  return consistCatalog[propertyCode]!;
 }
 
 export function listCrewAssignments(propertyCode: PropertyCode, runId: string): CrewAssignmentList {
-  if (runId.includes("streetcar") || streetcarProperties.has(propertyCode)) {
-    return streetcarCrew;
+  if (!crewCatalog[propertyCode]) {
+    crewCatalog[propertyCode] =
+      runId.includes("streetcar") || streetcarProperties.has(propertyCode)
+        ? {
+            items: streetcarCrew.items.map((assignment) => ({ ...assignment }))
+          }
+        : {
+            items: commuterCrew.items.map((assignment) => ({ ...assignment }))
+          };
   }
 
-  return commuterCrew;
+  return crewCatalog[propertyCode]!;
+}
+
+export function updateConsistEquipment(
+  propertyCode: PropertyCode,
+  equipmentId: string,
+  update: ConsistEquipmentUpdate
+): ConsistEquipment {
+  const row = listConsistEquipment(propertyCode, "").items.find((candidate) => candidate.id === equipmentId);
+
+  if (!row) {
+    throw new Error("consist_equipment.not_found");
+  }
+
+  row.position = update.position;
+  row.status = update.status;
+
+  return row;
+}
+
+export function updateCrewAssignment(
+  propertyCode: PropertyCode,
+  assignmentId: string,
+  update: CrewAssignmentUpdate
+): CrewAssignment {
+  const row = listCrewAssignments(propertyCode, "").items.find(
+    (candidate) => candidate.id === assignmentId
+  );
+
+  if (!row) {
+    throw new Error("crew_assignment.not_found");
+  }
+
+  row.role = update.role;
+  row.onDutyTime = update.onDutyTime;
+  row.status = update.status;
+
+  return row;
 }

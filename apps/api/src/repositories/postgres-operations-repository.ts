@@ -1,8 +1,10 @@
 import type {
   ConsistEquipment,
   ConsistEquipmentList,
+  ConsistEquipmentUpdate,
   CrewAssignment,
   CrewAssignmentList,
+  CrewAssignmentUpdate,
   DelayEvent,
   DelayEventList,
   DelayEventUpdate,
@@ -12,6 +14,7 @@ import type {
   PropertyCode,
   StationStop,
   StationStopList,
+  StationStopUpdate,
   TrainRun,
   TrainRunApprovalUpdate,
   TrainRunList,
@@ -327,6 +330,55 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
+  async updateStationStop(
+    propertyCode: PropertyCode,
+    runId: string,
+    stopId: string,
+    update: StationStopUpdate
+  ): Promise<StationStop> {
+    await this.assertRunMutable(propertyCode, runId);
+
+    const result = await this.db.query<StationStopRow>(
+      `
+        UPDATE shared.station_stop ss
+        SET
+          actual_time = $3,
+          boardings = $4,
+          alightings = $5
+        FROM shared.train_run tr
+        WHERE tr.id = ss.train_run_id
+          AND tr.railroad_code = $1
+          AND ss.train_run_id = $2
+          AND ss.id = $6
+        RETURNING
+          ss.id,
+          ss.station_code,
+          ss.stop_sequence,
+          ss.scheduled_time,
+          ss.actual_time,
+          ss.boardings,
+          ss.alightings
+      `,
+      [propertyCode, runId, update.actualTime, update.boardings, update.alightings, stopId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("station_stop.not_found");
+    }
+
+    return {
+      id: row.id,
+      stationCode: row.station_code,
+      sequence: row.stop_sequence,
+      scheduledTime: row.scheduled_time,
+      actualTime: row.actual_time,
+      boardings: row.boardings,
+      alightings: row.alightings
+    };
+  }
+
   async updateDelayEvent(
     propertyCode: PropertyCode,
     runId: string,
@@ -459,6 +511,95 @@ export class PostgresOperationsRepository implements OperationsRepository {
           status: row.status
         })
       )
+    };
+  }
+
+  async updateConsistEquipment(
+    propertyCode: PropertyCode,
+    runId: string,
+    equipmentId: string,
+    update: ConsistEquipmentUpdate
+  ): Promise<ConsistEquipment> {
+    await this.assertRunMutable(propertyCode, runId);
+
+    const result = await this.db.query<ConsistEquipmentRow>(
+      `
+        UPDATE shared.consist_equipment ce
+        SET
+          position_index = $3,
+          status = $4
+        FROM shared.train_run tr
+        WHERE tr.id = ce.train_run_id
+          AND tr.railroad_code = $1
+          AND ce.train_run_id = $2
+          AND ce.id = $5
+        RETURNING
+          ce.id,
+          ce.equipment_number,
+          ce.equipment_type,
+          ce.position_index,
+          ce.status
+      `,
+      [propertyCode, runId, update.position, update.status, equipmentId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("consist_equipment.not_found");
+    }
+
+    return {
+      id: row.id,
+      equipmentNumber: row.equipment_number,
+      equipmentType: row.equipment_type,
+      position: row.position_index,
+      status: row.status
+    };
+  }
+
+  async updateCrewAssignment(
+    propertyCode: PropertyCode,
+    runId: string,
+    assignmentId: string,
+    update: CrewAssignmentUpdate
+  ): Promise<CrewAssignment> {
+    await this.assertRunMutable(propertyCode, runId);
+
+    const result = await this.db.query<CrewAssignmentRow>(
+      `
+        UPDATE shared.crew_assignment ca
+        SET
+          role_name = $3,
+          on_duty_time = $4,
+          status = $5
+        FROM shared.train_run tr
+        WHERE tr.id = ca.train_run_id
+          AND tr.railroad_code = $1
+          AND ca.train_run_id = $2
+          AND ca.id = $6
+        RETURNING
+          ca.id,
+          ca.employee_name,
+          ca.role_name,
+          ca.on_duty_time,
+          ca.status
+      `,
+      [propertyCode, runId, update.role, update.onDutyTime, update.status, assignmentId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("crew_assignment.not_found");
+    }
+
+    return {
+      id: row.id,
+      employeeName: row.employee_name,
+      role: row.role_name,
+      onDutyTime: row.on_duty_time,
+      status: row.status
     };
   }
 

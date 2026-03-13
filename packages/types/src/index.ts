@@ -160,6 +160,12 @@ export interface StationStopList {
   items: StationStop[];
 }
 
+export interface StationStopUpdate {
+  actualTime: string | null;
+  boardings: number;
+  alightings: number;
+}
+
 export interface DelayEvent {
   id: string;
   category: string;
@@ -191,6 +197,11 @@ export interface ConsistEquipmentList {
   items: ConsistEquipment[];
 }
 
+export interface ConsistEquipmentUpdate {
+  position: number;
+  status: "active" | "bad_order" | "spare";
+}
+
 export interface CrewAssignment {
   id: string;
   employeeName: string;
@@ -201,6 +212,12 @@ export interface CrewAssignment {
 
 export interface CrewAssignmentList {
   items: CrewAssignment[];
+}
+
+export interface CrewAssignmentUpdate {
+  role: string;
+  onDutyTime: string;
+  status: "assigned" | "pending_relief" | "complete";
 }
 
 export interface FareEnforcementRecord {
