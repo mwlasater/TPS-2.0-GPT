@@ -124,6 +124,7 @@ export function App() {
               permissionGroups={adminData.permissionGroups}
               powerBi={platformData.powerBi}
               property={activeProperty}
+              referenceData={propertyData.referenceData}
               reportConfig={adminData.reportConfig}
               saveDelayCommonLocation={adminData.saveDelayCommonLocation}
               saveDelayTemplate={adminData.saveDelayTemplate}
@@ -133,6 +134,7 @@ export function App() {
               savePermissionGroups={userAdminData.savePermissionGroups}
               savePropertyAccess={userAdminData.savePropertyAccess}
               saveReportConfig={adminData.saveReportConfig}
+              saveReferenceData={propertyData.saveReferenceData}
               saveSettings={propertyData.saveSettings}
               saveSpecialMovement={adminData.saveSpecialMovement}
               settings={propertyData.settings}

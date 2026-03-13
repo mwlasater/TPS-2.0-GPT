@@ -30,7 +30,7 @@ import {
   updateNotification
 } from "../lib/platform-data.js";
 import { getPropertySettings, updatePropertySettings } from "../lib/property-settings.js";
-import { getReferenceData } from "../lib/reference-data.js";
+import { getReferenceData, updateReferenceData } from "../lib/reference-data.js";
 import { listReportConfig, updateReportConfig } from "../lib/report-config.js";
 import {
   createDelayFromTemplate,
@@ -95,7 +95,8 @@ export function createMockDataAccess(): DataAccess {
     property: {
       getSettings: getPropertySettings,
       updateSettings: updatePropertySettings,
-      getReferenceData
+      getReferenceData,
+      updateReferenceData
     },
     users: {
       listUsers: listManagedUsers,

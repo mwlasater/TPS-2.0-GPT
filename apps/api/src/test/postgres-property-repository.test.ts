@@ -132,4 +132,52 @@ describe("PostgresPropertyRepository", () => {
       stationCodes: ["STA", "STB"]
     });
   });
+
+  it("updates reference data and returns the refreshed dataset", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ reason_text: "Mechanical" }, { reason_text: "Weather hold" }]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ role_name: "Engineer" }, { role_name: "Road Foreman" }]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ station_code: "STA" }, { station_code: "STX" }]
+      });
+
+    const repository = new PostgresPropertyRepository({ query });
+    const reference = await repository.updateReferenceData("caltrain", {
+      delayReasons: ["Mechanical", "Weather hold"],
+      crewRoles: ["Engineer", "Road Foreman"],
+      stationCodes: ["STA", "STX"]
+    });
+
+    expect(reference).toEqual({
+      delayReasons: ["Mechanical", "Weather hold"],
+      crewRoles: ["Engineer", "Road Foreman"],
+      stationCodes: ["STA", "STX"]
+    });
+    expect(query).toHaveBeenNthCalledWith(1, "BEGIN");
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      "DELETE FROM shared.reference_delay_reason WHERE railroad_code = $1",
+      ["caltrain"]
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      11,
+      "COMMIT"
+    );
+  });
 });

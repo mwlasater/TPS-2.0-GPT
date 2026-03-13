@@ -4,6 +4,7 @@ import { buildApp } from "../app.js";
 import { resetApprovalHistoryData } from "../lib/approval-history-data.js";
 import { resetFareEnforcementData } from "../lib/fare-enforcement-data.js";
 import { resetOperationsData } from "../lib/operations-data.js";
+import { resetReferenceData } from "../lib/reference-data.js";
 import { resetRunDetailData } from "../lib/run-detail-data.js";
 import { resetRunResourceData } from "../lib/run-resource-data.js";
 
@@ -29,6 +30,7 @@ describe("app contracts", () => {
     resetApprovalHistoryData();
     resetFareEnforcementData();
     resetOperationsData();
+    resetReferenceData();
     resetRunDetailData();
     resetRunResourceData();
   }
@@ -619,6 +621,29 @@ describe("app contracts", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       delayReasons: expect.arrayContaining(["Mechanical"])
+    });
+  });
+
+  it("updates reference data for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/reference-data",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        delayReasons: ["Mechanical", "Signal delay", "Weather hold"],
+        crewRoles: ["Engineer", "Conductor", "Road Foreman"],
+        stationCodes: ["STA", "STB", "STX"]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      delayReasons: ["Mechanical", "Signal delay", "Weather hold"],
+      crewRoles: ["Engineer", "Conductor", "Road Foreman"],
+      stationCodes: ["STA", "STB", "STX"]
     });
   });
 

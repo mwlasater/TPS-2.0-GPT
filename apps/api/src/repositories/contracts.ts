@@ -76,6 +76,10 @@ export interface PropertyRepository {
     update: PropertySettingsUpdate
   ): MaybePromise<PropertySettings>;
   getReferenceData(propertyCode: PropertyCode): MaybePromise<ReferenceDataset>;
+  updateReferenceData(
+    propertyCode: PropertyCode,
+    update: ReferenceDataset
+  ): MaybePromise<ReferenceDataset>;
 }
 
 export interface UserRepository {

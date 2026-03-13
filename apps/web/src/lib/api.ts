@@ -125,11 +125,22 @@ export function fetchPropertySettings(propertyCode: PropertyCode): Promise<Prope
   return fetchPropertyScoped<PropertySettings>("/settings/property", propertyCode);
 }
 
+export function fetchReferenceData(propertyCode: PropertyCode): Promise<ReferenceDataset> {
+  return fetchPropertyScoped<ReferenceDataset>("/reference-data", propertyCode);
+}
+
 export function updatePropertySettings(
   propertyCode: PropertyCode,
   payload: PropertySettingsUpdate
 ): Promise<PropertySettings> {
   return mutatePropertyScoped<PropertySettings>("/settings/property", propertyCode, "PUT", payload);
+}
+
+export function updateReferenceData(
+  propertyCode: PropertyCode,
+  payload: ReferenceDataset
+): Promise<ReferenceDataset> {
+  return mutatePropertyScoped<ReferenceDataset>("/reference-data", propertyCode, "PUT", payload);
 }
 
 export function fetchManagedUsers(propertyCode: PropertyCode): Promise<ManagedUserList> {
@@ -304,10 +315,6 @@ export function updateNotification(
 
 export function fetchPowerBi(propertyCode: PropertyCode): Promise<PowerBiEmbedList> {
   return fetchPropertyScoped<PowerBiEmbedList>("/power-bi", propertyCode);
-}
-
-export function fetchReferenceData(propertyCode: PropertyCode): Promise<ReferenceDataset> {
-  return fetchPropertyScoped<ReferenceDataset>("/reference-data", propertyCode);
 }
 
 export function fetchTrainSchedules(propertyCode: PropertyCode): Promise<TrainScheduleList> {

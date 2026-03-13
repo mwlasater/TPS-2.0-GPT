@@ -17,6 +17,7 @@ import type {
   PropertySettingsUpdate,
   PropertySettings,
   PropertySummary,
+  ReferenceDataset,
   ReportConfigList,
   ReportConfigUpdate,
   SpecialMovementList,
@@ -43,6 +44,7 @@ interface SettingsPageProps {
   notifications: NotificationList;
   powerBi: PowerBiEmbedList;
   property: PropertySummary;
+  referenceData: ReferenceDataset;
   reportConfig: ReportConfigList;
   saveDelayCommonLocation: (locationId: string, update: DelayCommonLocationUpdate) => Promise<void>;
   saveDelayTemplate: (templateId: string, update: DelayTemplateUpdate) => Promise<void>;
@@ -52,6 +54,7 @@ interface SettingsPageProps {
   savePermissionGroups: (update: UserPermissionGroupUpdate) => Promise<void>;
   savePropertyAccess: (update: UserPropertyAccessUpdate) => Promise<void>;
   saveReportConfig: (reportId: string, update: ReportConfigUpdate) => Promise<void>;
+  saveReferenceData: (update: ReferenceDataset) => Promise<void>;
   saveSettings: (update: PropertySettingsUpdate) => Promise<void>;
   saveSpecialMovement: (movementId: string, update: SpecialMovementUpdate) => Promise<void>;
   settings: PropertySettings;
@@ -73,6 +76,7 @@ export function SettingsPage({
   permissionGroups,
   powerBi,
   property,
+  referenceData,
   reportConfig,
   saveDelayCommonLocation,
   saveDelayTemplate,
@@ -82,6 +86,7 @@ export function SettingsPage({
   savePermissionGroups,
   savePropertyAccess,
   saveReportConfig,
+  saveReferenceData,
   saveSettings,
   saveSpecialMovement,
   settings,
@@ -169,6 +174,38 @@ export function SettingsPage({
           </div>
         </Panel>
       </div>
+      <Panel title="Reference datasets" eyebrow="Property configuration">
+        <div className="two-column-grid">
+          <div>
+            <strong>Delay Reasons</strong>
+            <p>{referenceData.delayReasons.join(", ")}</p>
+          </div>
+          <div>
+            <strong>Crew Roles</strong>
+            <p>{referenceData.crewRoles.join(", ")}</p>
+          </div>
+          <div>
+            <strong>Station Codes</strong>
+            <p>{referenceData.stationCodes.join(", ")}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            void runAction(
+              () =>
+                saveReferenceData({
+                  delayReasons: [...referenceData.delayReasons, "Weather hold"],
+                  crewRoles: [...referenceData.crewRoles, "Road Foreman"],
+                  stationCodes: [...referenceData.stationCodes, "STX"]
+                }),
+              "Reference data updated."
+            )
+          }
+        >
+          Extend reference datasets
+        </button>
+      </Panel>
       <Panel title="Managed users" eyebrow={`${users.items.length} in scope`}>
         <div className="user-list">
           {users.items.length ? (
