@@ -281,6 +281,18 @@ export interface FareEnforcementSummaryList {
   items: FareEnforcementSummary[];
 }
 
+export interface FareEnforcementDashboard {
+  totalRecords: number;
+  totalActivityCount: number;
+  coveredRuns: number;
+  uncoveredRuns: string[];
+  topInspectors: Array<{
+    inspectorName: string;
+    activityCount: number;
+    recordCount: number;
+  }>;
+}
+
 export interface PermissionGroup {
   id: string;
   name: string;

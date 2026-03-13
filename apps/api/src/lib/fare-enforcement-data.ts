@@ -1,5 +1,6 @@
 import type {
   FareEnforcementCreate,
+  FareEnforcementDashboard,
   FareEnforcementList,
   FareEnforcementRecord,
   FareEnforcementSummary,
@@ -91,6 +92,38 @@ export function listFareEnforcementSummary(propertyCode: PropertyCode): FareEnfo
 
   return {
     items: Array.from(summaryByRun.values())
+  };
+}
+
+export function getFareEnforcementDashboard(
+  propertyCode: PropertyCode,
+  propertyRunIds: string[]
+): FareEnforcementDashboard {
+  const items = fareCatalog[propertyCode]?.items ?? [];
+  const topInspectors = new Map<string, { inspectorName: string; activityCount: number; recordCount: number }>();
+
+  for (const item of items) {
+    const current = topInspectors.get(item.inspectorName) ?? {
+      inspectorName: item.inspectorName,
+      activityCount: 0,
+      recordCount: 0
+    };
+
+    current.activityCount += item.activityCount;
+    current.recordCount += 1;
+    topInspectors.set(item.inspectorName, current);
+  }
+
+  const coveredRuns = new Set(items.map((item) => item.runId));
+
+  return {
+    totalRecords: items.length,
+    totalActivityCount: items.reduce((total, item) => total + item.activityCount, 0),
+    coveredRuns: coveredRuns.size,
+    uncoveredRuns: propertyRunIds.filter((runId) => !coveredRuns.has(runId)),
+    topInspectors: Array.from(topInspectors.values()).sort(
+      (left, right) => right.activityCount - left.activityCount
+    )
   };
 }
 

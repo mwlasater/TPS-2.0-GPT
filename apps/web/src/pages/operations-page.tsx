@@ -6,6 +6,7 @@ import type {
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementCreate,
+  FareEnforcementDashboard,
   FareEnforcementList,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
@@ -31,6 +32,7 @@ interface OperationsPageProps {
   crew: CrewAssignmentList;
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
+  fareDashboard: FareEnforcementDashboard;
   fareSummary: FareEnforcementSummaryList;
   isSaving: boolean;
   referenceData: ReferenceDataset;
@@ -79,6 +81,7 @@ export function OperationsPage({
   crew,
   delayEvents,
   fareEnforcement,
+  fareDashboard,
   fareSummary,
   isSaving,
   property,
@@ -722,7 +725,62 @@ export function OperationsPage({
           ) : null}
         </Panel>
       </div>
-      <Panel title="Fare enforcement" eyebrow={`${fareEnforcement.items.length} records`}>
+      <div className="two-column-grid">
+        <Panel title="Fare enforcement dashboard" eyebrow="Property rollup">
+          <div className="stats-grid">
+            <article className="metric-card">
+              <span>Total records</span>
+              <strong>{fareDashboard.totalRecords}</strong>
+            </article>
+            <article className="metric-card">
+              <span>Total activity</span>
+              <strong>{fareDashboard.totalActivityCount}</strong>
+            </article>
+            <article className="metric-card">
+              <span>Covered runs</span>
+              <strong>{fareDashboard.coveredRuns}</strong>
+            </article>
+            <article className="metric-card">
+              <span>Uncovered runs</span>
+              <strong>{fareDashboard.uncoveredRuns.length}</strong>
+            </article>
+          </div>
+          <div className="detail-stack">
+            <div>
+              <p className="eyebrow">Top inspectors</p>
+              <div className="list-stack">
+                {fareDashboard.topInspectors.length ? (
+                  fareDashboard.topInspectors.map((inspector) => (
+                    <article className="list-row" key={inspector.inspectorName}>
+                      <div>
+                        <strong>{inspector.inspectorName}</strong>
+                        <p>{inspector.recordCount} records logged</p>
+                      </div>
+                      <div className="list-meta">
+                        <span>{inspector.activityCount} activities</span>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <p>No inspectors have logged activity yet.</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="eyebrow">Runs without coverage</p>
+              <div className="badge-row">
+                {fareDashboard.uncoveredRuns.length ? (
+                  fareDashboard.uncoveredRuns.map((runId) => (
+                    <StatusBadge key={runId} tone="warning" label={runId} />
+                  ))
+                ) : (
+                  <StatusBadge tone="success" label="all runs covered" />
+                )}
+              </div>
+            </div>
+          </div>
+        </Panel>
+        <Panel title="Fare enforcement" eyebrow={`${fareEnforcement.items.length} records`}>
         <div className="three-column-grid">
           {fareSummary.items.length ? (
             fareSummary.items.map((summary) => (
@@ -945,8 +1003,9 @@ export function OperationsPage({
               </button>
             </div>
           </div>
-        ) : null}
-      </Panel>
+          ) : null}
+        </Panel>
+      </div>
       <Panel title="Approval history" eyebrow={`${approvalHistory.items.length} events`}>
         <div className="list-stack">
           {approvalHistory.items.length ? (

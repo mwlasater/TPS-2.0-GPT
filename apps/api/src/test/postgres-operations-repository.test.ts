@@ -224,6 +224,59 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("maps fare enforcement dashboard metrics", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            total_records: 3,
+            total_activity_count: 41,
+            covered_runs: 2
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ run_id: "caltrain-run-3" }]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            inspector_name: "Morgan Lee",
+            activity_count: 24,
+            record_count: 2
+          },
+          {
+            inspector_name: "Jordan Reyes",
+            activity_count: 17,
+            record_count: 1
+          }
+        ]
+      });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const dashboard = await repository.getFareEnforcementDashboard("caltrain");
+
+    expect(dashboard).toEqual({
+      totalRecords: 3,
+      totalActivityCount: 41,
+      coveredRuns: 2,
+      uncoveredRuns: ["caltrain-run-3"],
+      topInspectors: [
+        {
+          inspectorName: "Morgan Lee",
+          activityCount: 24,
+          recordCount: 2
+        },
+        {
+          inspectorName: "Jordan Reyes",
+          activityCount: 17,
+          recordCount: 1
+        }
+      ]
+    });
+  });
+
   it("maps station stop rows into run stops", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [

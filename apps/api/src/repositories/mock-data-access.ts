@@ -1,5 +1,6 @@
 import {
   createFareEnforcement,
+  getFareEnforcementDashboard,
   listFareEnforcement,
   listFareEnforcementSummary,
   updateFareEnforcement
@@ -113,6 +114,12 @@ export function createMockDataAccess(): DataAccess {
       },
       listFareEnforcement,
       listFareEnforcementSummary,
+      getFareEnforcementDashboard(propertyCode) {
+        return getFareEnforcementDashboard(
+          propertyCode,
+          listTrainRuns(propertyCode).items.map((run) => run.id)
+        );
+      },
       createFareEnforcement,
       updateFareEnforcement
     }

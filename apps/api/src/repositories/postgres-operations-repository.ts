@@ -11,6 +11,7 @@ import type {
   FareEnforcementList,
   FareEnforcementRecord,
   FareEnforcementCreate,
+  FareEnforcementDashboard,
   FareEnforcementSummary,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
@@ -109,6 +110,12 @@ interface FareEnforcementSummaryRow {
   activity_count: number;
   inspectors: string[];
   latest_captured_at: string | Date | null;
+}
+
+interface FareEnforcementDashboardRow {
+  total_records: number;
+  total_activity_count: number;
+  covered_runs: number;
 }
 
 interface TrainRunApprovalHistoryRow {
@@ -818,6 +825,69 @@ export class PostgresOperationsRepository implements OperationsRepository {
           latestCapturedAt: row.latest_captured_at ? toIsoTimestamp(row.latest_captured_at) : null
         })
       )
+    };
+  }
+
+  async getFareEnforcementDashboard(propertyCode: PropertyCode): Promise<FareEnforcementDashboard> {
+    const [totalsResult, uncoveredRunsResult, topInspectorsResult] = await Promise.all([
+      this.db.query<FareEnforcementDashboardRow>(
+        `
+          SELECT
+            COUNT(*)::INTEGER AS total_records,
+            COALESCE(SUM(fe.activity_count), 0)::INTEGER AS total_activity_count,
+            COUNT(DISTINCT fe.train_run_id)::INTEGER AS covered_runs
+          FROM shared.fare_enforcement fe
+          JOIN shared.train_run tr ON tr.id = fe.train_run_id
+          WHERE tr.railroad_code = $1
+        `,
+        [propertyCode]
+      ),
+      this.db.query<{ run_id: string }>(
+        `
+          SELECT tr.id AS run_id
+          FROM shared.train_run tr
+          WHERE tr.railroad_code = $1
+            AND NOT EXISTS (
+              SELECT 1
+              FROM shared.fare_enforcement fe
+              WHERE fe.train_run_id = tr.id
+            )
+          ORDER BY tr.operating_date DESC, tr.id
+        `,
+        [propertyCode]
+      ),
+      this.db.query<{ inspector_name: string; activity_count: number; record_count: number }>(
+        `
+          SELECT
+            fe.inspector_name,
+            COALESCE(SUM(fe.activity_count), 0)::INTEGER AS activity_count,
+            COUNT(*)::INTEGER AS record_count
+          FROM shared.fare_enforcement fe
+          JOIN shared.train_run tr ON tr.id = fe.train_run_id
+          WHERE tr.railroad_code = $1
+          GROUP BY fe.inspector_name
+          ORDER BY activity_count DESC, record_count DESC, fe.inspector_name
+        `,
+        [propertyCode]
+      )
+    ]);
+
+    const totals = totalsResult.rows[0] ?? {
+      total_records: 0,
+      total_activity_count: 0,
+      covered_runs: 0
+    };
+
+    return {
+      totalRecords: totals.total_records,
+      totalActivityCount: totals.total_activity_count,
+      coveredRuns: totals.covered_runs,
+      uncoveredRuns: uncoveredRunsResult.rows.map((row) => row.run_id),
+      topInspectors: topInspectorsResult.rows.map((row) => ({
+        inspectorName: row.inspector_name,
+        activityCount: row.activity_count,
+        recordCount: row.record_count
+      }))
     };
   }
 

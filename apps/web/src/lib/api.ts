@@ -10,6 +10,7 @@ import type {
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementCreate,
+  FareEnforcementDashboard,
   FareEnforcementList,
   FareEnforcementRecord,
   FareEnforcementSummaryList,
@@ -370,6 +371,12 @@ export function fetchFareEnforcementSummary(
   propertyCode: PropertyCode
 ): Promise<FareEnforcementSummaryList> {
   return fetchPropertyScoped<FareEnforcementSummaryList>("/fare-enforcement/summary", propertyCode);
+}
+
+export function fetchFareEnforcementDashboard(
+  propertyCode: PropertyCode
+): Promise<FareEnforcementDashboard> {
+  return fetchPropertyScoped<FareEnforcementDashboard>("/fare-enforcement/dashboard", propertyCode);
 }
 
 export function updateFareEnforcement(

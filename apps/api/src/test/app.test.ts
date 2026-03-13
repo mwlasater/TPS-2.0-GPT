@@ -864,6 +864,15 @@ describe("app contracts", () => {
       }
     });
 
+    const dashboardResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/fare-enforcement/dashboard",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
     const listResponse = await app.inject({
       method: "GET",
       url: "/api/v1/fare-enforcement?runId=caltrain-run-1",
@@ -899,6 +908,18 @@ describe("app contracts", () => {
     expect(summaryResponse.json().items[0]).toMatchObject({
       runId: "caltrain-run-1",
       activityCount: 24
+    });
+    expect(dashboardResponse.statusCode).toBe(200);
+    expect(dashboardResponse.json()).toMatchObject({
+      totalRecords: 2,
+      totalActivityCount: 24,
+      coveredRuns: 1,
+      uncoveredRuns: expect.arrayContaining(["caltrain-run-2"]),
+      topInspectors: expect.arrayContaining([
+        expect.objectContaining({
+          inspectorName: "Morgan Lee"
+        })
+      ])
     });
     expect(listResponse.statusCode).toBe(200);
     expect(listResponse.json().items[0]).toMatchObject({

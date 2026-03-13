@@ -6,6 +6,7 @@ import type {
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementCreate,
+  FareEnforcementDashboard,
   FareEnforcementList,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
@@ -28,6 +29,7 @@ import {
   fetchCrewAssignments,
   fetchDelayEvents,
   fetchFareEnforcement,
+  fetchFareEnforcementDashboard,
   fetchFareEnforcementSummary,
   fetchReferenceData,
   fetchStationStops,
@@ -65,6 +67,45 @@ function getFallbackApprovalHistory(
   };
 }
 
+function getFallbackFareDashboard(
+  propertyCode: PropertyCode,
+  runs: TrainRunList
+): FareEnforcementDashboard {
+  const items = demoFareEnforcement[propertyCode].items;
+  const topInspectors = new Map<
+    string,
+    {
+      inspectorName: string;
+      activityCount: number;
+      recordCount: number;
+    }
+  >();
+
+  for (const item of items) {
+    const current = topInspectors.get(item.inspectorName) ?? {
+      inspectorName: item.inspectorName,
+      activityCount: 0,
+      recordCount: 0
+    };
+
+    current.activityCount += item.activityCount;
+    current.recordCount += 1;
+    topInspectors.set(item.inspectorName, current);
+  }
+
+  const coveredRuns = new Set(items.map((item) => item.runId));
+
+  return {
+    totalRecords: items.length,
+    totalActivityCount: items.reduce((total, item) => total + item.activityCount, 0),
+    coveredRuns: coveredRuns.size,
+    uncoveredRuns: runs.items.map((run) => run.id).filter((runId) => !coveredRuns.has(runId)),
+    topInspectors: Array.from(topInspectors.values()).sort(
+      (left, right) => right.activityCount - left.activityCount
+    )
+  };
+}
+
 interface OperationsDataState {
   referenceData: ReferenceDataset;
   schedules: TrainScheduleList;
@@ -73,6 +114,7 @@ interface OperationsDataState {
   approvalHistory: TrainRunApprovalHistoryList;
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
+  fareDashboard: FareEnforcementDashboard;
   fareSummary: FareEnforcementSummaryList;
   consist: ConsistEquipmentList;
   crew: CrewAssignmentList;
@@ -122,6 +164,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     crew: demoCrewAssignments[propertyCode],
     delayEvents: demoDelayEvents[propertyCode],
     fareEnforcement: demoFareEnforcement[propertyCode],
+    fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
     fareSummary: demoFareEnforcementSummary[propertyCode],
     stationStops: demoStationStops[propertyCode],
     source: "fallback",
@@ -153,6 +196,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       crew: demoCrewAssignments[propertyCode],
       delayEvents: demoDelayEvents[propertyCode],
       fareEnforcement: demoFareEnforcement[propertyCode],
+      fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
       fareSummary: demoFareEnforcementSummary[propertyCode],
       stationStops: demoStationStops[propertyCode],
       source: "fallback",
@@ -175,7 +219,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     ])
       .then(async ([referenceData, schedules, runs]) => {
         const selectedRunId = runs.items[0]?.id ?? null;
-        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, fareSummary] = selectedRunId
+        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, fareSummary, fareDashboard] = selectedRunId
           ? await Promise.all([
               fetchStationStops(propertyCode, selectedRunId),
               fetchDelayEvents(propertyCode, selectedRunId),
@@ -183,7 +227,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               fetchCrewAssignments(propertyCode, selectedRunId),
               fetchFareEnforcement(propertyCode, selectedRunId),
               fetchTrainRunApprovalHistory(propertyCode, selectedRunId),
-              fetchFareEnforcementSummary(propertyCode)
+              fetchFareEnforcementSummary(propertyCode),
+              fetchFareEnforcementDashboard(propertyCode)
             ])
           : [
               demoStationStops[propertyCode],
@@ -192,7 +237,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               demoCrewAssignments[propertyCode],
               demoFareEnforcement[propertyCode],
               getFallbackApprovalHistory(propertyCode, selectedRunId),
-              demoFareEnforcementSummary[propertyCode]
+              demoFareEnforcementSummary[propertyCode],
+              getFallbackFareDashboard(propertyCode, runs)
             ];
 
         if (isMounted) {
@@ -206,6 +252,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             crew,
             delayEvents,
             fareEnforcement,
+            fareDashboard,
             fareSummary,
             stationStops,
             source: "api",
@@ -237,6 +284,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             crew: demoCrewAssignments[propertyCode],
             delayEvents: demoDelayEvents[propertyCode],
             fareEnforcement: demoFareEnforcement[propertyCode],
+            fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
             fareSummary: demoFareEnforcementSummary[propertyCode],
             stationStops: demoStationStops[propertyCode],
             source: "fallback",
@@ -298,6 +346,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         crew: demoCrewAssignments[propertyCode],
         fareEnforcement: demoFareEnforcement[propertyCode],
         approvalHistory: getFallbackApprovalHistory(propertyCode, runId),
+        fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
         fareSummary: demoFareEnforcementSummary[propertyCode],
         source: "fallback",
         isLoading: false
@@ -435,12 +484,16 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     setState((current) => ({ ...current, isSaving: true }));
 
     try {
-      const record = await updateFareEnforcement(propertyCode, recordId, update);
+      const [record, fareDashboard] = await Promise.all([
+        updateFareEnforcement(propertyCode, recordId, update),
+        fetchFareEnforcementDashboard(propertyCode)
+      ]);
       setState((current) => ({
         ...current,
         fareEnforcement: {
           items: current.fareEnforcement.items.map((item) => (item.id === recordId ? record : item))
         },
+        fareDashboard,
         fareSummary: {
           items: current.fareSummary.items.map((item) =>
             item.runId === record.runId
@@ -481,7 +534,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     setState((current) => ({ ...current, isSaving: true }));
 
     try {
-      const record = await createFareEnforcement(propertyCode, input);
+      const [record, fareDashboard] = await Promise.all([
+        createFareEnforcement(propertyCode, input),
+        fetchFareEnforcementDashboard(propertyCode)
+      ]);
       setState((current) => {
         const nextFareItems =
           current.selectedRunId === record.runId
@@ -505,6 +561,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
           fareEnforcement: {
             items: nextFareItems
           },
+          fareDashboard,
           fareSummary: {
             items: existingSummary
               ? current.fareSummary.items.map((item) =>
