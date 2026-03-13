@@ -6,6 +6,7 @@ import type {
   CrewAssignmentList,
   CrewAssignmentUpdate,
   DelayEventBatchCreate,
+  DelayEventDeleteResult,
   DelayEvent,
   DelayEventList,
   DelayEventUpdate,
@@ -21,6 +22,7 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunDeleteResult,
   TrainRunInitializeRequest,
   TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
@@ -402,6 +404,103 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
+  async resetTrainRun(propertyCode: PropertyCode, runId: string): Promise<TrainRun> {
+    await this.assertRunMutable(propertyCode, runId);
+
+    await this.db.query(
+      `
+        UPDATE shared.station_stop
+        SET
+          actual_time = NULL,
+          boardings = 0,
+          alightings = 0
+        WHERE train_run_id = $1
+      `,
+      [runId]
+    );
+
+    await this.db.query("DELETE FROM shared.delay_event WHERE train_run_id = $1", [runId]);
+    await this.db.query("DELETE FROM shared.consist_equipment WHERE train_run_id = $1", [runId]);
+    await this.db.query("DELETE FROM shared.crew_assignment WHERE train_run_id = $1", [runId]);
+    await this.db.query("DELETE FROM shared.fare_enforcement WHERE train_run_id = $1", [runId]);
+
+    const result = await this.db.query<TrainRunRow>(
+      `
+        UPDATE shared.train_run
+        SET
+          status = 'scheduled',
+          delay_minutes = 0,
+          crew_assigned = 0,
+          is_approved = FALSE,
+          approved_at = NULL
+        WHERE railroad_code = $1
+          AND id = $2
+        RETURNING
+          id,
+          schedule_id,
+          (SELECT train_number FROM shared.train_schedule WHERE id = schedule_id) AS train_number,
+          operating_date,
+          status,
+          delay_minutes,
+          crew_assigned,
+          is_approved,
+          approved_at,
+          (SELECT COUNT(*)::INTEGER FROM shared.station_stop WHERE train_run_id = shared.train_run.id) AS stop_count,
+          (SELECT COUNT(*)::INTEGER FROM shared.consist_equipment WHERE train_run_id = shared.train_run.id) AS consist_count,
+          (SELECT COUNT(*)::INTEGER FROM shared.crew_assignment WHERE train_run_id = shared.train_run.id) AS crew_count
+      `,
+      [propertyCode, runId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("train_run.not_found");
+    }
+
+    return {
+      id: row.id,
+      scheduleId: row.schedule_id,
+      trainNumber: row.train_number,
+      operatingDate: toIsoDate(row.operating_date),
+      status: row.status,
+      delayMinutes: row.delay_minutes,
+      crewAssigned: row.crew_assigned,
+      isApproved: row.is_approved,
+      approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null,
+      approvalBlockers: this.getApprovalBlockers(row)
+    };
+  }
+
+  async deleteTrainRun(propertyCode: PropertyCode, runId: string): Promise<TrainRunDeleteResult> {
+    await this.assertRunMutable(propertyCode, runId);
+
+    await this.db.query("DELETE FROM shared.train_run_approval_history WHERE train_run_id = $1", [runId]);
+    await this.db.query("DELETE FROM shared.fare_enforcement WHERE train_run_id = $1", [runId]);
+    await this.db.query("DELETE FROM shared.delay_event WHERE train_run_id = $1", [runId]);
+    await this.db.query("DELETE FROM shared.station_stop WHERE train_run_id = $1", [runId]);
+    await this.db.query("DELETE FROM shared.consist_equipment WHERE train_run_id = $1", [runId]);
+    await this.db.query("DELETE FROM shared.crew_assignment WHERE train_run_id = $1", [runId]);
+
+    const result = await this.db.query<{ id: string }>(
+      `
+        DELETE FROM shared.train_run
+        WHERE railroad_code = $1
+          AND id = $2
+        RETURNING id
+      `,
+      [propertyCode, runId]
+    );
+
+    if (!result.rows[0]) {
+      throw new Error("train_run.not_found");
+    }
+
+    return {
+      deletedRunId: runId
+    };
+  }
+
   async updateTrainRunApproval(
     propertyCode: PropertyCode,
     runId: string,
@@ -764,6 +863,63 @@ export class PostgresOperationsRepository implements OperationsRepository {
 
     return {
       items: createdRows
+    };
+  }
+
+  async deleteDelayEvent(
+    propertyCode: PropertyCode,
+    runId: string,
+    delayId: string
+  ): Promise<DelayEventDeleteResult> {
+    await this.assertRunMutable(propertyCode, runId);
+
+    const deleted = await this.db.query<{ id: string }>(
+      `
+        DELETE FROM shared.delay_event de
+        USING shared.train_run tr
+        WHERE tr.id = de.train_run_id
+          AND tr.railroad_code = $1
+          AND de.train_run_id = $2
+          AND de.id = $3
+        RETURNING de.id
+      `,
+      [propertyCode, runId, delayId]
+    );
+
+    if (!deleted.rows[0]) {
+      throw new Error("delay_event.not_found");
+    }
+
+    const totals = await this.db.query<DelayMinutesRow>(
+      `
+        SELECT COALESCE(SUM(minutes), 0)::INTEGER AS delay_minutes
+        FROM shared.delay_event
+        WHERE train_run_id = $1
+      `,
+      [runId]
+    );
+
+    const delayMinutes = totals.rows[0]?.delay_minutes ?? 0;
+
+    await this.db.query(
+      `
+        UPDATE shared.train_run
+        SET
+          delay_minutes = $2,
+          status = CASE
+            WHEN $2 > 0 AND status <> 'approved' THEN 'delayed'
+            WHEN $2 = 0 AND status = 'delayed' THEN 'in_progress'
+            ELSE status
+          END
+        WHERE id = $1
+      `,
+      [runId, delayMinutes]
+    );
+
+    return {
+      deletedId: delayId,
+      runId,
+      delayMinutes
     };
   }
 

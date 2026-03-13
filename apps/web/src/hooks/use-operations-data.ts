@@ -4,6 +4,7 @@ import type {
   CrewAssignmentList,
   CrewAssignmentUpdate,
   DelayEventBatchCreate,
+  DelayEventDeleteResult,
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementCreate,
@@ -17,6 +18,7 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunDeleteResult,
   TrainRunInitializeRequest,
   TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
@@ -31,6 +33,8 @@ import { useEffect, useState } from "react";
 
 import {
   createDelayEvents,
+  deleteDelayEvent,
+  deleteTrainRun,
   fetchConsistEquipment,
   createFareEnforcement,
   fetchCrewAssignments,
@@ -45,6 +49,7 @@ import {
   fetchTrainRunApprovalHistory,
   fetchTrainScheduleApprovalHistory,
   initializeTrainRuns,
+  resetTrainRun,
   updateConsistEquipment,
   updateCrewAssignment,
   updateDelayEvent,
@@ -164,6 +169,8 @@ interface OperationsDataState {
   initializeRuns: (
     request: TrainRunInitializeRequest
   ) => Promise<TrainRunInitializeResult | undefined>;
+  resetRun: (runId: string) => Promise<TrainRun | undefined>;
+  deleteRun: (runId: string) => Promise<TrainRunDeleteResult | undefined>;
   saveStop: (
     runId: string,
     stopId: string,
@@ -178,6 +185,10 @@ interface OperationsDataState {
     runId: string,
     input: DelayEventBatchCreate
   ) => Promise<DelayEventList | undefined>;
+  deleteDelay: (
+    runId: string,
+    delayId: string
+  ) => Promise<DelayEventDeleteResult | undefined>;
   saveConsist: (
     runId: string,
     equipmentId: string,
@@ -222,9 +233,12 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     saveRunApproval: async () => undefined,
     saveBatchRunApproval: async () => undefined,
     initializeRuns: async () => undefined,
+    resetRun: async () => undefined,
+    deleteRun: async () => undefined,
     saveStop: async () => undefined,
     saveDelay: async () => undefined,
     createDelayBatch: async () => undefined,
+    deleteDelay: async () => undefined,
     saveConsist: async () => undefined,
     saveCrew: async () => undefined,
     saveFare: async () => undefined,
@@ -261,9 +275,12 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       saveRunApproval: state.saveRunApproval,
       saveBatchRunApproval: state.saveBatchRunApproval,
       initializeRuns: state.initializeRuns,
+      resetRun: state.resetRun,
+      deleteRun: state.deleteRun,
       saveStop: state.saveStop,
       saveDelay: state.saveDelay,
       createDelayBatch: state.createDelayBatch,
+      deleteDelay: state.deleteDelay,
       saveConsist: state.saveConsist,
       saveCrew: state.saveCrew,
       saveFare: state.saveFare,
@@ -326,9 +343,12 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             saveRunApproval: state.saveRunApproval,
             saveBatchRunApproval: state.saveBatchRunApproval,
             initializeRuns: state.initializeRuns,
+            resetRun: state.resetRun,
+            deleteRun: state.deleteRun,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
             createDelayBatch: state.createDelayBatch,
+            deleteDelay: state.deleteDelay,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
             saveFare: state.saveFare,
@@ -365,9 +385,12 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             saveRunApproval: state.saveRunApproval,
             saveBatchRunApproval: state.saveBatchRunApproval,
             initializeRuns: state.initializeRuns,
+            resetRun: state.resetRun,
+            deleteRun: state.deleteRun,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
             createDelayBatch: state.createDelayBatch,
+            deleteDelay: state.deleteDelay,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
             saveFare: state.saveFare,
@@ -564,6 +587,76 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     }
   }
 
+  async function resetRun(runId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const run = await resetTrainRun(propertyCode, runId);
+      setState((current) => ({
+        ...current,
+        runs: {
+          items: current.runs.items.map((item) => (item.id === runId ? run : item))
+        },
+        delayEvents: {
+          items: []
+        },
+        consist: {
+          items: []
+        },
+        crew: {
+          items: []
+        },
+        fareEnforcement: {
+          items: []
+        },
+        isSaving: false
+      }));
+      return run;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function removeRun(runId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const result = await deleteTrainRun(propertyCode, runId);
+      setState((current) => {
+        const nextRuns = current.runs.items.filter((item) => item.id !== runId);
+        const nextSelectedRunId = current.selectedRunId === runId ? nextRuns[0]?.id ?? null : current.selectedRunId;
+
+        return {
+          ...current,
+          runs: {
+            items: nextRuns
+          },
+          selectedRunId: nextSelectedRunId,
+          approvalHistory:
+            current.selectedRunId === runId ? { items: [] } : current.approvalHistory,
+          scheduleApprovalHistory:
+            current.selectedRunId === runId ? { items: [] } : current.scheduleApprovalHistory,
+          delayEvents:
+            current.selectedRunId === runId ? { items: [] } : current.delayEvents,
+          consist:
+            current.selectedRunId === runId ? { items: [] } : current.consist,
+          crew:
+            current.selectedRunId === runId ? { items: [] } : current.crew,
+          stationStops:
+            current.selectedRunId === runId ? { items: [] } : current.stationStops,
+          fareEnforcement:
+            current.selectedRunId === runId ? { items: [] } : current.fareEnforcement,
+          isSaving: false
+        };
+      });
+      return result;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
   async function saveStop(runId: string, stopId: string, update: StationStopUpdate) {
     setState((current) => ({ ...current, isSaving: true }));
 
@@ -643,6 +736,36 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         };
       });
       return created;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function removeDelay(runId: string, delayId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const result = await deleteDelayEvent(propertyCode, runId, delayId);
+      setState((current) => ({
+        ...current,
+        delayEvents: {
+          items: current.delayEvents.items.filter((item) => item.id !== delayId)
+        },
+        runs: {
+          items: current.runs.items.map((item) =>
+            item.id === runId
+              ? {
+                  ...item,
+                  delayMinutes: result.delayMinutes,
+                  status: result.delayMinutes > 0 ? "delayed" : "in_progress"
+                }
+              : item
+          )
+        },
+        isSaving: false
+      }));
+      return result;
     } catch (error) {
       setState((current) => ({ ...current, isSaving: false }));
       throw error;
@@ -774,9 +897,12 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     saveRunApproval,
     saveBatchRunApproval,
     initializeRuns: initializeRunsForDate,
+    resetRun,
+    deleteRun: removeRun,
     saveStop,
     saveDelay,
     createDelayBatch,
+    deleteDelay: removeDelay,
     saveConsist,
     saveCrew,
     saveFare,

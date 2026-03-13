@@ -77,8 +77,11 @@ export function App() {
               saveCrew={operationsData.saveCrew}
               saveDelay={operationsData.saveDelay}
               createDelayBatch={operationsData.createDelayBatch}
+              deleteDelay={operationsData.deleteDelay}
               saveBatchRunApproval={operationsData.saveBatchRunApproval}
               initializeRuns={operationsData.initializeRuns}
+              resetRun={operationsData.resetRun}
+              deleteRun={operationsData.deleteRun}
               createFare={operationsData.createFare}
               saveFare={operationsData.saveFare}
               saveRunApproval={operationsData.saveRunApproval}

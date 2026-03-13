@@ -84,6 +84,14 @@ export function recordTrainRunApprovalHistory(
   return entry;
 }
 
+export function deleteTrainRunApprovalHistory(propertyCode: PropertyCode, runId: string): void {
+  if (!historyCatalog[propertyCode]) {
+    return;
+  }
+
+  historyCatalog[propertyCode] = historyCatalog[propertyCode]!.filter((entry) => entry.runId !== runId);
+}
+
 export function resetApprovalHistoryData(): void {
   for (const propertyCode of Object.keys(historyCatalog) as PropertyCode[]) {
     delete historyCatalog[propertyCode];

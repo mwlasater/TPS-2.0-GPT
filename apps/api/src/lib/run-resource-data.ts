@@ -97,12 +97,16 @@ const streetcarProperties = new Set<PropertyCode>([
   "octastreetcar"
 ]);
 
-const consistCatalog: Partial<Record<PropertyCode, ConsistEquipmentList>> = {};
-const crewCatalog: Partial<Record<PropertyCode, CrewAssignmentList>> = {};
+const consistCatalog: Partial<Record<PropertyCode, Partial<Record<string, ConsistEquipmentList>>>> = {};
+const crewCatalog: Partial<Record<PropertyCode, Partial<Record<string, CrewAssignmentList>>>> = {};
 
-export function listConsistEquipment(propertyCode: PropertyCode, runId: string): ConsistEquipmentList {
+function getRunConsist(propertyCode: PropertyCode, runId: string): ConsistEquipmentList {
   if (!consistCatalog[propertyCode]) {
-    consistCatalog[propertyCode] =
+    consistCatalog[propertyCode] = {};
+  }
+
+  if (!consistCatalog[propertyCode]![runId]) {
+    consistCatalog[propertyCode]![runId] =
       runId.includes("streetcar") || streetcarProperties.has(propertyCode)
         ? {
             items: streetcarConsist.items.map((equipment) => ({ ...equipment }))
@@ -112,12 +116,16 @@ export function listConsistEquipment(propertyCode: PropertyCode, runId: string):
           };
   }
 
-  return consistCatalog[propertyCode]!;
+  return consistCatalog[propertyCode]![runId]!;
 }
 
-export function listCrewAssignments(propertyCode: PropertyCode, runId: string): CrewAssignmentList {
+function getRunCrew(propertyCode: PropertyCode, runId: string): CrewAssignmentList {
   if (!crewCatalog[propertyCode]) {
-    crewCatalog[propertyCode] =
+    crewCatalog[propertyCode] = {};
+  }
+
+  if (!crewCatalog[propertyCode]![runId]) {
+    crewCatalog[propertyCode]![runId] =
       runId.includes("streetcar") || streetcarProperties.has(propertyCode)
         ? {
             items: streetcarCrew.items.map((assignment) => ({ ...assignment }))
@@ -127,15 +135,26 @@ export function listCrewAssignments(propertyCode: PropertyCode, runId: string): 
           };
   }
 
-  return crewCatalog[propertyCode]!;
+  return crewCatalog[propertyCode]![runId]!;
+}
+
+export function listConsistEquipment(propertyCode: PropertyCode, runId: string): ConsistEquipmentList {
+  return getRunConsist(propertyCode, runId);
+}
+
+export function listCrewAssignments(propertyCode: PropertyCode, runId: string): CrewAssignmentList {
+  return getRunCrew(propertyCode, runId);
 }
 
 export function updateConsistEquipment(
   propertyCode: PropertyCode,
+  runId: string,
   equipmentId: string,
   update: ConsistEquipmentUpdate
 ): ConsistEquipment {
-  const row = listConsistEquipment(propertyCode, "").items.find((candidate) => candidate.id === equipmentId);
+  const row = listConsistEquipment(propertyCode, runId).items.find(
+    (candidate) => candidate.id === equipmentId
+  );
 
   if (!row) {
     throw new Error("consist_equipment.not_found");
@@ -149,10 +168,11 @@ export function updateConsistEquipment(
 
 export function updateCrewAssignment(
   propertyCode: PropertyCode,
+  runId: string,
   assignmentId: string,
   update: CrewAssignmentUpdate
 ): CrewAssignment {
-  const row = listCrewAssignments(propertyCode, "").items.find(
+  const row = listCrewAssignments(propertyCode, runId).items.find(
     (candidate) => candidate.id === assignmentId
   );
 
@@ -165,6 +185,24 @@ export function updateCrewAssignment(
   row.status = update.status;
 
   return row;
+}
+
+export function resetRunResourceState(propertyCode: PropertyCode, runId: string): void {
+  if (!consistCatalog[propertyCode]) {
+    consistCatalog[propertyCode] = {};
+  }
+
+  if (!crewCatalog[propertyCode]) {
+    crewCatalog[propertyCode] = {};
+  }
+
+  consistCatalog[propertyCode]![runId] = { items: [] };
+  crewCatalog[propertyCode]![runId] = { items: [] };
+}
+
+export function deleteRunResourceState(propertyCode: PropertyCode, runId: string): void {
+  delete consistCatalog[propertyCode]?.[runId];
+  delete crewCatalog[propertyCode]?.[runId];
 }
 
 export function resetRunResourceData(): void {

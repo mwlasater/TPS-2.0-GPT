@@ -1,5 +1,6 @@
 import type {
   DelayEventBatchCreate,
+  DelayEventDeleteResult,
   DelayEvent,
   DelayEventList,
   DelayEventUpdate,
@@ -165,6 +166,27 @@ export function createDelayEvents(
   };
 }
 
+export function deleteDelayEvent(
+  propertyCode: PropertyCode,
+  runId: string,
+  delayId: string
+): DelayEventDeleteResult {
+  const delays = getRunDelays(propertyCode, runId);
+  const nextItems = delays.items.filter((delay) => delay.id !== delayId);
+
+  if (nextItems.length === delays.items.length) {
+    throw new Error("delay_event.not_found");
+  }
+
+  delays.items = nextItems;
+
+  return {
+    deletedId: delayId,
+    runId,
+    delayMinutes: nextItems.reduce((total, delay) => total + delay.minutes, 0)
+  };
+}
+
 export function updateDelayEvent(
   propertyCode: PropertyCode,
   runId: string,
@@ -206,6 +228,24 @@ export function updateStationStop(
   row.alightings = update.alightings;
 
   return row;
+}
+
+export function resetRunDetailState(propertyCode: PropertyCode, runId: string): void {
+  const stops = getRunStops(propertyCode, runId);
+  const delays = getRunDelays(propertyCode, runId);
+
+  stops.items = stops.items.map((stop) => ({
+    ...stop,
+    actualTime: null,
+    boardings: 0,
+    alightings: 0
+  }));
+  delays.items = [];
+}
+
+export function deleteRunDetailState(propertyCode: PropertyCode, runId: string): void {
+  delete stopCatalog[propertyCode]?.[runId];
+  delete delayCatalog[propertyCode]?.[runId];
 }
 
 export function resetRunDetailData(): void {

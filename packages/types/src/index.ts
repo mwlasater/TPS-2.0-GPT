@@ -153,6 +153,10 @@ export interface TrainRunInitializeResult {
   skippedScheduleIds: string[];
 }
 
+export interface TrainRunDeleteResult {
+  deletedRunId: string;
+}
+
 export interface TrainRunApprovalUpdate {
   isApproved: boolean;
   notes: string;
@@ -226,6 +230,12 @@ export interface DelayEventCreate {
 
 export interface DelayEventBatchCreate {
   delays: DelayEventCreate[];
+}
+
+export interface DelayEventDeleteResult {
+  deletedId: string;
+  runId: string;
+  delayMinutes: number;
 }
 
 export interface DelayEventUpdate {

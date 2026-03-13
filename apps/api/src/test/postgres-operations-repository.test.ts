@@ -127,6 +127,72 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("maps reset train runs into cleared run state", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "caltrain-run-1",
+            schedule_id: "ct-101",
+            train_number: "101",
+            operating_date: "2026-03-06",
+            status: "scheduled",
+            delay_minutes: 0,
+            crew_assigned: 0,
+            is_approved: false,
+            approved_at: null,
+            stop_count: 3,
+            consist_count: 0,
+            crew_count: 0
+          }
+        ]
+      });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const run = await repository.resetTrainRun("caltrain", "caltrain-run-1");
+
+    expect(run).toEqual({
+      id: "caltrain-run-1",
+      scheduleId: "ct-101",
+      trainNumber: "101",
+      operatingDate: "2026-03-06",
+      status: "scheduled",
+      delayMinutes: 0,
+      crewAssigned: 0,
+      isApproved: false,
+      approvedAt: null,
+      approvalBlockers: [
+        "Crew assignment required before approval.",
+        "Consist assignment required before approval."
+      ]
+    });
+  });
+
+  it("maps deleted train runs into delete results", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: "caltrain-run-1" }] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const result = await repository.deleteTrainRun("caltrain", "caltrain-run-1");
+
+    expect(result).toEqual({
+      deletedRunId: "caltrain-run-1"
+    });
+  });
+
   it("maps approval updates into train runs", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [
@@ -599,6 +665,23 @@ describe("PostgresOperationsRepository", () => {
           reportedAt: "2026-03-06T06:33:00.000Z"
         }
       ]
+    });
+  });
+
+  it("maps deleted delay rows into delete results", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({ rows: [{ id: "delay-1" }] })
+      .mockResolvedValueOnce({ rows: [{ delay_minutes: 3 }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const result = await repository.deleteDelayEvent("caltrain", "caltrain-run-1", "delay-1");
+
+    expect(result).toEqual({
+      deletedId: "delay-1",
+      runId: "caltrain-run-1",
+      delayMinutes: 3
     });
   });
 

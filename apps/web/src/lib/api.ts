@@ -8,6 +8,7 @@ import type {
   CrewAssignmentList,
   CrewAssignmentUpdate,
   DelayEventBatchCreate,
+  DelayEventDeleteResult,
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementCreate,
@@ -39,6 +40,7 @@ import type {
   StationStopUpdate,
   TrainRunList,
   TrainRun,
+  TrainRunDeleteResult,
   TrainRunInitializeRequest,
   TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
@@ -271,6 +273,29 @@ export function updateTrainRunApproval(
   return mutatePropertyScoped<TrainRun>(`/train-runs/${runId}/approval`, propertyCode, "PUT", payload);
 }
 
+export function resetTrainRun(propertyCode: PropertyCode, runId: string): Promise<TrainRun> {
+  return mutatePropertyScoped<TrainRun>(`/train-runs/${runId}/reset`, propertyCode, "PUT", {});
+}
+
+export function deleteTrainRun(
+  propertyCode: PropertyCode,
+  runId: string
+): Promise<TrainRunDeleteResult> {
+  return fetch(`${apiBaseUrl}/train-runs/${runId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${developmentToken}`,
+      "X-Property": propertyCode
+    }
+  }).then(async (response) => {
+    if (!response.ok) {
+      throw new Error(`request.failed.${response.status}`);
+    }
+
+    return (await response.json()) as TrainRunDeleteResult;
+  });
+}
+
 export function updateTrainRunApprovalBatch(
   propertyCode: PropertyCode,
   payload: TrainRunBatchApprovalUpdate
@@ -356,6 +381,26 @@ export function updateDelayEvent(
     "PUT",
     payload
   );
+}
+
+export function deleteDelayEvent(
+  propertyCode: PropertyCode,
+  runId: string,
+  delayId: string
+): Promise<DelayEventDeleteResult> {
+  return fetch(`${apiBaseUrl}/train-runs/${runId}/delays/${delayId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${developmentToken}`,
+      "X-Property": propertyCode
+    }
+  }).then(async (response) => {
+    if (!response.ok) {
+      throw new Error(`request.failed.${response.status}`);
+    }
+
+    return (await response.json()) as DelayEventDeleteResult;
+  });
 }
 
 export function fetchConsistEquipment(

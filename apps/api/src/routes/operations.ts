@@ -85,6 +85,28 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     }
   );
 
+  app.put(
+    "/train-runs/:runId/reset",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.resetTrainRun(
+      request.property,
+      (request.params as { runId: string }).runId
+    )
+  );
+
+  app.delete(
+    "/train-runs/:runId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.deleteTrainRun(
+      request.property,
+      (request.params as { runId: string }).runId
+    )
+  );
+
   app.get(
     "/train-schedules/:scheduleId/approval-history",
     {
@@ -158,6 +180,21 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
         request.property,
         (request.params as { runId: string }).runId,
         payload
+      );
+    }
+  );
+
+  app.delete(
+    "/train-runs/:runId/delays/:delayId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const params = request.params as { runId: string; delayId: string };
+      return app.dataAccess.operations.deleteDelayEvent(
+        request.property,
+        params.runId,
+        params.delayId
       );
     }
   );

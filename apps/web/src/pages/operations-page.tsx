@@ -5,6 +5,7 @@ import type {
   CrewAssignmentUpdate,
   DelayEventCreate,
   DelayEventBatchCreate,
+  DelayEventDeleteResult,
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementCreate,
@@ -18,6 +19,7 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunDeleteResult,
   TrainRunInitializeRequest,
   TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
@@ -80,6 +82,8 @@ interface OperationsPageProps {
   initializeRuns: (
     request: TrainRunInitializeRequest
   ) => Promise<TrainRunInitializeResult | undefined>;
+  resetRun: (runId: string) => Promise<TrainRun | undefined>;
+  deleteRun: (runId: string) => Promise<TrainRunDeleteResult | undefined>;
   saveStop: (
     runId: string,
     stopId: string,
@@ -89,6 +93,10 @@ interface OperationsPageProps {
     runId: string,
     input: DelayEventBatchCreate
   ) => Promise<DelayEventList | undefined>;
+  deleteDelay: (
+    runId: string,
+    delayId: string
+  ) => Promise<DelayEventDeleteResult | undefined>;
   stationStops: StationStopList;
   source: "api" | "fallback";
 }
@@ -117,8 +125,11 @@ export function OperationsPage({
   saveRunApproval,
   saveBatchRunApproval,
   initializeRuns,
+  resetRun,
+  deleteRun,
   saveStop,
   createDelayBatch,
+  deleteDelay,
   stationStops,
   source
 }: OperationsPageProps) {
@@ -497,6 +508,32 @@ export function OperationsPage({
                   </button>
                   <button
                     className="action-button"
+                    disabled={selectedRun.isApproved || isSaving}
+                    onClick={() => {
+                      void runAction(
+                        () => resetRun(selectedRun.id),
+                        "Run reset and operational data cleared."
+                      );
+                    }}
+                    type="button"
+                  >
+                    Reset selected run
+                  </button>
+                  <button
+                    className="action-button"
+                    disabled={selectedRun.isApproved || isSaving}
+                    onClick={() => {
+                      void runAction(
+                        () => deleteRun(selectedRun.id),
+                        "Run deleted from the schedule."
+                      );
+                    }}
+                    type="button"
+                  >
+                    Delete selected run
+                  </button>
+                  <button
+                    className="action-button"
                     disabled={isSaving || batchApprovedRunIds.length === 0}
                     onClick={() => {
                       void runAction(
@@ -701,6 +738,19 @@ export function OperationsPage({
                   type="button"
                 >
                   Save selected delay
+                </button>
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving}
+                  onClick={() => {
+                    void runAction(
+                      () => deleteDelay(selectedRun.id, selectedDelay.id),
+                      "Delay event deleted."
+                    );
+                  }}
+                  type="button"
+                >
+                  Delete selected delay
                 </button>
               </div>
             </div>

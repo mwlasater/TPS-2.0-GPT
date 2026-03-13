@@ -680,6 +680,42 @@ describe("app contracts", () => {
     });
   });
 
+  it("resets editable train runs and clears operational data", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/reset",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: "caltrain-run-1",
+      status: "scheduled",
+      delayMinutes: 0,
+      crewAssigned: 0,
+      isApproved: false
+    });
+  });
+
+  it("deletes editable train runs", async () => {
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/train-runs/caltrain-run-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      deletedRunId: "caltrain-run-1"
+    });
+  });
+
   it("returns run detail stops and delays for authorized property context", async () => {
     const stopsResponse = await app.inject({
       method: "GET",
@@ -747,6 +783,23 @@ describe("app contracts", () => {
           minutes: 1
         }
       ]
+    });
+  });
+
+  it("deletes delay events for editable train runs", async () => {
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/train-runs/caltrain-run-1/delays/delay-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      deletedId: "delay-1",
+      runId: "caltrain-run-1"
     });
   });
 

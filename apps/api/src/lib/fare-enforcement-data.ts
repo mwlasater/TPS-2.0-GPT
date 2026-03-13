@@ -221,6 +221,16 @@ export function createFareEnforcement(
   return record;
 }
 
+export function deleteFareEnforcementForRun(propertyCode: PropertyCode, runId: string): void {
+  const source = fareCatalog[propertyCode];
+
+  if (!source) {
+    return;
+  }
+
+  source.items = source.items.filter((item) => item.runId !== runId);
+}
+
 export function resetFareEnforcementData(): void {
   for (const propertyCode of Object.keys(fareCatalog) as PropertyCode[]) {
     delete fareCatalog[propertyCode];

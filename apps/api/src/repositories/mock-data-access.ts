@@ -1,5 +1,6 @@
 import {
   createFareEnforcement,
+  deleteFareEnforcementForRun,
   getFareEnforcementDashboard,
   listFareEnforcement,
   listFareEnforcementSummary,
@@ -13,8 +14,10 @@ import {
 } from "../lib/baseline-data.js";
 import { listManagedUsers } from "../lib/managed-users.js";
 import {
+  deleteTrainRun,
   initializeTrainRuns,
   listTrainRuns,
+  resetTrainRun,
   listTrainSchedules,
   updateTrainRunApproval,
   updateTrainRunApprovalBatch
@@ -31,18 +34,24 @@ import { getReferenceData } from "../lib/reference-data.js";
 import { listReportConfig, updateReportConfig } from "../lib/report-config.js";
 import {
   createDelayEvents,
+  deleteDelayEvent,
+  deleteRunDetailState,
   listDelayEvents,
   listStationStops,
+  resetRunDetailState,
   updateDelayEvent,
   updateStationStop
 } from "../lib/run-detail-data.js";
 import {
+  deleteRunResourceState,
   listConsistEquipment,
   listCrewAssignments,
+  resetRunResourceState,
   updateConsistEquipment,
   updateCrewAssignment
 } from "../lib/run-resource-data.js";
 import {
+  deleteTrainRunApprovalHistory,
   listTrainRunApprovalHistory,
   listTrainScheduleApprovalHistory,
   recordTrainRunApprovalHistory
@@ -99,6 +108,20 @@ export function createMockDataAccess(): DataAccess {
       listTrainSchedules,
       listTrainRuns,
       initializeTrainRuns,
+      resetTrainRun(propertyCode, runId) {
+        assertRunMutable(propertyCode, runId);
+        resetRunDetailState(propertyCode, runId);
+        resetRunResourceState(propertyCode, runId);
+        return resetTrainRun(propertyCode, runId);
+      },
+      deleteTrainRun(propertyCode, runId) {
+        assertRunMutable(propertyCode, runId);
+        deleteRunDetailState(propertyCode, runId);
+        deleteRunResourceState(propertyCode, runId);
+        deleteFareEnforcementForRun(propertyCode, runId);
+        deleteTrainRunApprovalHistory(propertyCode, runId);
+        return deleteTrainRun(propertyCode, runId);
+      },
       updateTrainRunApproval(propertyCode, runId, update, actorName) {
         const run = updateTrainRunApproval(propertyCode, runId, update);
         recordTrainRunApprovalHistory(propertyCode, runId, update, actorName);
@@ -138,6 +161,10 @@ export function createMockDataAccess(): DataAccess {
         assertRunMutable(propertyCode, runId);
         return createDelayEvents(propertyCode, runId, input);
       },
+      deleteDelayEvent(propertyCode, runId, delayId) {
+        assertRunMutable(propertyCode, runId);
+        return deleteDelayEvent(propertyCode, runId, delayId);
+      },
       updateDelayEvent(propertyCode, runId, delayId, update) {
         assertRunMutable(propertyCode, runId);
         return updateDelayEvent(propertyCode, runId, delayId, update);
@@ -145,12 +172,12 @@ export function createMockDataAccess(): DataAccess {
       listConsistEquipment,
       updateConsistEquipment(propertyCode, runId, equipmentId, update) {
         assertRunMutable(propertyCode, runId);
-        return updateConsistEquipment(propertyCode, equipmentId, update);
+        return updateConsistEquipment(propertyCode, runId, equipmentId, update);
       },
       listCrewAssignments,
       updateCrewAssignment(propertyCode, runId, assignmentId, update) {
         assertRunMutable(propertyCode, runId);
-        return updateCrewAssignment(propertyCode, assignmentId, update);
+        return updateCrewAssignment(propertyCode, runId, assignmentId, update);
       },
       listFareEnforcement,
       listFareEnforcementSummary,

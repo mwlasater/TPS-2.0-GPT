@@ -151,6 +151,10 @@ export const trainRunInitializeResultSchema = z.object({
   skippedScheduleIds: z.array(z.string())
 });
 
+export const trainRunDeleteResultSchema = z.object({
+  deletedRunId: z.string()
+});
+
 export const trainRunApprovalUpdateSchema = z.object({
   isApproved: z.boolean(),
   notes: z.string().min(1)
@@ -216,6 +220,12 @@ export const delayEventCreateSchema = z.object({
 
 export const delayEventBatchCreateSchema = z.object({
   delays: z.array(delayEventCreateSchema).min(1)
+});
+
+export const delayEventDeleteResultSchema = z.object({
+  deletedId: z.string(),
+  runId: z.string(),
+  delayMinutes: z.number().int().nonnegative()
 });
 
 export const delayEventUpdateSchema = z.object({

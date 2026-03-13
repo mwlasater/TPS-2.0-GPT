@@ -8,6 +8,7 @@ import type {
   CrewAssignmentList,
   CrewAssignmentUpdate,
   DelayEventBatchCreate,
+  DelayEventDeleteResult,
   FileServiceList,
   JobProfile,
   JobProfileList,
@@ -37,6 +38,7 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunDeleteResult,
   TrainRunInitializeRequest,
   TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
@@ -117,6 +119,8 @@ export interface OperationsRepository {
     propertyCode: PropertyCode,
     request: TrainRunInitializeRequest
   ): MaybePromise<TrainRunInitializeResult>;
+  resetTrainRun(propertyCode: PropertyCode, runId: string): MaybePromise<TrainRun>;
+  deleteTrainRun(propertyCode: PropertyCode, runId: string): MaybePromise<TrainRunDeleteResult>;
   updateTrainRunApproval(
     propertyCode: PropertyCode,
     runId: string,
@@ -149,6 +153,11 @@ export interface OperationsRepository {
     runId: string,
     input: DelayEventBatchCreate
   ): MaybePromise<DelayEventList>;
+  deleteDelayEvent(
+    propertyCode: PropertyCode,
+    runId: string,
+    delayId: string
+  ): MaybePromise<DelayEventDeleteResult>;
   updateDelayEvent(
     propertyCode: PropertyCode,
     runId: string,

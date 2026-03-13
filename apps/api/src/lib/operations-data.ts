@@ -1,6 +1,7 @@
 import type {
   PropertyCode,
   TrainRun,
+  TrainRunDeleteResult,
   TrainRunInitializeRequest,
   TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
@@ -254,6 +255,37 @@ export function updateTrainRunApprovalBatch(
   return {
     updatedRuns,
     blockedRuns
+  };
+}
+
+export function resetTrainRun(propertyCode: PropertyCode, runId: string): TrainRun {
+  const run = listTrainRuns(propertyCode).items.find((candidate) => candidate.id === runId);
+
+  if (!run) {
+    throw new Error("train_run.not_found");
+  }
+
+  run.status = "scheduled";
+  run.delayMinutes = 0;
+  run.crewAssigned = 0;
+  run.isApproved = false;
+  run.approvedAt = null;
+
+  return run;
+}
+
+export function deleteTrainRun(propertyCode: PropertyCode, runId: string): TrainRunDeleteResult {
+  const runs = listTrainRuns(propertyCode).items;
+  const nextRuns = runs.filter((candidate) => candidate.id !== runId);
+
+  if (nextRuns.length === runs.length) {
+    throw new Error("train_run.not_found");
+  }
+
+  runCatalog[propertyCode] = nextRuns;
+
+  return {
+    deletedRunId: runId
   };
 }
 
