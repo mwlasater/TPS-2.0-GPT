@@ -28,6 +28,7 @@ import type {
   DelayEventUpdate,
   FareEnforcementList,
   FareEnforcementRecord,
+  FareEnforcementCreate,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
   StationStop,
@@ -155,6 +156,10 @@ export interface OperationsRepository {
     runId?: string
   ): MaybePromise<FareEnforcementList>;
   listFareEnforcementSummary(propertyCode: PropertyCode): MaybePromise<FareEnforcementSummaryList>;
+  createFareEnforcement(
+    propertyCode: PropertyCode,
+    input: FareEnforcementCreate
+  ): MaybePromise<FareEnforcementRecord>;
   updateFareEnforcement(
     propertyCode: PropertyCode,
     recordId: string,

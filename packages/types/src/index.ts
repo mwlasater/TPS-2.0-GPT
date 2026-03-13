@@ -259,6 +259,16 @@ export interface FareEnforcementUpdate {
   capturedAt: string;
 }
 
+export interface FareEnforcementCreate {
+  runId: string;
+  inspectorName: string;
+  firstLocation: string;
+  secondLocation: string;
+  activityCount: number;
+  notes: string;
+  capturedAt: string;
+}
+
 export interface FareEnforcementSummary {
   runId: string;
   recordCount: number;

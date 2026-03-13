@@ -5,6 +5,7 @@ import type {
   CrewAssignmentUpdate,
   DelayEventList,
   DelayEventUpdate,
+  FareEnforcementCreate,
   FareEnforcementList,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
@@ -23,6 +24,7 @@ import { useEffect, useState } from "react";
 
 import {
   fetchConsistEquipment,
+  createFareEnforcement,
   fetchCrewAssignments,
   fetchDelayEvents,
   fetchFareEnforcement,
@@ -104,6 +106,9 @@ interface OperationsDataState {
     recordId: string,
     update: FareEnforcementUpdate
   ) => Promise<FareEnforcementList["items"][number] | undefined>;
+  createFare: (
+    input: FareEnforcementCreate
+  ) => Promise<FareEnforcementList["items"][number] | undefined>;
 }
 
 export function useOperationsData(propertyCode: PropertyCode): OperationsDataState {
@@ -128,7 +133,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     saveDelay: async () => undefined,
     saveConsist: async () => undefined,
     saveCrew: async () => undefined,
-    saveFare: async () => undefined
+    saveFare: async () => undefined,
+    createFare: async () => undefined
   });
 
   useEffect(() => {
@@ -158,7 +164,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       saveDelay: state.saveDelay,
       saveConsist: state.saveConsist,
       saveCrew: state.saveCrew,
-      saveFare: state.saveFare
+      saveFare: state.saveFare,
+      createFare: state.createFare
     });
 
     void Promise.all([
@@ -210,7 +217,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             saveDelay: state.saveDelay,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
-            saveFare: state.saveFare
+            saveFare: state.saveFare,
+            createFare: state.createFare
           });
         }
       })
@@ -240,7 +248,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             saveDelay: state.saveDelay,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
-            saveFare: state.saveFare
+            saveFare: state.saveFare,
+            createFare: state.createFare
           });
         }
       });
@@ -468,6 +477,51 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     }
   }
 
+  async function createFare(input: FareEnforcementCreate) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const record = await createFareEnforcement(propertyCode, input);
+      setState((current) => {
+        const nextFareItems =
+          current.selectedRunId === record.runId
+            ? [record, ...current.fareEnforcement.items]
+            : current.fareEnforcement.items;
+        const propertyRunItems = [
+          ...nextFareItems.filter((item) => item.runId === record.runId),
+          ...(current.selectedRunId === record.runId ? [] : [record])
+        ];
+        const nextSummaryItem = {
+          runId: record.runId,
+          recordCount: propertyRunItems.length,
+          activityCount: propertyRunItems.reduce((total, item) => total + item.activityCount, 0),
+          inspectors: Array.from(new Set(propertyRunItems.map((item) => item.inspectorName))),
+          latestCapturedAt: propertyRunItems.map((item) => item.capturedAt).sort().at(-1) ?? null
+        };
+        const existingSummary = current.fareSummary.items.find((item) => item.runId === record.runId);
+
+        return {
+          ...current,
+          fareEnforcement: {
+            items: nextFareItems
+          },
+          fareSummary: {
+            items: existingSummary
+              ? current.fareSummary.items.map((item) =>
+                  item.runId === record.runId ? nextSummaryItem : item
+                )
+              : [nextSummaryItem, ...current.fareSummary.items]
+          },
+          isSaving: false
+        };
+      });
+      return record;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
   return {
     ...state,
     selectRun,
@@ -476,6 +530,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     saveDelay,
     saveConsist,
     saveCrew,
-    saveFare
+    saveFare,
+    createFare
   };
 }

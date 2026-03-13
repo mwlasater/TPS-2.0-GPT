@@ -1,4 +1,5 @@
 import {
+  createFareEnforcement,
   listFareEnforcement,
   listFareEnforcementSummary,
   updateFareEnforcement
@@ -112,6 +113,7 @@ export function createMockDataAccess(): DataAccess {
       },
       listFareEnforcement,
       listFareEnforcementSummary,
+      createFareEnforcement,
       updateFareEnforcement
     }
   };

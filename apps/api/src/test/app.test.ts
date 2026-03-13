@@ -837,6 +837,24 @@ describe("app contracts", () => {
   });
 
   it("returns and updates fare enforcement for authorized property context", async () => {
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/fare-enforcement",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        runId: "caltrain-run-1",
+        inspectorName: "Morgan Lee",
+        firstLocation: "SFC",
+        secondLocation: "SJC",
+        activityCount: 8,
+        notes: "Midday inspection sweep.",
+        capturedAt: "2026-03-06T09:00:00Z"
+      }
+    });
+
     const summaryResponse = await app.inject({
       method: "GET",
       url: "/api/v1/fare-enforcement/summary",
@@ -872,10 +890,15 @@ describe("app contracts", () => {
       }
     });
 
+    expect(createResponse.statusCode).toBe(200);
+    expect(createResponse.json()).toMatchObject({
+      runId: "caltrain-run-1",
+      activityCount: 8
+    });
     expect(summaryResponse.statusCode).toBe(200);
     expect(summaryResponse.json().items[0]).toMatchObject({
       runId: "caltrain-run-1",
-      activityCount: 16
+      activityCount: 24
     });
     expect(listResponse.statusCode).toBe(200);
     expect(listResponse.json().items[0]).toMatchObject({

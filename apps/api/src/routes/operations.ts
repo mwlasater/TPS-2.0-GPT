@@ -1,6 +1,7 @@
 import {
   consistEquipmentUpdateSchema,
   crewAssignmentUpdateSchema,
+  fareEnforcementCreateSchema,
   delayEventUpdateSchema,
   fareEnforcementUpdateSchema,
   stationStopUpdateSchema,
@@ -10,6 +11,7 @@ import type { FastifyInstance } from "fastify";
 import type {
   ConsistEquipmentUpdate,
   CrewAssignmentUpdate,
+  FareEnforcementCreate,
   DelayEventUpdate,
   FareEnforcementUpdate,
   StationStopUpdate,
@@ -185,6 +187,17 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       request.property,
       (request.query as { runId?: string } | undefined)?.runId
     )
+  );
+
+  app.post(
+    "/fare-enforcement",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = fareEnforcementCreateSchema.parse(request.body) as FareEnforcementCreate;
+      return app.dataAccess.operations.createFareEnforcement(request.property, payload);
+    }
   );
 
   app.get(

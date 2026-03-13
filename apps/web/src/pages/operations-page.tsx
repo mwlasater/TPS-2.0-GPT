@@ -5,6 +5,7 @@ import type {
   CrewAssignmentUpdate,
   DelayEventList,
   DelayEventUpdate,
+  FareEnforcementCreate,
   FareEnforcementList,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
@@ -57,6 +58,9 @@ interface OperationsPageProps {
     recordId: string,
     update: FareEnforcementUpdate
   ) => Promise<FareEnforcementList["items"][number] | undefined>;
+  createFare: (
+    input: FareEnforcementCreate
+  ) => Promise<FareEnforcementList["items"][number] | undefined>;
   saveRunApproval: (
     runId: string,
     update: TrainRunApprovalUpdate
@@ -87,6 +91,7 @@ export function OperationsPage({
   saveConsist,
   saveCrew,
   saveDelay,
+  createFare,
   saveFare,
   saveRunApproval,
   saveStop,
@@ -141,6 +146,15 @@ export function OperationsPage({
     activityCount: selectedFare?.activityCount ?? 0,
     notes: selectedFare?.notes ?? "",
     capturedAt: selectedFare?.capturedAt ?? ""
+  });
+  const [newFareForm, setNewFareForm] = useState<FareEnforcementCreate>({
+    runId: selectedRun?.id ?? "",
+    inspectorName: "Morgan Lee",
+    firstLocation: stationStops.items[0]?.stationCode ?? "",
+    secondLocation: stationStops.items.at(-1)?.stationCode ?? "",
+    activityCount: 0,
+    notes: "New fare inspection pass.",
+    capturedAt: "2026-03-06T09:00:00Z"
   });
 
   useEffect(() => {
@@ -205,6 +219,15 @@ export function OperationsPage({
       capturedAt: selectedFare?.capturedAt ?? ""
     });
   }, [selectedFare]);
+
+  useEffect(() => {
+    setNewFareForm((current) => ({
+      ...current,
+      runId: selectedRun?.id ?? "",
+      firstLocation: stationStops.items[0]?.stationCode ?? current.firstLocation,
+      secondLocation: stationStops.items.at(-1)?.stationCode ?? current.secondLocation
+    }));
+  }, [selectedRun?.id, stationStops]);
 
   useEffect(() => {
     setApprovalNotes(selectedRun?.isApproved ? "Reopened for correction." : "Ready for dispatch closeout.");
@@ -725,6 +748,93 @@ export function OperationsPage({
             <p className="editor-span">No fare enforcement summaries available for this property yet.</p>
           )}
         </div>
+        {selectedRun ? (
+          <div className="editor-grid">
+            <label className="field-stack">
+              <span>Run</span>
+              <input readOnly type="text" value={newFareForm.runId} />
+            </label>
+            <label className="field-stack">
+              <span>Inspector</span>
+              <input
+                onChange={(event) => {
+                  setNewFareForm((current) => ({ ...current, inspectorName: event.target.value }));
+                }}
+                type="text"
+                value={newFareForm.inspectorName}
+              />
+            </label>
+            <label className="field-stack">
+              <span>First Location</span>
+              <input
+                onChange={(event) => {
+                  setNewFareForm((current) => ({ ...current, firstLocation: event.target.value }));
+                }}
+                type="text"
+                value={newFareForm.firstLocation}
+              />
+            </label>
+            <label className="field-stack">
+              <span>Second Location</span>
+              <input
+                onChange={(event) => {
+                  setNewFareForm((current) => ({ ...current, secondLocation: event.target.value }));
+                }}
+                type="text"
+                value={newFareForm.secondLocation}
+              />
+            </label>
+            <label className="field-stack">
+              <span>Activity Count</span>
+              <input
+                min="0"
+                onChange={(event) => {
+                  setNewFareForm((current) => ({
+                    ...current,
+                    activityCount: Number(event.target.value)
+                  }));
+                }}
+                type="number"
+                value={newFareForm.activityCount}
+              />
+            </label>
+            <label className="field-stack editor-span">
+              <span>Notes</span>
+              <textarea
+                onChange={(event) => {
+                  setNewFareForm((current) => ({ ...current, notes: event.target.value }));
+                }}
+                rows={3}
+                value={newFareForm.notes}
+              />
+            </label>
+            <label className="field-stack editor-span">
+              <span>Captured At</span>
+              <input
+                onChange={(event) => {
+                  setNewFareForm((current) => ({ ...current, capturedAt: event.target.value }));
+                }}
+                type="text"
+                value={newFareForm.capturedAt}
+              />
+            </label>
+            <div className="action-row">
+              <button
+                className="action-button"
+                disabled={isSaving}
+                onClick={() => {
+                  void runAction(
+                    () => createFare(newFareForm),
+                    "Fare enforcement record created."
+                  );
+                }}
+                type="button"
+              >
+                Create fare record
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className="list-stack">
           {fareEnforcement.items.length ? (
             fareEnforcement.items.map((record) => (

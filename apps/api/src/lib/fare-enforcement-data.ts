@@ -1,4 +1,5 @@
 import type {
+  FareEnforcementCreate,
   FareEnforcementList,
   FareEnforcementRecord,
   FareEnforcementSummary,
@@ -115,4 +116,27 @@ export function updateFareEnforcement(
   row.capturedAt = update.capturedAt;
 
   return row;
+}
+
+export function createFareEnforcement(
+  propertyCode: PropertyCode,
+  input: FareEnforcementCreate
+): FareEnforcementRecord {
+  const source = fareCatalog[propertyCode] ?? { items: [] };
+  fareCatalog[propertyCode] = source;
+
+  const record: FareEnforcementRecord = {
+    id: `fare-${input.runId}-${source.items.length + 1}`,
+    runId: input.runId,
+    inspectorName: input.inspectorName,
+    firstLocation: input.firstLocation,
+    secondLocation: input.secondLocation,
+    activityCount: input.activityCount,
+    notes: input.notes,
+    capturedAt: input.capturedAt
+  };
+
+  source.items.unshift(record);
+
+  return record;
 }

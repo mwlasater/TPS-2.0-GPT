@@ -269,6 +269,16 @@ export const fareEnforcementUpdateSchema = z.object({
   capturedAt: z.string().min(1)
 });
 
+export const fareEnforcementCreateSchema = z.object({
+  runId: z.string().min(1),
+  inspectorName: z.string().min(1),
+  firstLocation: z.string().min(1),
+  secondLocation: z.string().min(1),
+  activityCount: z.number().int().nonnegative(),
+  notes: z.string().min(1),
+  capturedAt: z.string().min(1)
+});
+
 export const permissionGroupSchema = z.object({
   id: z.string(),
   name: z.string(),

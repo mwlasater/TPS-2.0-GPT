@@ -10,6 +10,7 @@ import type {
   DelayEventUpdate,
   FareEnforcementList,
   FareEnforcementRecord,
+  FareEnforcementCreate,
   FareEnforcementSummary,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
@@ -817,6 +818,65 @@ export class PostgresOperationsRepository implements OperationsRepository {
           latestCapturedAt: row.latest_captured_at ? toIsoTimestamp(row.latest_captured_at) : null
         })
       )
+    };
+  }
+
+  async createFareEnforcement(
+    propertyCode: PropertyCode,
+    input: FareEnforcementCreate
+  ): Promise<FareEnforcementRecord> {
+    const result = await this.db.query<FareEnforcementRow>(
+      `
+        INSERT INTO shared.fare_enforcement (
+          id,
+          railroad_code,
+          train_run_id,
+          inspector_name,
+          first_location,
+          second_location,
+          activity_count,
+          notes,
+          captured_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING
+          id,
+          train_run_id,
+          inspector_name,
+          first_location,
+          second_location,
+          activity_count,
+          notes,
+          captured_at
+      `,
+      [
+        `${input.runId}-${Date.now()}`,
+        propertyCode,
+        input.runId,
+        input.inspectorName,
+        input.firstLocation,
+        input.secondLocation,
+        input.activityCount,
+        input.notes,
+        input.capturedAt
+      ]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("fare_enforcement.create_failed");
+    }
+
+    return {
+      id: row.id,
+      runId: row.train_run_id,
+      inspectorName: row.inspector_name,
+      firstLocation: row.first_location,
+      secondLocation: row.second_location,
+      activityCount: row.activity_count,
+      notes: row.notes,
+      capturedAt: toIsoTimestamp(row.captured_at)
     };
   }
 

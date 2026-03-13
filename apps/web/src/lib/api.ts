@@ -9,6 +9,7 @@ import type {
   CrewAssignmentUpdate,
   DelayEventList,
   DelayEventUpdate,
+  FareEnforcementCreate,
   FareEnforcementList,
   FareEnforcementRecord,
   FareEnforcementSummaryList,
@@ -79,7 +80,7 @@ async function fetchPropertyScoped<T>(path: string, propertyCode: PropertyCode):
 async function mutatePropertyScoped<T>(
   path: string,
   propertyCode: PropertyCode,
-  method: "PUT",
+  method: "POST" | "PUT",
   body: unknown
 ): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
@@ -351,6 +352,18 @@ export function fetchFareEnforcement(
 ): Promise<FareEnforcementList> {
   const query = runId ? `?runId=${encodeURIComponent(runId)}` : "";
   return fetchPropertyScoped<FareEnforcementList>(`/fare-enforcement${query}`, propertyCode);
+}
+
+export function createFareEnforcement(
+  propertyCode: PropertyCode,
+  payload: FareEnforcementCreate
+): Promise<FareEnforcementRecord> {
+  return mutatePropertyScoped<FareEnforcementRecord>(
+    "/fare-enforcement",
+    propertyCode,
+    "POST",
+    payload
+  );
 }
 
 export function fetchFareEnforcementSummary(

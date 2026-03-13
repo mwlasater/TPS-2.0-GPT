@@ -519,4 +519,43 @@ describe("PostgresOperationsRepository", () => {
       ]
     });
   });
+
+  it("maps created fare enforcement rows into records", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "fare-new-1",
+          train_run_id: "caltrain-run-1",
+          inspector_name: "Morgan Lee",
+          first_location: "SFC",
+          second_location: "SJC",
+          activity_count: 8,
+          notes: "Midday inspection sweep.",
+          captured_at: new Date("2026-03-06T09:00:00Z")
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const record = await repository.createFareEnforcement("caltrain", {
+      runId: "caltrain-run-1",
+      inspectorName: "Morgan Lee",
+      firstLocation: "SFC",
+      secondLocation: "SJC",
+      activityCount: 8,
+      notes: "Midday inspection sweep.",
+      capturedAt: "2026-03-06T09:00:00Z"
+    });
+
+    expect(record).toEqual({
+      id: "fare-new-1",
+      runId: "caltrain-run-1",
+      inspectorName: "Morgan Lee",
+      firstLocation: "SFC",
+      secondLocation: "SJC",
+      activityCount: 8,
+      notes: "Midday inspection sweep.",
+      capturedAt: "2026-03-06T09:00:00.000Z"
+    });
+  });
 });
