@@ -3,6 +3,7 @@ import type {
   ConsistEquipmentUpdate,
   CrewAssignmentList,
   CrewAssignmentUpdate,
+  DelayEventBatchCreate,
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementCreate,
@@ -16,6 +17,8 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunInitializeRequest,
+  TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryEntry,
@@ -27,6 +30,7 @@ import type {
 import { useEffect, useState } from "react";
 
 import {
+  createDelayEvents,
   fetchConsistEquipment,
   createFareEnforcement,
   fetchCrewAssignments,
@@ -40,6 +44,7 @@ import {
   fetchTrainSchedules,
   fetchTrainRunApprovalHistory,
   fetchTrainScheduleApprovalHistory,
+  initializeTrainRuns,
   updateConsistEquipment,
   updateCrewAssignment,
   updateDelayEvent,
@@ -156,6 +161,9 @@ interface OperationsDataState {
   saveBatchRunApproval: (
     update: TrainRunBatchApprovalUpdate
   ) => Promise<TrainRunBatchApprovalResult | undefined>;
+  initializeRuns: (
+    request: TrainRunInitializeRequest
+  ) => Promise<TrainRunInitializeResult | undefined>;
   saveStop: (
     runId: string,
     stopId: string,
@@ -166,6 +174,10 @@ interface OperationsDataState {
     delayId: string,
     update: DelayEventUpdate
   ) => Promise<DelayEventList["items"][number] | undefined>;
+  createDelayBatch: (
+    runId: string,
+    input: DelayEventBatchCreate
+  ) => Promise<DelayEventList | undefined>;
   saveConsist: (
     runId: string,
     equipmentId: string,
@@ -209,8 +221,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     selectRun: async () => undefined,
     saveRunApproval: async () => undefined,
     saveBatchRunApproval: async () => undefined,
+    initializeRuns: async () => undefined,
     saveStop: async () => undefined,
     saveDelay: async () => undefined,
+    createDelayBatch: async () => undefined,
     saveConsist: async () => undefined,
     saveCrew: async () => undefined,
     saveFare: async () => undefined,
@@ -246,8 +260,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       selectRun: state.selectRun,
       saveRunApproval: state.saveRunApproval,
       saveBatchRunApproval: state.saveBatchRunApproval,
+      initializeRuns: state.initializeRuns,
       saveStop: state.saveStop,
       saveDelay: state.saveDelay,
+      createDelayBatch: state.createDelayBatch,
       saveConsist: state.saveConsist,
       saveCrew: state.saveCrew,
       saveFare: state.saveFare,
@@ -309,8 +325,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             selectRun: state.selectRun,
             saveRunApproval: state.saveRunApproval,
             saveBatchRunApproval: state.saveBatchRunApproval,
+            initializeRuns: state.initializeRuns,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
+            createDelayBatch: state.createDelayBatch,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
             saveFare: state.saveFare,
@@ -346,8 +364,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             selectRun: state.selectRun,
             saveRunApproval: state.saveRunApproval,
             saveBatchRunApproval: state.saveBatchRunApproval,
+            initializeRuns: state.initializeRuns,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
+            createDelayBatch: state.createDelayBatch,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
             saveFare: state.saveFare,
@@ -512,6 +532,38 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     }
   }
 
+  async function initializeRunsForDate(request: TrainRunInitializeRequest) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const result = await initializeTrainRuns(propertyCode, request);
+      setState((current) => {
+        const existingIds = new Set(current.runs.items.map((item) => item.id));
+
+        return {
+          ...current,
+          runs: {
+            items: [
+              ...result.createdRuns.filter((item) => !existingIds.has(item.id)),
+              ...current.runs.items
+            ]
+          },
+          selectedRunId: result.createdRuns[0]?.id ?? current.selectedRunId,
+          isSaving: false
+        };
+      });
+
+      if (result.createdRuns[0]) {
+        await selectRun(result.createdRuns[0].id);
+      }
+
+      return result;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
   async function saveStop(runId: string, stopId: string, update: StationStopUpdate) {
     setState((current) => ({ ...current, isSaving: true }));
 
@@ -556,6 +608,41 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         isSaving: false
       }));
       return delay;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function createDelayBatch(runId: string, input: DelayEventBatchCreate) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const created = await createDelayEvents(propertyCode, runId, input);
+      setState((current) => {
+        const nextItems = [...created.items, ...current.delayEvents.items];
+        const nextDelayMinutes = nextItems.reduce((total, candidate) => total + candidate.minutes, 0);
+
+        return {
+          ...current,
+          delayEvents: {
+            items: nextItems
+          },
+          runs: {
+            items: current.runs.items.map((item) =>
+              item.id === runId
+                ? {
+                    ...item,
+                    delayMinutes: nextDelayMinutes,
+                    status: nextDelayMinutes > 0 ? "delayed" : item.status
+                  }
+                : item
+            )
+          },
+          isSaving: false
+        };
+      });
+      return created;
     } catch (error) {
       setState((current) => ({ ...current, isSaving: false }));
       throw error;
@@ -686,8 +773,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     selectRun,
     saveRunApproval,
     saveBatchRunApproval,
+    initializeRuns: initializeRunsForDate,
     saveStop,
     saveDelay,
+    createDelayBatch,
     saveConsist,
     saveCrew,
     saveFare,

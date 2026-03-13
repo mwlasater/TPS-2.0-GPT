@@ -1,10 +1,12 @@
 import {
   consistEquipmentUpdateSchema,
   crewAssignmentUpdateSchema,
+  delayEventBatchCreateSchema,
   fareEnforcementCreateSchema,
   delayEventUpdateSchema,
   fareEnforcementUpdateSchema,
   stationStopUpdateSchema,
+  trainRunInitializeRequestSchema,
   trainRunBatchApprovalUpdateSchema,
   trainRunApprovalUpdateSchema
 } from "@tps/validation";
@@ -12,10 +14,12 @@ import type { FastifyInstance } from "fastify";
 import type {
   ConsistEquipmentUpdate,
   CrewAssignmentUpdate,
+  DelayEventBatchCreate,
   FareEnforcementCreate,
   DelayEventUpdate,
   FareEnforcementUpdate,
   StationStopUpdate,
+  TrainRunInitializeRequest,
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalUpdate
 } from "@tps/types";
@@ -35,6 +39,17 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => app.dataAccess.operations.listTrainRuns(request.property)
+  );
+
+  app.put(
+    "/train-runs/initialize",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = trainRunInitializeRequestSchema.parse(request.body) as TrainRunInitializeRequest;
+      return app.dataAccess.operations.initializeTrainRuns(request.property, payload);
+    }
   );
 
   app.put(
@@ -130,6 +145,21 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       request.property,
       (request.params as { runId: string }).runId
     )
+  );
+
+  app.post(
+    "/train-runs/:runId/delays/batch",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = delayEventBatchCreateSchema.parse(request.body) as DelayEventBatchCreate;
+      return app.dataAccess.operations.createDelayEvents(
+        request.property,
+        (request.params as { runId: string }).runId,
+        payload
+      );
+    }
   );
 
   app.put(

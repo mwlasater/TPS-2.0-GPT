@@ -5,6 +5,7 @@ import type {
   CrewAssignment,
   CrewAssignmentList,
   CrewAssignmentUpdate,
+  DelayEventBatchCreate,
   DelayEvent,
   DelayEventList,
   DelayEventUpdate,
@@ -20,6 +21,8 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunInitializeRequest,
+  TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryEntry,
@@ -77,6 +80,10 @@ interface DelayEventRow {
   minutes: number;
   notes: string;
   reported_at: string | Date;
+}
+
+interface DelayMinutesRow {
+  delay_minutes: number;
 }
 
 interface ConsistEquipmentRow {
@@ -293,6 +300,105 @@ export class PostgresOperationsRepository implements OperationsRepository {
           approvalBlockers: this.getApprovalBlockers(row)
         })
       )
+    };
+  }
+
+  async initializeTrainRuns(
+    propertyCode: PropertyCode,
+    request: TrainRunInitializeRequest
+  ): Promise<TrainRunInitializeResult> {
+    const createdRuns: TrainRun[] = [];
+    const skippedScheduleIds: string[] = [];
+
+    for (const scheduleId of request.scheduleIds) {
+      const existingRun = await this.db.query<{ id: string }>(
+        `
+          SELECT id
+          FROM shared.train_run
+          WHERE railroad_code = $1
+            AND schedule_id = $2
+            AND operating_date = $3
+        `,
+        [propertyCode, scheduleId, request.operatingDate]
+      );
+
+      if (existingRun.rows[0]) {
+        skippedScheduleIds.push(scheduleId);
+        continue;
+      }
+
+      const result = await this.db.query<TrainRunRow>(
+        `
+          INSERT INTO shared.train_run (
+            id,
+            railroad_code,
+            schedule_id,
+            operating_date,
+            status,
+            delay_minutes,
+            crew_assigned,
+            is_approved,
+            approved_at
+          )
+          SELECT
+            $4,
+            $1,
+            ts.id,
+            $3,
+            'scheduled',
+            0,
+            0,
+            FALSE,
+            NULL
+          FROM shared.train_schedule ts
+          WHERE ts.railroad_code = $1
+            AND ts.id = $2
+          RETURNING
+            id,
+            schedule_id,
+            (SELECT train_number FROM shared.train_schedule WHERE id = schedule_id) AS train_number,
+            operating_date,
+            status,
+            delay_minutes,
+            crew_assigned,
+            is_approved,
+            approved_at,
+            0::INTEGER AS stop_count,
+            0::INTEGER AS consist_count,
+            0::INTEGER AS crew_count
+        `,
+        [
+          propertyCode,
+          scheduleId,
+          request.operatingDate,
+          `run_${propertyCode}_${scheduleId}_${request.operatingDate.replaceAll("-", "_")}`
+        ]
+      );
+
+      const row = result.rows[0];
+
+      if (!row) {
+        skippedScheduleIds.push(scheduleId);
+        continue;
+      }
+
+      createdRuns.push({
+        id: row.id,
+        scheduleId: row.schedule_id,
+        trainNumber: row.train_number,
+        operatingDate: toIsoDate(row.operating_date),
+        status: row.status,
+        delayMinutes: row.delay_minutes,
+        crewAssigned: row.crew_assigned,
+        isApproved: row.is_approved,
+        approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null,
+        approvalBlockers: this.getApprovalBlockers(row)
+      });
+    }
+
+    return {
+      createdRuns,
+      skippedScheduleIds
     };
   }
 
@@ -573,6 +679,94 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
+  async createDelayEvents(
+    propertyCode: PropertyCode,
+    runId: string,
+    input: DelayEventBatchCreate
+  ): Promise<DelayEventList> {
+    await this.assertRunMutable(propertyCode, runId);
+
+    const createdRows: DelayEvent[] = [];
+
+    for (const delay of input.delays) {
+      const result = await this.db.query<DelayEventRow>(
+        `
+          INSERT INTO shared.delay_event (
+            id,
+            train_run_id,
+            category,
+            minutes,
+            notes,
+            reported_at
+          )
+          SELECT
+            $3,
+            tr.id,
+            $4,
+            $5,
+            $6,
+            $7
+          FROM shared.train_run tr
+          WHERE tr.railroad_code = $1
+            AND tr.id = $2
+          RETURNING
+            id,
+            category,
+            minutes,
+            notes,
+            reported_at
+        `,
+        [
+          propertyCode,
+          runId,
+          `delay_${crypto.randomUUID()}`,
+          delay.category,
+          delay.minutes,
+          delay.notes,
+          delay.reportedAt
+        ]
+      );
+
+      const row = result.rows[0];
+
+      if (!row) {
+        throw new Error("delay_event.create_failed");
+      }
+
+      createdRows.push({
+        id: row.id,
+        category: row.category,
+        minutes: row.minutes,
+        notes: row.notes,
+        reportedAt: toIsoTimestamp(row.reported_at)
+      });
+    }
+
+    const totals = await this.db.query<DelayMinutesRow>(
+      `
+        SELECT COALESCE(SUM(minutes), 0)::INTEGER AS delay_minutes
+        FROM shared.delay_event
+        WHERE train_run_id = $1
+      `,
+      [runId]
+    );
+
+    await this.db.query(
+      `
+        UPDATE shared.train_run
+        SET
+          delay_minutes = $2,
+          status = CASE WHEN $2 > 0 AND status <> 'approved' THEN 'delayed' ELSE status END
+        WHERE id = $1
+      `,
+      [runId, totals.rows[0]?.delay_minutes ?? 0]
+    );
+
+    return {
+      items: createdRows
+    };
+  }
+
   async updateStationStop(
     propertyCode: PropertyCode,
     runId: string,
@@ -662,11 +856,29 @@ export class PostgresOperationsRepository implements OperationsRepository {
     await this.db.query(
       `
         UPDATE shared.train_run
-        SET delay_minutes = (
-          SELECT COALESCE(SUM(minutes), 0)
-          FROM shared.delay_event
-          WHERE train_run_id = $1
-        )
+        SET
+          delay_minutes = (
+            SELECT COALESCE(SUM(minutes), 0)
+            FROM shared.delay_event
+            WHERE train_run_id = $1
+          ),
+          status = CASE
+            WHEN (
+              SELECT COALESCE(SUM(minutes), 0)
+              FROM shared.delay_event
+              WHERE train_run_id = $1
+            ) > 0
+              AND status <> 'approved'
+            THEN 'delayed'
+            WHEN status = 'delayed'
+              AND (
+                SELECT COALESCE(SUM(minutes), 0)
+                FROM shared.delay_event
+                WHERE train_run_id = $1
+              ) = 0
+            THEN 'in_progress'
+            ELSE status
+          END
         WHERE id = $1
       `,
       [runId]

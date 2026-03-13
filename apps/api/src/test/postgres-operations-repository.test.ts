@@ -75,6 +75,58 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("maps initialized train runs into created and skipped results", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "run_caltrain_ct_101_2026_03_07",
+            schedule_id: "ct-101",
+            train_number: "101",
+            operating_date: "2026-03-07",
+            status: "scheduled",
+            delay_minutes: 0,
+            crew_assigned: 0,
+            is_approved: false,
+            approved_at: null,
+            stop_count: 0,
+            consist_count: 0,
+            crew_count: 0
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [{ id: "existing-run" }] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const result = await repository.initializeTrainRuns("caltrain", {
+      operatingDate: "2026-03-07",
+      scheduleIds: ["ct-101", "ct-102"]
+    });
+
+    expect(result).toEqual({
+      createdRuns: [
+        {
+          id: "run_caltrain_ct_101_2026_03_07",
+          scheduleId: "ct-101",
+          trainNumber: "101",
+          operatingDate: "2026-03-07",
+          status: "scheduled",
+          delayMinutes: 0,
+          crewAssigned: 0,
+          isApproved: false,
+          approvedAt: null,
+          approvalBlockers: [
+            "Crew assignment required before approval.",
+            "Consist assignment required before approval.",
+            "Station stop records required before approval."
+          ]
+        }
+      ],
+      skippedScheduleIds: ["ct-102"]
+    });
+  });
+
   it("maps approval updates into train runs", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [
@@ -479,6 +531,72 @@ describe("PostgresOperationsRepository", () => {
           minutes: 4,
           notes: "Signal clearance held at interlocking.",
           reportedAt: "2026-03-06T06:19:00.000Z"
+        }
+      ]
+    });
+  });
+
+  it("maps created delay rows into delay events", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "delay-new-1",
+            category: "Mechanical",
+            minutes: 2,
+            notes: "Door recycle at platform.",
+            reported_at: new Date("2026-03-06T06:30:00Z")
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "delay-new-2",
+            category: "Late crew",
+            minutes: 1,
+            notes: "Relief handoff behind schedule.",
+            reported_at: new Date("2026-03-06T06:33:00Z")
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [{ delay_minutes: 7 }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const delays = await repository.createDelayEvents("caltrain", "caltrain-run-1", {
+      delays: [
+        {
+          category: "Mechanical",
+          minutes: 2,
+          notes: "Door recycle at platform.",
+          reportedAt: "2026-03-06T06:30:00Z"
+        },
+        {
+          category: "Late crew",
+          minutes: 1,
+          notes: "Relief handoff behind schedule.",
+          reportedAt: "2026-03-06T06:33:00Z"
+        }
+      ]
+    });
+
+    expect(delays).toEqual({
+      items: [
+        {
+          id: "delay-new-1",
+          category: "Mechanical",
+          minutes: 2,
+          notes: "Door recycle at platform.",
+          reportedAt: "2026-03-06T06:30:00.000Z"
+        },
+        {
+          id: "delay-new-2",
+          category: "Late crew",
+          minutes: 1,
+          notes: "Relief handoff behind schedule.",
+          reportedAt: "2026-03-06T06:33:00.000Z"
         }
       ]
     });

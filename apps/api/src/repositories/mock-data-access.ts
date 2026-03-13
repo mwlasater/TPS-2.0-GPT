@@ -13,6 +13,7 @@ import {
 } from "../lib/baseline-data.js";
 import { listManagedUsers } from "../lib/managed-users.js";
 import {
+  initializeTrainRuns,
   listTrainRuns,
   listTrainSchedules,
   updateTrainRunApproval,
@@ -29,6 +30,7 @@ import { getPropertySettings, updatePropertySettings } from "../lib/property-set
 import { getReferenceData } from "../lib/reference-data.js";
 import { listReportConfig, updateReportConfig } from "../lib/report-config.js";
 import {
+  createDelayEvents,
   listDelayEvents,
   listStationStops,
   updateDelayEvent,
@@ -96,6 +98,7 @@ export function createMockDataAccess(): DataAccess {
     operations: {
       listTrainSchedules,
       listTrainRuns,
+      initializeTrainRuns,
       updateTrainRunApproval(propertyCode, runId, update, actorName) {
         const run = updateTrainRunApproval(propertyCode, runId, update);
         recordTrainRunApprovalHistory(propertyCode, runId, update, actorName);
@@ -128,12 +131,16 @@ export function createMockDataAccess(): DataAccess {
       listStationStops,
       updateStationStop(propertyCode, runId, stopId, update) {
         assertRunMutable(propertyCode, runId);
-        return updateStationStop(propertyCode, stopId, update);
+        return updateStationStop(propertyCode, runId, stopId, update);
       },
       listDelayEvents,
+      createDelayEvents(propertyCode, runId, input) {
+        assertRunMutable(propertyCode, runId);
+        return createDelayEvents(propertyCode, runId, input);
+      },
       updateDelayEvent(propertyCode, runId, delayId, update) {
         assertRunMutable(propertyCode, runId);
-        return updateDelayEvent(propertyCode, delayId, update);
+        return updateDelayEvent(propertyCode, runId, delayId, update);
       },
       listConsistEquipment,
       updateConsistEquipment(propertyCode, runId, equipmentId, update) {

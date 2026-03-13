@@ -1,6 +1,8 @@
 import type {
   PropertyCode,
   TrainRun,
+  TrainRunInitializeRequest,
+  TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalUpdate,
@@ -122,6 +124,10 @@ function buildRuns(propertyCode: PropertyCode): TrainRun[] {
   });
 }
 
+function getRunStatusFromDelayMinutes(delayMinutes: number): TrainRun["status"] {
+  return delayMinutes > 0 ? "delayed" : "scheduled";
+}
+
 export function listTrainSchedules(propertyCode: PropertyCode): TrainScheduleList {
   return {
     items: scheduleCatalog[propertyCode]
@@ -135,6 +141,55 @@ export function listTrainRuns(propertyCode: PropertyCode): TrainRunList {
 
   return {
     items: runCatalog[propertyCode] ?? []
+  };
+}
+
+export function initializeTrainRuns(
+  propertyCode: PropertyCode,
+  request: TrainRunInitializeRequest
+): TrainRunInitializeResult {
+  const schedules = listTrainSchedules(propertyCode).items;
+  const runs = listTrainRuns(propertyCode).items;
+  const createdRuns: TrainRun[] = [];
+  const skippedScheduleIds: string[] = [];
+
+  for (const scheduleId of request.scheduleIds) {
+    const schedule = schedules.find((candidate) => candidate.id === scheduleId);
+
+    if (!schedule) {
+      skippedScheduleIds.push(scheduleId);
+      continue;
+    }
+
+    const existingRun = runs.find(
+      (candidate) => candidate.scheduleId === scheduleId && candidate.operatingDate === request.operatingDate
+    );
+
+    if (existingRun) {
+      skippedScheduleIds.push(scheduleId);
+      continue;
+    }
+
+    const newRun: TrainRun = {
+      id: `${propertyCode}-${schedule.id}-${request.operatingDate.replaceAll("-", "_")}`,
+      scheduleId: schedule.id,
+      trainNumber: schedule.trainNumber,
+      operatingDate: request.operatingDate,
+      status: getRunStatusFromDelayMinutes(0),
+      delayMinutes: 0,
+      crewAssigned: 0,
+      isApproved: false,
+      approvedAt: null,
+      approvalBlockers: []
+    };
+
+    runs.unshift(newRun);
+    createdRuns.push(newRun);
+  }
+
+  return {
+    createdRuns,
+    skippedScheduleIds
   };
 }
 

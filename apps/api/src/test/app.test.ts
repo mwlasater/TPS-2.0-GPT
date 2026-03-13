@@ -4,6 +4,8 @@ import { buildApp } from "../app.js";
 import { resetApprovalHistoryData } from "../lib/approval-history-data.js";
 import { resetFareEnforcementData } from "../lib/fare-enforcement-data.js";
 import { resetOperationsData } from "../lib/operations-data.js";
+import { resetRunDetailData } from "../lib/run-detail-data.js";
+import { resetRunResourceData } from "../lib/run-resource-data.js";
 
 const env = {
   NODE_ENV: "test",
@@ -27,6 +29,8 @@ describe("app contracts", () => {
     resetApprovalHistoryData();
     resetFareEnforcementData();
     resetOperationsData();
+    resetRunDetailData();
+    resetRunResourceData();
   }
 
   beforeAll(async () => {
@@ -649,6 +653,33 @@ describe("app contracts", () => {
     });
   });
 
+  it("initializes daily train runs for the selected schedules", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/initialize",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        operatingDate: "2026-03-07",
+        scheduleIds: ["ct-101"]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      createdRuns: [
+        {
+          scheduleId: "ct-101",
+          operatingDate: "2026-03-07",
+          isApproved: false
+        }
+      ],
+      skippedScheduleIds: []
+    });
+  });
+
   it("returns run detail stops and delays for authorized property context", async () => {
     const stopsResponse = await app.inject({
       method: "GET",
@@ -675,6 +706,47 @@ describe("app contracts", () => {
     });
     expect(delaysResponse.json().items[0]).toMatchObject({
       category: "Signal delay"
+    });
+  });
+
+  it("creates multiple delay events for editable train runs", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/train-runs/caltrain-run-1/delays/batch",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        delays: [
+          {
+            category: "Mechanical",
+            minutes: 2,
+            notes: "Door recycle at platform.",
+            reportedAt: "2026-03-06T06:30:00Z"
+          },
+          {
+            category: "Late crew",
+            minutes: 1,
+            notes: "Relief handoff behind schedule.",
+            reportedAt: "2026-03-06T06:33:00Z"
+          }
+        ]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      items: [
+        {
+          category: "Mechanical",
+          minutes: 2
+        },
+        {
+          category: "Late crew",
+          minutes: 1
+        }
+      ]
     });
   });
 

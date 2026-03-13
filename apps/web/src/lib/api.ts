@@ -7,6 +7,7 @@ import type {
   ConsistEquipmentUpdate,
   CrewAssignmentList,
   CrewAssignmentUpdate,
+  DelayEventBatchCreate,
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementCreate,
@@ -38,6 +39,8 @@ import type {
   StationStopUpdate,
   TrainRunList,
   TrainRun,
+  TrainRunInitializeRequest,
+  TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryList,
@@ -248,6 +251,18 @@ export function fetchTrainRuns(propertyCode: PropertyCode): Promise<TrainRunList
   return fetchPropertyScoped<TrainRunList>("/train-runs", propertyCode);
 }
 
+export function initializeTrainRuns(
+  propertyCode: PropertyCode,
+  payload: TrainRunInitializeRequest
+): Promise<TrainRunInitializeResult> {
+  return mutatePropertyScoped<TrainRunInitializeResult>(
+    "/train-runs/initialize",
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
 export function updateTrainRunApproval(
   propertyCode: PropertyCode,
   runId: string,
@@ -314,6 +329,19 @@ export function fetchDelayEvents(
   runId: string
 ): Promise<DelayEventList> {
   return fetchPropertyScoped<DelayEventList>(`/train-runs/${runId}/delays`, propertyCode);
+}
+
+export function createDelayEvents(
+  propertyCode: PropertyCode,
+  runId: string,
+  payload: DelayEventBatchCreate
+): Promise<DelayEventList> {
+  return mutatePropertyScoped<DelayEventList>(
+    `/train-runs/${runId}/delays/batch`,
+    propertyCode,
+    "POST",
+    payload
+  );
 }
 
 export function updateDelayEvent(

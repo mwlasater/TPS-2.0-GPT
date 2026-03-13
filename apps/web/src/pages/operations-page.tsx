@@ -3,6 +3,8 @@ import type {
   ConsistEquipmentUpdate,
   CrewAssignmentList,
   CrewAssignmentUpdate,
+  DelayEventCreate,
+  DelayEventBatchCreate,
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementCreate,
@@ -16,6 +18,8 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunInitializeRequest,
+  TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryList,
@@ -73,11 +77,18 @@ interface OperationsPageProps {
   saveBatchRunApproval: (
     update: TrainRunBatchApprovalUpdate
   ) => Promise<TrainRunBatchApprovalResult | undefined>;
+  initializeRuns: (
+    request: TrainRunInitializeRequest
+  ) => Promise<TrainRunInitializeResult | undefined>;
   saveStop: (
     runId: string,
     stopId: string,
     update: StationStopUpdate
   ) => Promise<StationStop | undefined>;
+  createDelayBatch: (
+    runId: string,
+    input: DelayEventBatchCreate
+  ) => Promise<DelayEventList | undefined>;
   stationStops: StationStopList;
   source: "api" | "fallback";
 }
@@ -105,12 +116,15 @@ export function OperationsPage({
   saveFare,
   saveRunApproval,
   saveBatchRunApproval,
+  initializeRuns,
   saveStop,
+  createDelayBatch,
   stationStops,
   source
 }: OperationsPageProps) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [approvalNotes, setApprovalNotes] = useState("Ready for dispatch closeout.");
+  const [initializeDate, setInitializeDate] = useState("2026-03-07");
   const selectedRun = runs.items.find((run) => run.id === selectedRunId) ?? runs.items[0];
   const selectedSchedule =
     schedules.items.find((schedule) => schedule.id === selectedRun?.scheduleId) ?? schedules.items[0];
@@ -180,6 +194,30 @@ export function OperationsPage({
     capturedAt: "2026-03-06T09:00:00Z"
   });
   const [fareInspectorFilter, setFareInspectorFilter] = useState("");
+  const [newDelayBatch, setNewDelayBatch] = useState<DelayEventBatchCreate>({
+    delays: [
+      {
+        category: referenceData.delayReasons[0] ?? "Signal delay",
+        minutes: 2,
+        notes: "Additional delay event.",
+        reportedAt: "2026-03-06T06:40:00Z"
+      },
+      {
+        category: referenceData.delayReasons[1] ?? "Passenger loading",
+        minutes: 1,
+        notes: "Trailing platform hold.",
+        reportedAt: "2026-03-06T06:43:00Z"
+      }
+    ]
+  });
+
+  function updateBatchDelay(index: number, update: Partial<DelayEventCreate>) {
+    setNewDelayBatch((current) => ({
+      delays: current.delays.map((delay, candidateIndex) =>
+        candidateIndex === index ? { ...delay, ...update } : delay
+      )
+    }));
+  }
 
   useEffect(() => {
     setSelectedStopId(stationStops.items[0]?.id ?? null);
@@ -333,6 +371,42 @@ export function OperationsPage({
                 {selectedSchedule.serviceDays.map((day) => (
                   <StatusBadge key={day} tone="neutral" label={day} />
                 ))}
+              </div>
+              <div className="editor-grid">
+                <label className="field-stack">
+                  <span>Initialize Date</span>
+                  <input
+                    onChange={(event) => {
+                      setInitializeDate(event.target.value);
+                    }}
+                    type="date"
+                    value={initializeDate}
+                  />
+                </label>
+                <button
+                  className="action-button"
+                  disabled={isSaving}
+                  onClick={() => {
+                    void runAction(
+                      async () => {
+                        const result = await initializeRuns({
+                          operatingDate: initializeDate,
+                          scheduleIds: selectedSchedule ? [selectedSchedule.id] : []
+                        });
+
+                        if (!result?.createdRuns.length) {
+                          throw new Error(
+                            `no runs initialized${result?.skippedScheduleIds.length ? `; skipped ${result.skippedScheduleIds.join(", ")}` : ""}`
+                          );
+                        }
+                      },
+                      `Initialized ${selectedSchedule.trainNumber} for ${initializeDate}.`
+                    );
+                  }}
+                  type="button"
+                >
+                  Initialize selected schedule
+                </button>
               </div>
               <div className="list-stack">
                 {scheduleRuns.map((run) => (
@@ -627,6 +701,97 @@ export function OperationsPage({
                   type="button"
                 >
                   Save selected delay
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {selectedRun ? (
+            <div className="editor-grid">
+              <label className="field-stack">
+                <span>Delay 1 Category</span>
+                <select
+                  onChange={(event) => {
+                    updateBatchDelay(0, { category: event.target.value });
+                  }}
+                  value={newDelayBatch.delays[0]?.category ?? ""}
+                >
+                  {referenceData.delayReasons.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-stack">
+                <span>Delay 1 Minutes</span>
+                <input
+                  min="0"
+                  onChange={(event) => {
+                    updateBatchDelay(0, { minutes: Number(event.target.value) });
+                  }}
+                  type="number"
+                  value={newDelayBatch.delays[0]?.minutes ?? 0}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Delay 2 Category</span>
+                <select
+                  onChange={(event) => {
+                    updateBatchDelay(1, { category: event.target.value });
+                  }}
+                  value={newDelayBatch.delays[1]?.category ?? ""}
+                >
+                  {referenceData.delayReasons.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-stack">
+                <span>Delay 2 Minutes</span>
+                <input
+                  min="0"
+                  onChange={(event) => {
+                    updateBatchDelay(1, { minutes: Number(event.target.value) });
+                  }}
+                  type="number"
+                  value={newDelayBatch.delays[1]?.minutes ?? 0}
+                />
+              </label>
+              <label className="field-stack editor-span">
+                <span>Delay 1 Notes</span>
+                <textarea
+                  onChange={(event) => {
+                    updateBatchDelay(0, { notes: event.target.value });
+                  }}
+                  rows={2}
+                  value={newDelayBatch.delays[0]?.notes ?? ""}
+                />
+              </label>
+              <label className="field-stack editor-span">
+                <span>Delay 2 Notes</span>
+                <textarea
+                  onChange={(event) => {
+                    updateBatchDelay(1, { notes: event.target.value });
+                  }}
+                  rows={2}
+                  value={newDelayBatch.delays[1]?.notes ?? ""}
+                />
+              </label>
+              <div className="action-row">
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving}
+                  onClick={() => {
+                    void runAction(
+                      () => createDelayBatch(selectedRun.id, newDelayBatch),
+                      `Added ${newDelayBatch.delays.length} delay events.`
+                    );
+                  }}
+                  type="button"
+                >
+                  Add multiple delays
                 </button>
               </div>
             </div>

@@ -166,3 +166,13 @@ export function updateCrewAssignment(
 
   return row;
 }
+
+export function resetRunResourceData(): void {
+  for (const propertyCode of Object.keys(consistCatalog) as PropertyCode[]) {
+    delete consistCatalog[propertyCode];
+  }
+
+  for (const propertyCode of Object.keys(crewCatalog) as PropertyCode[]) {
+    delete crewCatalog[propertyCode];
+  }
+}

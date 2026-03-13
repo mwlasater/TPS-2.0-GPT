@@ -1,4 +1,5 @@
 import type {
+  DelayEventBatchCreate,
   DelayEvent,
   DelayEventList,
   DelayEventUpdate,
@@ -62,7 +63,7 @@ const streetcarStops: StationStopList = {
   ]
 };
 
-const delayCatalog: Partial<Record<PropertyCode, DelayEventList>> = {};
+const delayCatalog: Partial<Record<PropertyCode, Partial<Record<string, DelayEventList>>>> = {};
 
 const streetcarProperties = new Set<PropertyCode>([
   "kcstreetcar",
@@ -70,11 +71,15 @@ const streetcarProperties = new Set<PropertyCode>([
   "octastreetcar"
 ]);
 
-const stopCatalog: Partial<Record<PropertyCode, StationStopList>> = {};
+const stopCatalog: Partial<Record<PropertyCode, Partial<Record<string, StationStopList>>>> = {};
 
-export function listStationStops(propertyCode: PropertyCode, runId: string): StationStopList {
+function getRunStops(propertyCode: PropertyCode, runId: string): StationStopList {
   if (!stopCatalog[propertyCode]) {
-    stopCatalog[propertyCode] =
+    stopCatalog[propertyCode] = {};
+  }
+
+  if (!stopCatalog[propertyCode]![runId]) {
+    stopCatalog[propertyCode]![runId] =
       runId.includes("streetcar") || streetcarProperties.has(propertyCode)
         ? {
             items: streetcarStops.items.map((stop) => ({ ...stop }))
@@ -84,52 +89,89 @@ export function listStationStops(propertyCode: PropertyCode, runId: string): Sta
           };
   }
 
-  return stopCatalog[propertyCode]!;
+  return stopCatalog[propertyCode]![runId]!;
+}
+
+function getRunDelays(propertyCode: PropertyCode, runId: string): DelayEventList {
+  if (!delayCatalog[propertyCode]) {
+    delayCatalog[propertyCode] = {};
+  }
+
+  if (!delayCatalog[propertyCode]![runId]) {
+    delayCatalog[propertyCode]![runId] =
+      runId.includes("streetcar") || streetcarProperties.has(propertyCode)
+        ? {
+            items: [
+              {
+                id: "street-delay-1",
+                category: "Traffic hold",
+                minutes: 2,
+                notes: "Signalized crossing blocked by downtown traffic.",
+                reportedAt: "2026-03-06T07:19:00Z"
+              }
+            ]
+          }
+        : {
+            items: [
+              {
+                id: "delay-1",
+                category: "Signal delay",
+                minutes: 4,
+                notes: "Signal clearance held at interlocking.",
+                reportedAt: "2026-03-06T06:19:00Z"
+              },
+              {
+                id: "delay-2",
+                category: "Passenger loading",
+                minutes: 3,
+                notes: "Heavy boarding volume at central station.",
+                reportedAt: "2026-03-06T06:24:00Z"
+              }
+            ]
+          };
+  }
+
+  return delayCatalog[propertyCode]![runId]!;
+}
+
+export function listStationStops(propertyCode: PropertyCode, runId: string): StationStopList {
+  return getRunStops(propertyCode, runId);
 }
 
 export function listDelayEvents(propertyCode: PropertyCode, runId: string): DelayEventList {
-  if (!delayCatalog[propertyCode]) {
-    delayCatalog[propertyCode] = runId.includes("streetcar") || streetcarProperties.has(propertyCode)
-      ? {
-          items: [
-            {
-              id: "street-delay-1",
-              category: "Traffic hold",
-              minutes: 2,
-              notes: "Signalized crossing blocked by downtown traffic.",
-              reportedAt: "2026-03-06T07:19:00Z"
-            }
-          ]
-        }
-      : {
-          items: [
-            {
-              id: "delay-1",
-              category: "Signal delay",
-              minutes: 4,
-              notes: "Signal clearance held at interlocking.",
-              reportedAt: "2026-03-06T06:19:00Z"
-            },
-            {
-              id: "delay-2",
-              category: "Passenger loading",
-              minutes: 3,
-              notes: "Heavy boarding volume at central station.",
-              reportedAt: "2026-03-06T06:24:00Z"
-            }
-          ]
-        };
-  }
+  return getRunDelays(propertyCode, runId);
+}
 
-  return delayCatalog[propertyCode]!;
+export function createDelayEvents(
+  propertyCode: PropertyCode,
+  runId: string,
+  input: DelayEventBatchCreate
+): DelayEventList {
+  const delays = getRunDelays(propertyCode, runId);
+  const created = input.delays.map(
+    (delay, index): DelayEvent => ({
+      id: `${runId}-delay-${crypto.randomUUID()}-${index + 1}`,
+      category: delay.category,
+      minutes: delay.minutes,
+      notes: delay.notes,
+      reportedAt: delay.reportedAt
+    })
+  );
+
+  delays.items.unshift(...created);
+
+  return {
+    items: created
+  };
 }
 
 export function updateDelayEvent(
   propertyCode: PropertyCode,
+  runId: string,
   delayId: string,
   update: DelayEventUpdate
 ): DelayEvent {
-  const row = listDelayEvents(propertyCode, "").items.find((candidate) => candidate.id === delayId);
+  const row = listDelayEvents(propertyCode, runId).items.find((candidate) => candidate.id === delayId);
 
   if (!row) {
     throw new Error("delay_event.not_found");
@@ -145,6 +187,7 @@ export function updateDelayEvent(
 
 export function updateStationStop(
   propertyCode: PropertyCode,
+  runId: string,
   stopId: string,
   update: {
     actualTime: string | null;
@@ -152,7 +195,7 @@ export function updateStationStop(
     alightings: number;
   }
 ): StationStop {
-  const row = listStationStops(propertyCode, "").items.find((candidate) => candidate.id === stopId);
+  const row = listStationStops(propertyCode, runId).items.find((candidate) => candidate.id === stopId);
 
   if (!row) {
     throw new Error("station_stop.not_found");
@@ -163,4 +206,14 @@ export function updateStationStop(
   row.alightings = update.alightings;
 
   return row;
+}
+
+export function resetRunDetailData(): void {
+  for (const propertyCode of Object.keys(stopCatalog) as PropertyCode[]) {
+    delete stopCatalog[propertyCode];
+  }
+
+  for (const propertyCode of Object.keys(delayCatalog) as PropertyCode[]) {
+    delete delayCatalog[propertyCode];
+  }
 }
