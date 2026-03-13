@@ -18,7 +18,8 @@ describe("seed service", () => {
       "0008_train_run_approval_history",
       "0009_fare_enforcement_counts",
       "0010_delay_management",
-      "0011_resource_templates"
+      "0011_resource_templates",
+      "0012_delay_templates"
     ]);
   });
 });

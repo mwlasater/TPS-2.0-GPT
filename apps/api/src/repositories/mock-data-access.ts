@@ -33,10 +33,12 @@ import { getPropertySettings, updatePropertySettings } from "../lib/property-set
 import { getReferenceData } from "../lib/reference-data.js";
 import { listReportConfig, updateReportConfig } from "../lib/report-config.js";
 import {
+  createDelayFromTemplate,
   createDelayEvents,
   deleteDelayEvent,
   deleteRunDetailState,
   getDelayAdditionalInfo,
+  listDelayTemplates,
   listDelayEvents,
   listDelayCommonLocations,
   listSpecialMovements,
@@ -166,9 +168,14 @@ export function createMockDataAccess(): DataAccess {
       },
       listDelayEvents,
       listDelayCommonLocations,
+      listDelayTemplates,
       listSpecialMovements,
       getDelayAdditionalInfo,
       updateDelayAdditionalInfo,
+      createDelayFromTemplate(propertyCode, runId, input) {
+        assertRunMutable(propertyCode, runId);
+        return createDelayFromTemplate(propertyCode, runId, input);
+      },
       createDelayEvents(propertyCode, runId, input) {
         assertRunMutable(propertyCode, runId);
         return createDelayEvents(propertyCode, runId, input);

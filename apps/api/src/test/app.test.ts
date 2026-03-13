@@ -788,6 +788,24 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns delay templates for authorized property context", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/delays/templates",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().items[0]).toMatchObject({
+      id: "delay-template-signal",
+      name: "Signal Hold",
+      category: "Signal delay"
+    });
+  });
+
   it("updates delay additional info for authorized property context", async () => {
     const response = await app.inject({
       method: "PUT",
@@ -853,6 +871,28 @@ describe("app contracts", () => {
           minutes: 1
         }
       ]
+    });
+  });
+
+  it("creates delay events from templates for editable train runs", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/train-runs/caltrain-run-1/delays/template",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        templateId: "delay-template-signal",
+        reportedAt: "2026-03-06T06:28:00Z"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      category: "Signal delay",
+      minutes: 4,
+      notes: "Signal clearance held at interlocking."
     });
   });
 

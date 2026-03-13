@@ -668,6 +668,67 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("maps template-created delay rows into delay events", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "delay-template-signal",
+            template_name: "Signal Hold",
+            category: "Signal delay",
+            minutes: 4,
+            notes: "Signal clearance held at interlocking.",
+            notable_delay_type: "Interlocking failure",
+            special_movement_id: "movement-single-track"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "delay-new-template",
+            category: "Signal delay",
+            minutes: 4,
+            notes: "Signal clearance held at interlocking.",
+            reported_at: new Date("2026-03-06T06:28:00Z")
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [{ delay_minutes: 11 }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            delay_id: "delay-new-template",
+            location_detail: "",
+            responsible_party: "",
+            notable_delay_type: "Interlocking failure",
+            special_movement_id: "movement-single-track",
+            work_order_id: null,
+            mechanical_notes: "",
+            passenger_impact_summary: ""
+          }
+        ]
+      });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const delay = await repository.createDelayFromTemplate("caltrain", "caltrain-run-1", {
+      templateId: "delay-template-signal",
+      reportedAt: "2026-03-06T06:28:00Z"
+    });
+
+    expect(delay).toEqual({
+      id: "delay-new-template",
+      category: "Signal delay",
+      minutes: 4,
+      notes: "Signal clearance held at interlocking.",
+      reportedAt: "2026-03-06T06:28:00.000Z"
+    });
+  });
+
   it("maps deleted delay rows into delete results", async () => {
     const query = vi.fn()
       .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
@@ -705,6 +766,39 @@ describe("PostgresOperationsRepository", () => {
           id: "loc-sfc",
           label: "San Francisco",
           usageCount: 18
+        }
+      ]
+    });
+  });
+
+  it("maps delay template rows into records", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "delay-template-signal",
+          template_name: "Signal Hold",
+          category: "Signal delay",
+          minutes: 4,
+          notes: "Signal clearance held at interlocking.",
+          notable_delay_type: "Interlocking failure",
+          special_movement_id: "movement-single-track"
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const templates = await repository.listDelayTemplates("caltrain");
+
+    expect(templates).toEqual({
+      items: [
+        {
+          id: "delay-template-signal",
+          name: "Signal Hold",
+          category: "Signal delay",
+          minutes: 4,
+          notes: "Signal clearance held at interlocking.",
+          notableDelayType: "Interlocking failure",
+          specialMovementId: "movement-single-track"
         }
       ]
     });

@@ -12,6 +12,7 @@ import type {
   DelayCommonLocationList,
   DelayEventDeleteResult,
   DelayEventList,
+  DelayTemplateList,
   DelayEventUpdate,
   FareEnforcementCreate,
   FareEnforcementDashboard,
@@ -57,6 +58,7 @@ interface OperationsPageProps {
   scheduleApprovalHistory: TrainRunApprovalHistoryList;
   delayAdditionalInfo: Record<string, DelayAdditionalInfo>;
   delayCommonLocations: DelayCommonLocationList;
+  delayTemplates: DelayTemplateList;
   specialMovements: SpecialMovementList;
   schedules: TrainScheduleList;
   selectedRunId: string | null;
@@ -106,6 +108,11 @@ interface OperationsPageProps {
     runId: string,
     input: DelayEventBatchCreate
   ) => Promise<DelayEventList | undefined>;
+  createDelayTemplate: (
+    runId: string,
+    templateId: string,
+    reportedAt: string
+  ) => Promise<DelayEventList["items"][number] | undefined>;
   saveDelayAdditionalInfo: (
     delayId: string,
     update: DelayAdditionalInfoUpdate
@@ -135,6 +142,7 @@ export function OperationsPage({
   scheduleApprovalHistory,
   delayAdditionalInfo,
   delayCommonLocations,
+  delayTemplates,
   specialMovements,
   schedules,
   selectedRunId,
@@ -153,6 +161,7 @@ export function OperationsPage({
   deleteRun,
   saveStop,
   createDelayBatch,
+  createDelayTemplate,
   saveDelayAdditionalInfo,
   deleteDelay,
   stationStops,
@@ -172,6 +181,9 @@ export function OperationsPage({
 
   const [selectedStopId, setSelectedStopId] = useState<string | null>(stationStops.items[0]?.id ?? null);
   const [selectedDelayId, setSelectedDelayId] = useState<string | null>(delayEvents.items[0]?.id ?? null);
+  const [selectedDelayTemplateId, setSelectedDelayTemplateId] = useState<string>(
+    delayTemplates.items[0]?.id ?? ""
+  );
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(consist.items[0]?.id ?? null);
   const [selectedCrewId, setSelectedCrewId] = useState<string | null>(crew.items[0]?.id ?? null);
   const [selectedConsistTemplateId, setSelectedConsistTemplateId] = useState(
@@ -262,6 +274,7 @@ export function OperationsPage({
       }
     ]
   });
+  const [delayTemplateReportedAt, setDelayTemplateReportedAt] = useState("2026-03-06T06:28:00Z");
 
   function updateBatchDelay(index: number, update: Partial<DelayEventCreate>) {
     setNewDelayBatch((current) => ({
@@ -278,6 +291,10 @@ export function OperationsPage({
   useEffect(() => {
     setSelectedDelayId(delayEvents.items[0]?.id ?? null);
   }, [delayEvents]);
+
+  useEffect(() => {
+    setSelectedDelayTemplateId(delayTemplates.items[0]?.id ?? "");
+  }, [delayTemplates]);
 
   useEffect(() => {
     setSelectedEquipmentId(consist.items[0]?.id ?? null);
@@ -937,6 +954,52 @@ export function OperationsPage({
           ) : null}
           {selectedRun ? (
             <div className="editor-grid">
+              <label className="field-stack editor-span">
+                <span>Delay Template</span>
+                <select
+                  onChange={(event) => {
+                    setSelectedDelayTemplateId(event.target.value);
+                  }}
+                  value={selectedDelayTemplateId}
+                >
+                  <option value="">Select template</option>
+                  {delayTemplates.items.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-stack">
+                <span>Template Reported At</span>
+                <input
+                  onChange={(event) => {
+                    setDelayTemplateReportedAt(event.target.value);
+                  }}
+                  type="text"
+                  value={delayTemplateReportedAt}
+                />
+              </label>
+              <div className="action-row">
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving || !selectedDelayTemplateId}
+                  onClick={() => {
+                    void runAction(
+                      () =>
+                        createDelayTemplate(
+                          selectedRun.id,
+                          selectedDelayTemplateId,
+                          delayTemplateReportedAt
+                        ),
+                      "Delay created from template."
+                    );
+                  }}
+                  type="button"
+                >
+                  Add delay from template
+                </button>
+              </div>
               <label className="field-stack">
                 <span>Delay 1 Category</span>
                 <select

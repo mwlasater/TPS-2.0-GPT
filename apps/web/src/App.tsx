@@ -75,6 +75,7 @@ export function App() {
               scheduleApprovalHistory={operationsData.scheduleApprovalHistory}
               delayAdditionalInfo={operationsData.delayAdditionalInfo}
               delayCommonLocations={operationsData.delayCommonLocations}
+              delayTemplates={operationsData.delayTemplates}
               specialMovements={operationsData.specialMovements}
               selectedRunId={operationsData.selectedRunId}
               selectRun={operationsData.selectRun}
@@ -84,6 +85,7 @@ export function App() {
               swapCrew={operationsData.swapCrew}
               saveDelay={operationsData.saveDelay}
               createDelayBatch={operationsData.createDelayBatch}
+              createDelayTemplate={operationsData.createDelayTemplate}
               saveDelayAdditionalInfo={operationsData.saveDelayAdditionalInfo}
               deleteDelay={operationsData.deleteDelay}
               saveBatchRunApproval={operationsData.saveBatchRunApproval}

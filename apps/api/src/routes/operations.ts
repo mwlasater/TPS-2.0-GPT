@@ -3,6 +3,7 @@ import {
   delayAdditionalInfoUpdateSchema,
   crewAssignmentUpdateSchema,
   delayEventBatchCreateSchema,
+  delayTemplateCreateRequestSchema,
   fareEnforcementCreateSchema,
   delayEventUpdateSchema,
   fareEnforcementUpdateSchema,
@@ -18,6 +19,7 @@ import type {
   CrewAssignmentUpdate,
   DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
+  DelayTemplateCreateRequest,
   FareEnforcementCreate,
   DelayEventUpdate,
   FareEnforcementUpdate,
@@ -171,6 +173,14 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
   );
 
   app.get(
+    "/delays/templates",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listDelayTemplates(request.property)
+  );
+
+  app.get(
     "/delays/special-movements",
     {
       preHandler: [app.authenticate, app.requireProperty]
@@ -215,6 +225,21 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       request.property,
       (request.params as { runId: string }).runId
     )
+  );
+
+  app.post(
+    "/train-runs/:runId/delays/template",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = delayTemplateCreateRequestSchema.parse(request.body) as DelayTemplateCreateRequest;
+      return app.dataAccess.operations.createDelayFromTemplate(
+        request.property,
+        (request.params as { runId: string }).runId,
+        payload
+      );
+    }
   );
 
   app.post(

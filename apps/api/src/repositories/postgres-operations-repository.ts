@@ -17,6 +17,9 @@ import type {
   DelayEventDeleteResult,
   DelayEvent,
   DelayEventList,
+  DelayTemplate,
+  DelayTemplateCreateRequest,
+  DelayTemplateList,
   DelayEventUpdate,
   FareEnforcementList,
   FareEnforcementRecord,
@@ -57,6 +60,7 @@ import {
   getDelayAdditionalInfo,
   listDelayCommonLocations,
   listDelayEvents,
+  listDelayTemplates,
   listSpecialMovements,
   listStationStops
 } from "../lib/run-detail-data.js";
@@ -131,6 +135,16 @@ interface DelayAdditionalInfoRow {
   work_order_id: string | null;
   mechanical_notes: string;
   passenger_impact_summary: string;
+}
+
+interface DelayTemplateRow {
+  id: string;
+  template_name: string;
+  category: string;
+  minutes: number;
+  notes: string;
+  notable_delay_type: string;
+  special_movement_id: string | null;
 }
 
 interface ConsistEquipmentRow {
@@ -869,6 +883,43 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
+  async listDelayTemplates(propertyCode: PropertyCode): Promise<DelayTemplateList> {
+    const result = await this.db.query<DelayTemplateRow>(
+      `
+        SELECT
+          id,
+          template_name,
+          category,
+          minutes,
+          notes,
+          notable_delay_type,
+          special_movement_id
+        FROM shared.delay_template
+        WHERE railroad_code = $1
+        ORDER BY template_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listDelayTemplates(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): DelayTemplate => ({
+          id: row.id,
+          name: row.template_name,
+          category: row.category,
+          minutes: row.minutes,
+          notes: row.notes,
+          notableDelayType: row.notable_delay_type,
+          specialMovementId: row.special_movement_id
+        })
+      )
+    };
+  }
+
   async listSpecialMovements(propertyCode: PropertyCode): Promise<SpecialMovementList> {
     const result = await this.db.query<SpecialMovementRow>(
       `
@@ -1102,6 +1153,50 @@ export class PostgresOperationsRepository implements OperationsRepository {
     return {
       items: createdRows
     };
+  }
+
+  async createDelayFromTemplate(
+    propertyCode: PropertyCode,
+    runId: string,
+    input: DelayTemplateCreateRequest
+  ): Promise<DelayEvent> {
+    await this.assertRunMutable(propertyCode, runId);
+
+    const template = (await this.listDelayTemplates(propertyCode)).items.find(
+      (item) => item.id === input.templateId
+    );
+
+    if (!template) {
+      throw new Error("delay_template.not_found");
+    }
+
+    const created = await this.createDelayEvents(propertyCode, runId, {
+      delays: [
+        {
+          category: template.category,
+          minutes: template.minutes,
+          notes: template.notes,
+          reportedAt: input.reportedAt
+        }
+      ]
+    });
+    const delay = created.items[0];
+
+    if (!delay) {
+      throw new Error("delay_event.create_failed");
+    }
+
+    await this.updateDelayAdditionalInfo(propertyCode, delay.id, {
+      locationDetail: "",
+      responsibleParty: "",
+      notableDelayType: template.notableDelayType,
+      specialMovementId: template.specialMovementId,
+      workOrderId: null,
+      mechanicalNotes: "",
+      passengerImpactSummary: ""
+    });
+
+    return delay;
   }
 
   async deleteDelayEvent(

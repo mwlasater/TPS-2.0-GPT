@@ -11,6 +11,7 @@ import type {
   DelayCommonLocationList,
   DelayEventDeleteResult,
   DelayEventList,
+  DelayTemplateList,
   DelayEventUpdate,
   FareEnforcementCreate,
   FareEnforcementDashboard,
@@ -39,11 +40,13 @@ import { useEffect, useState } from "react";
 
 import {
   createDelayEvents,
+  createDelayFromTemplate,
   deleteDelayEvent,
   deleteTrainRun,
   fetchConsistTemplates,
   fetchDelayAdditionalInfo,
   fetchDelayCommonLocations,
+  fetchDelayTemplates,
   fetchConsistEquipment,
   fetchCrewTemplates,
   createFareEnforcement,
@@ -80,6 +83,7 @@ import {
   demoDelayAdditionalInfo,
   demoDelayCommonLocations,
   demoDelayEvents,
+  demoDelayTemplates,
   demoFareEnforcement,
   demoFareEnforcementSummary,
   demoReferenceData,
@@ -172,6 +176,7 @@ interface OperationsDataState {
   scheduleApprovalHistory: TrainRunApprovalHistoryList;
   delayAdditionalInfo: Record<string, DelayAdditionalInfo>;
   delayCommonLocations: DelayCommonLocationList;
+  delayTemplates: DelayTemplateList;
   specialMovements: SpecialMovementList;
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
@@ -209,6 +214,11 @@ interface OperationsDataState {
     runId: string,
     input: DelayEventBatchCreate
   ) => Promise<DelayEventList | undefined>;
+  createDelayTemplate: (
+    runId: string,
+    templateId: string,
+    reportedAt: string
+  ) => Promise<DelayEventList["items"][number] | undefined>;
   saveDelayAdditionalInfo: (
     delayId: string,
     update: DelayAdditionalInfoUpdate
@@ -254,6 +264,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     ),
     delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
     delayCommonLocations: demoDelayCommonLocations[propertyCode],
+    delayTemplates: demoDelayTemplates[propertyCode],
     specialMovements: demoSpecialMovements[propertyCode],
     consist: demoConsistEquipment[propertyCode],
     consistTemplates: demoConsistTemplates[propertyCode],
@@ -277,6 +288,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     saveStop: async () => undefined,
     saveDelay: async () => undefined,
     createDelayBatch: async () => undefined,
+    createDelayTemplate: async () => undefined,
     deleteDelay: async () => undefined,
     saveConsist: async () => undefined,
     saveCrew: async () => undefined,
@@ -304,6 +316,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       ),
       delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
       delayCommonLocations: demoDelayCommonLocations[propertyCode],
+      delayTemplates: demoDelayTemplates[propertyCode],
       specialMovements: demoSpecialMovements[propertyCode],
       consist: demoConsistEquipment[propertyCode],
       consistTemplates: demoConsistTemplates[propertyCode],
@@ -327,6 +340,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       saveStop: state.saveStop,
       saveDelay: state.saveDelay,
       createDelayBatch: state.createDelayBatch,
+      createDelayTemplate: state.createDelayTemplate,
       deleteDelay: state.deleteDelay,
       saveConsist: state.saveConsist,
       saveCrew: state.saveCrew,
@@ -339,6 +353,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     void Promise.all([
       fetchReferenceData(propertyCode),
       fetchDelayCommonLocations(propertyCode),
+      fetchDelayTemplates(propertyCode),
       fetchSpecialMovements(propertyCode),
       fetchConsistTemplates(propertyCode),
       fetchCrewTemplates(propertyCode),
@@ -349,6 +364,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         async ([
           referenceData,
           delayCommonLocations,
+          delayTemplates,
           specialMovements,
           consistTemplates,
           crewTemplates,
@@ -406,6 +422,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             consistTemplates,
             crew,
             crewTemplates,
+            delayTemplates,
             delayEvents,
             fareEnforcement,
             fareDashboard,
@@ -424,6 +441,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
             createDelayBatch: state.createDelayBatch,
+            createDelayTemplate: state.createDelayTemplate,
             deleteDelay: state.deleteDelay,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
@@ -452,6 +470,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             ),
             delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
             delayCommonLocations: demoDelayCommonLocations[propertyCode],
+            delayTemplates: demoDelayTemplates[propertyCode],
             specialMovements: demoSpecialMovements[propertyCode],
             consist: demoConsistEquipment[propertyCode],
             consistTemplates: demoConsistTemplates[propertyCode],
@@ -475,6 +494,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
             createDelayBatch: state.createDelayBatch,
+            createDelayTemplate: state.createDelayTemplate,
             deleteDelay: state.deleteDelay,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
@@ -541,6 +561,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         stationStops: demoStationStops[propertyCode],
         delayEvents: demoDelayEvents[propertyCode],
         delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
+        delayTemplates: demoDelayTemplates[propertyCode],
         consist: demoConsistEquipment[propertyCode],
         crew: demoCrewAssignments[propertyCode],
         fareEnforcement: demoFareEnforcement[propertyCode],
@@ -880,6 +901,49 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     }
   }
 
+  async function createDelayTemplate(runId: string, templateId: string, reportedAt: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const delay = await createDelayFromTemplate(propertyCode, runId, {
+        templateId,
+        reportedAt
+      });
+      const additionalInfo = await fetchDelayAdditionalInfo(propertyCode, delay.id);
+      setState((current) => {
+        const nextItems = [delay, ...current.delayEvents.items];
+        const nextDelayMinutes = nextItems.reduce((total, candidate) => total + candidate.minutes, 0);
+
+        return {
+          ...current,
+          delayEvents: {
+            items: nextItems
+          },
+          delayAdditionalInfo: {
+            ...current.delayAdditionalInfo,
+            [delay.id]: additionalInfo
+          },
+          runs: {
+            items: current.runs.items.map((item) =>
+              item.id === runId
+                ? {
+                    ...item,
+                    delayMinutes: nextDelayMinutes,
+                    status: nextDelayMinutes > 0 ? "delayed" : item.status
+                  }
+                : item
+            )
+          },
+          isSaving: false
+        };
+      });
+      return delay;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
   async function removeDelay(runId: string, delayId: string) {
     setState((current) => ({ ...current, isSaving: true }));
 
@@ -1078,6 +1142,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     saveDelay,
     saveDelayAdditionalInfo: saveDelayMetadata,
     createDelayBatch,
+    createDelayTemplate,
     deleteDelay: removeDelay,
     saveConsist,
     saveCrew,

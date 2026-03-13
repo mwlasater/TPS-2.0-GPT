@@ -14,6 +14,8 @@ import type {
   DelayEventBatchCreate,
   DelayCommonLocationList,
   DelayEventDeleteResult,
+  DelayTemplateCreateRequest,
+  DelayTemplateList,
   FileServiceList,
   JobProfile,
   JobProfileList,
@@ -156,6 +158,7 @@ export interface OperationsRepository {
   ): MaybePromise<StationStop>;
   listDelayEvents(propertyCode: PropertyCode, runId: string): MaybePromise<DelayEventList>;
   listDelayCommonLocations(propertyCode: PropertyCode): MaybePromise<DelayCommonLocationList>;
+  listDelayTemplates(propertyCode: PropertyCode): MaybePromise<DelayTemplateList>;
   listSpecialMovements(propertyCode: PropertyCode): MaybePromise<SpecialMovementList>;
   getDelayAdditionalInfo(
     propertyCode: PropertyCode,
@@ -171,6 +174,11 @@ export interface OperationsRepository {
     runId: string,
     input: DelayEventBatchCreate
   ): MaybePromise<DelayEventList>;
+  createDelayFromTemplate(
+    propertyCode: PropertyCode,
+    runId: string,
+    input: DelayTemplateCreateRequest
+  ): MaybePromise<DelayEvent>;
   deleteDelayEvent(
     propertyCode: PropertyCode,
     runId: string,

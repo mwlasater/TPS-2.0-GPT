@@ -15,6 +15,8 @@ import type {
   DelayCommonLocationList,
   DelayEventDeleteResult,
   DelayEventList,
+  DelayTemplateCreateRequest,
+  DelayTemplateList,
   DelayEventUpdate,
   FareEnforcementCreate,
   FareEnforcementDashboard,
@@ -369,6 +371,10 @@ export function fetchDelayCommonLocations(
   return fetchPropertyScoped<DelayCommonLocationList>("/delays/common-locations", propertyCode);
 }
 
+export function fetchDelayTemplates(propertyCode: PropertyCode): Promise<DelayTemplateList> {
+  return fetchPropertyScoped<DelayTemplateList>("/delays/templates", propertyCode);
+}
+
 export function fetchSpecialMovements(
   propertyCode: PropertyCode
 ): Promise<SpecialMovementList> {
@@ -402,6 +408,19 @@ export function createDelayEvents(
 ): Promise<DelayEventList> {
   return mutatePropertyScoped<DelayEventList>(
     `/train-runs/${runId}/delays/batch`,
+    propertyCode,
+    "POST",
+    payload
+  );
+}
+
+export function createDelayFromTemplate(
+  propertyCode: PropertyCode,
+  runId: string,
+  payload: DelayTemplateCreateRequest
+): Promise<DelayEventList["items"][number]> {
+  return mutatePropertyScoped<DelayEventList["items"][number]>(
+    `/train-runs/${runId}/delays/template`,
     propertyCode,
     "POST",
     payload

@@ -232,6 +232,25 @@ export interface DelayEventBatchCreate {
   delays: DelayEventCreate[];
 }
 
+export interface DelayTemplate {
+  id: string;
+  name: string;
+  category: string;
+  minutes: number;
+  notes: string;
+  notableDelayType: string;
+  specialMovementId: string | null;
+}
+
+export interface DelayTemplateList {
+  items: DelayTemplate[];
+}
+
+export interface DelayTemplateCreateRequest {
+  templateId: string;
+  reportedAt: string;
+}
+
 export interface DelayEventDeleteResult {
   deletedId: string;
   runId: string;

@@ -8,6 +8,7 @@ import type {
   DelayAdditionalInfo,
   DelayCommonLocationList,
   DelayEventList,
+  DelayTemplateList,
   FareEnforcementList,
   FareEnforcementSummaryList,
   FileServiceList,
@@ -679,6 +680,55 @@ export const demoDelayCommonLocations: Record<PropertyCode, DelayCommonLocationL
   kcstreetcar: {
     items: [{ id: "loc-main", label: "Main Street", usageCount: 10 }]
   },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoDelayTemplates: Record<PropertyCode, DelayTemplateList> = {
+  caltrain: {
+    items: [
+      {
+        id: "delay-template-signal",
+        name: "Signal Hold",
+        category: "Signal delay",
+        minutes: 4,
+        notes: "Signal clearance held at interlocking.",
+        notableDelayType: "Interlocking failure",
+        specialMovementId: "movement-single-track"
+      },
+      {
+        id: "delay-template-boarding",
+        name: "Heavy Boarding",
+        category: "Passenger loading",
+        minutes: 3,
+        notes: "Heavy boarding volume at central station.",
+        notableDelayType: "Platform crowding",
+        specialMovementId: null
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "delay-template-signal",
+        name: "Signal Hold",
+        category: "Signal delay",
+        minutes: 4,
+        notes: "Signal clearance held at interlocking.",
+        notableDelayType: "Interlocking failure",
+        specialMovementId: "movement-single-track"
+      }
+    ]
+  },
+  kcstreetcar: { items: [] },
   okcstreetcar: { items: [] },
   octastreetcar: { items: [] },
   metrolinkarrow: { items: [] },

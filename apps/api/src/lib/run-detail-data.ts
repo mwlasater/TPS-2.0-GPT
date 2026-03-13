@@ -2,6 +2,8 @@ import type {
   DelayAdditionalInfo,
   DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
+  DelayTemplateCreateRequest,
+  DelayTemplateList,
   DelayCommonLocationList,
   DelayEventDeleteResult,
   DelayEvent,
@@ -112,6 +114,43 @@ const streetcarSpecialMovements: SpecialMovementList = {
       id: "movement-street-escort",
       label: "Street escort",
       description: "Manual escort through mixed-traffic segment."
+    }
+  ]
+};
+
+const commuterDelayTemplates: DelayTemplateList = {
+  items: [
+    {
+      id: "delay-template-signal",
+      name: "Signal Hold",
+      category: "Signal delay",
+      minutes: 4,
+      notes: "Signal clearance held at interlocking.",
+      notableDelayType: "Interlocking failure",
+      specialMovementId: "movement-single-track"
+    },
+    {
+      id: "delay-template-boarding",
+      name: "Heavy Boarding",
+      category: "Passenger loading",
+      minutes: 3,
+      notes: "Heavy boarding volume at central station.",
+      notableDelayType: "Platform crowding",
+      specialMovementId: null
+    }
+  ]
+};
+
+const streetcarDelayTemplates: DelayTemplateList = {
+  items: [
+    {
+      id: "delay-template-traffic",
+      name: "Traffic Hold",
+      category: "Traffic hold",
+      minutes: 2,
+      notes: "Signalized crossing blocked by downtown traffic.",
+      notableDelayType: "Signal priority override",
+      specialMovementId: "movement-street-escort"
     }
   ]
 };
@@ -245,6 +284,10 @@ export function listDelayCommonLocations(propertyCode: PropertyCode): DelayCommo
   return streetcarProperties.has(propertyCode) ? streetcarCommonLocations : commuterCommonLocations;
 }
 
+export function listDelayTemplates(propertyCode: PropertyCode): DelayTemplateList {
+  return streetcarProperties.has(propertyCode) ? streetcarDelayTemplates : commuterDelayTemplates;
+}
+
 export function listSpecialMovements(propertyCode: PropertyCode): SpecialMovementList {
   return streetcarProperties.has(propertyCode) ? streetcarSpecialMovements : commuterSpecialMovements;
 }
@@ -300,6 +343,46 @@ export function createDelayEvents(
   return {
     items: created
   };
+}
+
+export function createDelayFromTemplate(
+  propertyCode: PropertyCode,
+  runId: string,
+  input: DelayTemplateCreateRequest
+): DelayEvent {
+  const template = listDelayTemplates(propertyCode).items.find((item) => item.id === input.templateId);
+
+  if (!template) {
+    throw new Error("delay_template.not_found");
+  }
+
+  const [created] = createDelayEvents(propertyCode, runId, {
+    delays: [
+      {
+        category: template.category,
+        minutes: template.minutes,
+        notes: template.notes,
+        reportedAt: input.reportedAt
+      }
+    ]
+  }).items;
+
+  if (!created) {
+    throw new Error("delay_event.create_failed");
+  }
+
+  getDelayAdditionalInfoCatalog(propertyCode)[created.id] = {
+    delayId: created.id,
+    locationDetail: "",
+    responsibleParty: "",
+    notableDelayType: template.notableDelayType,
+    specialMovementId: template.specialMovementId,
+    workOrderId: null,
+    mechanicalNotes: "",
+    passengerImpactSummary: ""
+  };
+
+  return created;
 }
 
 export function deleteDelayEvent(

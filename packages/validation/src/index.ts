@@ -222,6 +222,25 @@ export const delayEventBatchCreateSchema = z.object({
   delays: z.array(delayEventCreateSchema).min(1)
 });
 
+export const delayTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  category: z.string(),
+  minutes: z.number(),
+  notes: z.string(),
+  notableDelayType: z.string(),
+  specialMovementId: z.string().nullable()
+});
+
+export const delayTemplateListSchema = z.object({
+  items: z.array(delayTemplateSchema)
+});
+
+export const delayTemplateCreateRequestSchema = z.object({
+  templateId: z.string().min(1),
+  reportedAt: z.string().datetime()
+});
+
 export const delayEventDeleteResultSchema = z.object({
   deletedId: z.string(),
   runId: z.string(),
