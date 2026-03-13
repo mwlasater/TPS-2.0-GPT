@@ -18,6 +18,7 @@ import type {
   ReportConfigList,
   StationStopList,
   TrainRunList,
+  TrainRunApprovalHistoryList,
   TrainScheduleList,
   UserAdminActionList,
   UserSession
@@ -487,6 +488,44 @@ export const demoTrainRuns: Record<PropertyCode, TrainRunList> = {
       }
     ]
   },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoTrainRunApprovalHistory: Record<PropertyCode, TrainRunApprovalHistoryList> = {
+  caltrain: {
+    items: [
+      {
+        id: "approval-caltrain-1",
+        runId: "caltrain-run-1",
+        action: "approved",
+        actorName: "Jordan Reyes",
+        notes: "Ready for dispatch closeout after final delay reconciliation.",
+        createdAt: "2026-03-06T12:15:00Z"
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "approval-capmetro-1",
+        runId: "capmetro-run-1",
+        action: "approved",
+        actorName: "Jordan Reyes",
+        notes: "Morning service packet completed.",
+        createdAt: "2026-03-06T07:26:00Z"
+      }
+    ]
+  },
+  kcstreetcar: { items: [] },
   okcstreetcar: { items: [] },
   octastreetcar: { items: [] },
   metrolinkarrow: { items: [] },

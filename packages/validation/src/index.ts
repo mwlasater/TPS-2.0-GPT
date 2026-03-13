@@ -142,7 +142,21 @@ export const trainRunListSchema = z.object({
 });
 
 export const trainRunApprovalUpdateSchema = z.object({
-  isApproved: z.boolean()
+  isApproved: z.boolean(),
+  notes: z.string().min(1)
+});
+
+export const trainRunApprovalHistoryEntrySchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  action: z.enum(["approved", "unapproved"]),
+  actorName: z.string(),
+  notes: z.string(),
+  createdAt: z.string()
+});
+
+export const trainRunApprovalHistoryListSchema = z.object({
+  items: z.array(trainRunApprovalHistoryEntrySchema)
 });
 
 export const stationStopSchema = z.object({

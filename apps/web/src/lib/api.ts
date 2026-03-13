@@ -35,6 +35,7 @@ import type {
   StationStopUpdate,
   TrainRunList,
   TrainRun,
+  TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
   TrainScheduleList,
   UserPermissionGroupUpdate,
@@ -247,6 +248,16 @@ export function updateTrainRunApproval(
   payload: TrainRunApprovalUpdate
 ): Promise<TrainRun> {
   return mutatePropertyScoped<TrainRun>(`/train-runs/${runId}/approval`, propertyCode, "PUT", payload);
+}
+
+export function fetchTrainRunApprovalHistory(
+  propertyCode: PropertyCode,
+  runId: string
+): Promise<TrainRunApprovalHistoryList> {
+  return fetchPropertyScoped<TrainRunApprovalHistoryList>(
+    `/train-runs/${runId}/approval-history`,
+    propertyCode
+  );
 }
 
 export function fetchStationStops(

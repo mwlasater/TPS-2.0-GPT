@@ -145,6 +145,20 @@ export interface TrainRunList {
 
 export interface TrainRunApprovalUpdate {
   isApproved: boolean;
+  notes: string;
+}
+
+export interface TrainRunApprovalHistoryEntry {
+  id: string;
+  runId: string;
+  action: "approved" | "unapproved";
+  actorName: string;
+  notes: string;
+  createdAt: string;
+}
+
+export interface TrainRunApprovalHistoryList {
+  items: TrainRunApprovalHistoryEntry[];
 }
 
 export interface StationStop {

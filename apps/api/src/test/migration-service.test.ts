@@ -14,7 +14,8 @@ describe("migration service", () => {
       "0004_run_resources",
       "0005_user_admin",
       "0006_reference_admin_actions",
-      "0007_fare_enforcement_locks"
+      "0007_fare_enforcement_locks",
+      "0008_train_run_approval_history"
     ]);
   });
 });

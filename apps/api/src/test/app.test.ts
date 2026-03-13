@@ -728,7 +728,8 @@ describe("app contracts", () => {
         "x-property": "caltrain"
       },
       payload: {
-        isApproved: true
+        isApproved: true,
+        notes: "Ready for dispatch closeout."
       }
     });
 
@@ -750,7 +751,8 @@ describe("app contracts", () => {
         "x-property": "caltrain"
       },
       payload: {
-        isApproved: true
+        isApproved: true,
+        notes: "Attempting approval without complete resources."
       }
     });
 
@@ -847,6 +849,23 @@ describe("app contracts", () => {
       id: "fare-caltrain-1",
       secondLocation: "SJC",
       activityCount: 18
+    });
+  });
+
+  it("returns approval history for a train run", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/approval-history",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().items[0]).toMatchObject({
+      action: "approved",
+      actorName: "Local Development User"
     });
   });
 });

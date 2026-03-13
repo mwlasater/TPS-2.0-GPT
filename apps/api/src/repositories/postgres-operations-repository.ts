@@ -16,6 +16,8 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunApprovalHistoryEntry,
+  TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
   TrainRunList,
   TrainSchedule,
@@ -96,6 +98,15 @@ interface FareEnforcementRow {
   activity_count: number;
   notes: string;
   captured_at: string | Date;
+}
+
+interface TrainRunApprovalHistoryRow {
+  id: string;
+  train_run_id: string;
+  action: "approved" | "unapproved";
+  actor_name: string;
+  notes: string;
+  created_at: string | Date;
 }
 
 function toIsoDate(value: string | Date): string {
@@ -256,7 +267,8 @@ export class PostgresOperationsRepository implements OperationsRepository {
   async updateTrainRunApproval(
     propertyCode: PropertyCode,
     runId: string,
-    update: TrainRunApprovalUpdate
+    update: TrainRunApprovalUpdate,
+    actorName: string
   ): Promise<TrainRun> {
     if (update.isApproved) {
       const blockers = await this.loadApprovalBlockers(propertyCode, runId);
@@ -302,6 +314,29 @@ export class PostgresOperationsRepository implements OperationsRepository {
       throw new Error("train_run.not_found");
     }
 
+    await this.db.query(
+      `
+        INSERT INTO shared.train_run_approval_history (
+          id,
+          railroad_code,
+          train_run_id,
+          action,
+          actor_name,
+          notes,
+          created_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      `,
+      [
+        `${runId}-${update.isApproved ? "approved" : "unapproved"}-${Date.now()}`,
+        propertyCode,
+        runId,
+        update.isApproved ? "approved" : "unapproved",
+        actorName,
+        update.notes
+      ]
+    );
+
     return {
       id: row.id,
       scheduleId: row.schedule_id,
@@ -313,6 +348,42 @@ export class PostgresOperationsRepository implements OperationsRepository {
       isApproved: row.is_approved,
       approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null,
       approvalBlockers: this.getApprovalBlockers(row)
+    };
+  }
+
+  async listTrainRunApprovalHistory(
+    propertyCode: PropertyCode,
+    runId: string
+  ): Promise<TrainRunApprovalHistoryList> {
+    const result = await this.db.query<TrainRunApprovalHistoryRow>(
+      `
+        SELECT
+          ah.id,
+          ah.train_run_id,
+          ah.action,
+          ah.actor_name,
+          ah.notes,
+          ah.created_at
+        FROM shared.train_run_approval_history ah
+        JOIN shared.train_run tr ON tr.id = ah.train_run_id
+        WHERE tr.railroad_code = $1
+          AND ah.train_run_id = $2
+        ORDER BY ah.created_at DESC
+      `,
+      [propertyCode, runId]
+    );
+
+    return {
+      items: result.rows.map(
+        (row): TrainRunApprovalHistoryEntry => ({
+          id: row.id,
+          runId: row.train_run_id,
+          action: row.action,
+          actorName: row.actor_name,
+          notes: row.notes,
+          createdAt: toIsoTimestamp(row.created_at)
+        })
+      )
     };
   }
 

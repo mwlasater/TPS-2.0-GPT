@@ -67,6 +67,7 @@ export function App() {
               property={activeProperty}
               referenceData={operationsData.referenceData}
               runs={operationsData.runs}
+              approvalHistory={operationsData.approvalHistory}
               selectedRunId={operationsData.selectedRunId}
               selectRun={operationsData.selectRun}
               saveConsist={operationsData.saveConsist}

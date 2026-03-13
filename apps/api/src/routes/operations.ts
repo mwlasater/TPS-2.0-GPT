@@ -43,9 +43,21 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       return app.dataAccess.operations.updateTrainRunApproval(
         request.property,
         (request.params as { runId: string }).runId,
-        payload
+        payload,
+        request.user.displayName
       );
     }
+  );
+
+  app.get(
+    "/train-runs/:runId/approval-history",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listTrainRunApprovalHistory(
+      request.property,
+      (request.params as { runId: string }).runId
+    )
   );
 
   app.get(

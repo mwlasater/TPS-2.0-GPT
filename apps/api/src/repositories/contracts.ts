@@ -33,6 +33,7 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
   TrainRunList,
   TrainScheduleList,
@@ -107,8 +108,13 @@ export interface OperationsRepository {
   updateTrainRunApproval(
     propertyCode: PropertyCode,
     runId: string,
-    update: TrainRunApprovalUpdate
+    update: TrainRunApprovalUpdate,
+    actorName: string
   ): MaybePromise<TrainRun>;
+  listTrainRunApprovalHistory(
+    propertyCode: PropertyCode,
+    runId: string
+  ): MaybePromise<TrainRunApprovalHistoryList>;
   listStationStops(propertyCode: PropertyCode, runId: string): MaybePromise<StationStopList>;
   updateStationStop(
     propertyCode: PropertyCode,

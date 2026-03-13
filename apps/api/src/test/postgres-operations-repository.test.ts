@@ -101,12 +101,15 @@ describe("PostgresOperationsRepository", () => {
           crew_count: 3
         }
       ]
+    }).mockResolvedValueOnce({
+      rows: []
     });
 
     const repository = new PostgresOperationsRepository({ query });
     const run = await repository.updateTrainRunApproval("caltrain", "caltrain-run-1", {
-      isApproved: true
-    });
+      isApproved: true,
+      notes: "Ready for dispatch closeout."
+    }, "Jordan Reyes");
 
     expect(run).toEqual({
       id: "caltrain-run-1",
@@ -136,8 +139,42 @@ describe("PostgresOperationsRepository", () => {
     const repository = new PostgresOperationsRepository({ query });
 
     await expect(
-      repository.updateTrainRunApproval("caltrain", "caltrain-run-2", { isApproved: true })
+      repository.updateTrainRunApproval("caltrain", "caltrain-run-2", {
+        isApproved: true,
+        notes: "Attempting approval."
+      }, "Jordan Reyes")
     ).rejects.toThrow("train_run.approval_blocked");
+  });
+
+  it("maps approval history rows into entries", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "approval-1",
+          train_run_id: "caltrain-run-1",
+          action: "approved",
+          actor_name: "Jordan Reyes",
+          notes: "Ready for dispatch closeout.",
+          created_at: new Date("2026-03-06T12:15:00Z")
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const history = await repository.listTrainRunApprovalHistory("caltrain", "caltrain-run-1");
+
+    expect(history).toEqual({
+      items: [
+        {
+          id: "approval-1",
+          runId: "caltrain-run-1",
+          action: "approved",
+          actorName: "Jordan Reyes",
+          notes: "Ready for dispatch closeout.",
+          createdAt: "2026-03-06T12:15:00.000Z"
+        }
+      ]
+    });
   });
 
   it("maps station stop rows into run stops", async () => {

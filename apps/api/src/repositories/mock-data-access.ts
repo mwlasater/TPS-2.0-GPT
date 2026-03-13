@@ -80,7 +80,12 @@ export function createMockDataAccess(): DataAccess {
     operations: {
       listTrainSchedules,
       listTrainRuns,
-      updateTrainRunApproval,
+      updateTrainRunApproval(propertyCode, runId, update, actorName) {
+        const run = updateTrainRunApproval(propertyCode, runId, update);
+        recordTrainRunApprovalHistory(propertyCode, runId, update, actorName);
+        return run;
+      },
+      listTrainRunApprovalHistory,
       listStationStops,
       updateStationStop(propertyCode, runId, stopId, update) {
         assertRunMutable(propertyCode, runId);
@@ -106,3 +111,7 @@ export function createMockDataAccess(): DataAccess {
     }
   };
 }
+import {
+  listTrainRunApprovalHistory,
+  recordTrainRunApprovalHistory
+} from "../lib/approval-history-data.js";

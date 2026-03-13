@@ -13,6 +13,7 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
   TrainRunList,
   TrainScheduleList
@@ -31,6 +32,7 @@ interface OperationsPageProps {
   isSaving: boolean;
   referenceData: ReferenceDataset;
   runs: TrainRunList;
+  approvalHistory: TrainRunApprovalHistoryList;
   schedules: TrainScheduleList;
   selectedRunId: string | null;
   selectRun: (runId: string) => Promise<void>;
@@ -75,6 +77,7 @@ export function OperationsPage({
   property,
   referenceData,
   runs,
+  approvalHistory,
   schedules,
   selectedRunId,
   selectRun,
@@ -88,6 +91,7 @@ export function OperationsPage({
   source
 }: OperationsPageProps) {
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [approvalNotes, setApprovalNotes] = useState("Ready for dispatch closeout.");
   const selectedRun = runs.items.find((run) => run.id === selectedRunId) ?? runs.items[0];
   const selectedSchedule =
     schedules.items.find((schedule) => schedule.id === selectedRun?.scheduleId) ?? schedules.items[0];
@@ -199,6 +203,10 @@ export function OperationsPage({
     });
   }, [selectedFare]);
 
+  useEffect(() => {
+    setApprovalNotes("Ready for dispatch closeout.");
+  }, [selectedRunId]);
+
   async function runAction(action: () => Promise<unknown>, successMessage: string) {
     setFeedback(null);
 
@@ -301,16 +309,26 @@ export function OperationsPage({
                 ))}
               </div>
               {selectedRun ? (
-                <div className="action-row">
+                <div className="editor-grid">
                   {selectedRun.approvalBlockers.length ? (
-                    <p className="inline-feedback">{selectedRun.approvalBlockers.join(" ")}</p>
+                    <p className="inline-feedback editor-span">{selectedRun.approvalBlockers.join(" ")}</p>
                   ) : null}
+                  <label className="field-stack editor-span">
+                    <span>Approval Notes</span>
+                    <textarea
+                      onChange={(event) => {
+                        setApprovalNotes(event.target.value);
+                      }}
+                      rows={3}
+                      value={approvalNotes}
+                    />
+                  </label>
                   <button
                     className="action-button"
                     disabled={selectedRun.isApproved || isSaving || selectedRun.approvalBlockers.length > 0}
                     onClick={() => {
                       void runAction(
-                        () => saveRunApproval(selectedRun.id, { isApproved: true }),
+                        () => saveRunApproval(selectedRun.id, { isApproved: true, notes: approvalNotes }),
                         "Run approved and lock applied."
                       );
                     }}
@@ -775,6 +793,30 @@ export function OperationsPage({
             </div>
           </div>
         ) : null}
+      </Panel>
+      <Panel title="Approval history" eyebrow={`${approvalHistory.items.length} events`}>
+        <div className="list-stack">
+          {approvalHistory.items.length ? (
+            approvalHistory.items.map((entry) => (
+              <article className="list-row" key={entry.id}>
+                <div>
+                  <strong>{entry.actorName}</strong>
+                  <p>{entry.action}</p>
+                  <p>{entry.notes}</p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge
+                    label={entry.action}
+                    tone={entry.action === "approved" ? "success" : "warning"}
+                  />
+                  <span>{entry.createdAt}</span>
+                </div>
+              </article>
+            ))
+          ) : (
+            <p>No approval events recorded for this run yet.</p>
+          )}
+        </div>
       </Panel>
       <Panel title="Reference data" eyebrow="Seeded values">
         <div className="three-column-grid">
