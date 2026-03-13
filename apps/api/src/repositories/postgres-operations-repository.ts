@@ -463,6 +463,42 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
+  async listTrainScheduleApprovalHistory(
+    propertyCode: PropertyCode,
+    scheduleId: string
+  ): Promise<TrainRunApprovalHistoryList> {
+    const result = await this.db.query<TrainRunApprovalHistoryRow>(
+      `
+        SELECT
+          ah.id,
+          ah.train_run_id,
+          ah.action,
+          ah.actor_name,
+          ah.notes,
+          ah.created_at
+        FROM shared.train_run_approval_history ah
+        JOIN shared.train_run tr ON tr.id = ah.train_run_id
+        WHERE ah.railroad_code = $1
+          AND tr.schedule_id = $2
+        ORDER BY ah.created_at DESC
+      `,
+      [propertyCode, scheduleId]
+    );
+
+    return {
+      items: result.rows.map(
+        (row): TrainRunApprovalHistoryEntry => ({
+          id: row.id,
+          runId: row.train_run_id,
+          action: row.action,
+          actorName: row.actor_name,
+          notes: row.notes,
+          createdAt: toIsoTimestamp(row.created_at)
+        })
+      )
+    };
+  }
+
   async listStationStops(propertyCode: PropertyCode, runId: string): Promise<StationStopList> {
     const result = await this.db.query<StationStopRow>(
       `

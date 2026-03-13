@@ -18,6 +18,7 @@ import type {
   TrainRun,
   TrainRunBatchApprovalResult,
   TrainRunBatchApprovalUpdate,
+  TrainRunApprovalHistoryEntry,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
   TrainRunList,
@@ -38,6 +39,7 @@ import {
   fetchTrainRuns,
   fetchTrainSchedules,
   fetchTrainRunApprovalHistory,
+  fetchTrainScheduleApprovalHistory,
   updateConsistEquipment,
   updateCrewAssignment,
   updateDelayEvent,
@@ -138,6 +140,7 @@ interface OperationsDataState {
   runs: TrainRunList;
   selectedRunId: string | null;
   approvalHistory: TrainRunApprovalHistoryList;
+  scheduleApprovalHistory: TrainRunApprovalHistoryList;
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
   fareDashboard: FareEnforcementDashboard;
@@ -189,6 +192,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     runs: demoTrainRuns[propertyCode],
     selectedRunId: demoTrainRuns[propertyCode].items[0]?.id ?? null,
     approvalHistory: getFallbackApprovalHistory(propertyCode, demoTrainRuns[propertyCode].items[0]?.id ?? null),
+    scheduleApprovalHistory: getFallbackApprovalHistory(
+      propertyCode,
+      demoTrainRuns[propertyCode].items[0]?.id ?? null
+    ),
     consist: demoConsistEquipment[propertyCode],
     crew: demoCrewAssignments[propertyCode],
     delayEvents: demoDelayEvents[propertyCode],
@@ -222,6 +229,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         propertyCode,
         demoTrainRuns[propertyCode].items[0]?.id ?? null
       ),
+      scheduleApprovalHistory: getFallbackApprovalHistory(
+        propertyCode,
+        demoTrainRuns[propertyCode].items[0]?.id ?? null
+      ),
       consist: demoConsistEquipment[propertyCode],
       crew: demoCrewAssignments[propertyCode],
       delayEvents: demoDelayEvents[propertyCode],
@@ -250,7 +261,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     ])
       .then(async ([referenceData, schedules, runs]) => {
         const selectedRunId = runs.items[0]?.id ?? null;
-        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, fareSummary, fareDashboard] = selectedRunId
+        const selectedScheduleId = runs.items.find((run) => run.id === selectedRunId)?.scheduleId;
+        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, fareSummary, fareDashboard] = selectedRunId
           ? await Promise.all([
               fetchStationStops(propertyCode, selectedRunId),
               fetchDelayEvents(propertyCode, selectedRunId),
@@ -258,6 +270,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               fetchCrewAssignments(propertyCode, selectedRunId),
               fetchFareEnforcement(propertyCode, selectedRunId),
               fetchTrainRunApprovalHistory(propertyCode, selectedRunId),
+              selectedScheduleId
+                ? fetchTrainScheduleApprovalHistory(propertyCode, selectedScheduleId)
+                : Promise.resolve(getFallbackApprovalHistory(propertyCode, selectedRunId)),
               fetchFareEnforcementSummary(propertyCode),
               fetchFareEnforcementDashboard(propertyCode)
             ])
@@ -267,6 +282,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               demoConsistEquipment[propertyCode],
               demoCrewAssignments[propertyCode],
               demoFareEnforcement[propertyCode],
+              getFallbackApprovalHistory(propertyCode, selectedRunId),
               getFallbackApprovalHistory(propertyCode, selectedRunId),
               demoFareEnforcementSummary[propertyCode],
               getFallbackFareDashboard(propertyCode, runs)
@@ -279,6 +295,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             runs,
             selectedRunId,
             approvalHistory,
+            scheduleApprovalHistory,
             consist,
             crew,
             delayEvents,
@@ -309,6 +326,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             runs: demoTrainRuns[propertyCode],
             selectedRunId: demoTrainRuns[propertyCode].items[0]?.id ?? null,
             approvalHistory: getFallbackApprovalHistory(
+              propertyCode,
+              demoTrainRuns[propertyCode].items[0]?.id ?? null
+            ),
+            scheduleApprovalHistory: getFallbackApprovalHistory(
               propertyCode,
               demoTrainRuns[propertyCode].items[0]?.id ?? null
             ),
@@ -348,13 +369,17 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     }));
 
     try {
-      const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory] = await Promise.all([
+      const scheduleId = state.runs.items.find((run) => run.id === runId)?.scheduleId;
+      const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory] = await Promise.all([
         fetchStationStops(propertyCode, runId),
         fetchDelayEvents(propertyCode, runId),
         fetchConsistEquipment(propertyCode, runId),
         fetchCrewAssignments(propertyCode, runId),
         fetchFareEnforcement(propertyCode, runId),
-        fetchTrainRunApprovalHistory(propertyCode, runId)
+        fetchTrainRunApprovalHistory(propertyCode, runId),
+        scheduleId
+          ? fetchTrainScheduleApprovalHistory(propertyCode, scheduleId)
+          : Promise.resolve(getFallbackApprovalHistory(propertyCode, runId))
       ]);
 
       setState((current) => ({
@@ -366,6 +391,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         crew,
         fareEnforcement,
         approvalHistory,
+        scheduleApprovalHistory,
         source: "api",
         isLoading: false
       }));
@@ -379,6 +405,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         crew: demoCrewAssignments[propertyCode],
         fareEnforcement: demoFareEnforcement[propertyCode],
         approvalHistory: getFallbackApprovalHistory(propertyCode, runId),
+        scheduleApprovalHistory: getFallbackApprovalHistory(propertyCode, runId),
         fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
         fareSummary: demoFareEnforcementSummary[propertyCode],
         source: "fallback",
@@ -392,6 +419,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
 
     try {
       const run = await updateTrainRunApproval(propertyCode, runId, update);
+      const action: TrainRunApprovalHistoryEntry["action"] = update.isApproved ? "approved" : "unapproved";
       setState((current) => ({
         ...current,
         runs: {
@@ -402,12 +430,25 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             {
               id: `${runId}-${update.isApproved ? "approved" : "unapproved"}-local`,
               runId,
-              action: update.isApproved ? "approved" : "unapproved",
+              action,
               actorName: "Local Development User",
               notes: update.notes,
               createdAt: "2026-03-06T12:30:00Z"
             },
             ...current.approvalHistory.items
+          ]
+        },
+        scheduleApprovalHistory: {
+          items: [
+            {
+              id: `${runId}-${update.isApproved ? "approved" : "unapproved"}-local`,
+              runId,
+              action,
+              actorName: "Local Development User",
+              notes: update.notes,
+              createdAt: "2026-03-06T12:30:00Z"
+            },
+            ...current.scheduleApprovalHistory.items
           ]
         },
         isSaving: false
@@ -424,6 +465,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
 
     try {
       const result = await updateTrainRunApprovalBatch(propertyCode, update);
+      const action: TrainRunApprovalHistoryEntry["action"] = update.isApproved ? "approved" : "unapproved";
       setState((current) => ({
         ...current,
         runs: {
@@ -439,7 +481,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
                   {
                     id: `${current.selectedRunId}-${update.isApproved ? "approved" : "unapproved"}-batch-local`,
                     runId: current.selectedRunId,
-                    action: update.isApproved ? "approved" : "unapproved",
+                    action,
                     actorName: "Local Development User",
                     notes: update.notes,
                     createdAt: "2026-03-06T12:30:00Z"
@@ -448,6 +490,19 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
                 ]
               }
             : current.approvalHistory,
+        scheduleApprovalHistory: {
+          items: [
+            ...result.updatedRuns.map((run) => ({
+              id: `${run.id}-${update.isApproved ? "approved" : "unapproved"}-batch-local`,
+              runId: run.id,
+              action,
+              actorName: "Local Development User",
+              notes: update.notes,
+              createdAt: "2026-03-06T12:30:00Z"
+            })),
+            ...current.scheduleApprovalHistory.items
+          ]
+        },
         isSaving: false
       }));
       return result;

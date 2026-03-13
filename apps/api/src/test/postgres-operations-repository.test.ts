@@ -295,6 +295,37 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("maps schedule approval history rows into entries", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "approval-1",
+          train_run_id: "caltrain-run-1",
+          action: "approved",
+          actor_name: "Jordan Reyes",
+          notes: "Ready for dispatch closeout.",
+          created_at: new Date("2026-03-06T12:15:00Z")
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const history = await repository.listTrainScheduleApprovalHistory("caltrain", "ct-101");
+
+    expect(history).toEqual({
+      items: [
+        {
+          id: "approval-1",
+          runId: "caltrain-run-1",
+          action: "approved",
+          actorName: "Jordan Reyes",
+          notes: "Ready for dispatch closeout.",
+          createdAt: "2026-03-06T12:15:00.000Z"
+        }
+      ]
+    });
+  });
+
   it("maps fare enforcement dashboard metrics", async () => {
     const query = vi
       .fn()

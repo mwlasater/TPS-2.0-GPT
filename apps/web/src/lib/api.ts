@@ -277,6 +277,16 @@ export function fetchTrainRunApprovalHistory(
   );
 }
 
+export function fetchTrainScheduleApprovalHistory(
+  propertyCode: PropertyCode,
+  scheduleId: string
+): Promise<TrainRunApprovalHistoryList> {
+  return fetchPropertyScoped<TrainRunApprovalHistoryList>(
+    `/train-schedules/${scheduleId}/approval-history`,
+    propertyCode
+  );
+}
+
 export function fetchStationStops(
   propertyCode: PropertyCode,
   runId: string

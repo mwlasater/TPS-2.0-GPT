@@ -125,6 +125,10 @@ export interface OperationsRepository {
     propertyCode: PropertyCode,
     runId: string
   ): MaybePromise<TrainRunApprovalHistoryList>;
+  listTrainScheduleApprovalHistory(
+    propertyCode: PropertyCode,
+    scheduleId: string
+  ): MaybePromise<TrainRunApprovalHistoryList>;
   listStationStops(propertyCode: PropertyCode, runId: string): MaybePromise<StationStopList>;
   updateStationStop(
     propertyCode: PropertyCode,

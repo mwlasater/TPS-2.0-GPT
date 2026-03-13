@@ -70,6 +70,7 @@ export function App() {
               referenceData={operationsData.referenceData}
               runs={operationsData.runs}
               approvalHistory={operationsData.approvalHistory}
+              scheduleApprovalHistory={operationsData.scheduleApprovalHistory}
               selectedRunId={operationsData.selectedRunId}
               selectRun={operationsData.selectRun}
               saveConsist={operationsData.saveConsist}

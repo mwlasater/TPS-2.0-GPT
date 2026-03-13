@@ -40,6 +40,7 @@ interface OperationsPageProps {
   referenceData: ReferenceDataset;
   runs: TrainRunList;
   approvalHistory: TrainRunApprovalHistoryList;
+  scheduleApprovalHistory: TrainRunApprovalHistoryList;
   schedules: TrainScheduleList;
   selectedRunId: string | null;
   selectRun: (runId: string) => Promise<void>;
@@ -93,6 +94,7 @@ export function OperationsPage({
   referenceData,
   runs,
   approvalHistory,
+  scheduleApprovalHistory,
   schedules,
   selectedRunId,
   selectRun,
@@ -116,6 +118,7 @@ export function OperationsPage({
   const batchReadyRunIds = scheduleRuns
     .filter((run) => !run.isApproved && run.approvalBlockers.length === 0)
     .map((run) => run.id);
+  const batchApprovedRunIds = scheduleRuns.filter((run) => run.isApproved).map((run) => run.id);
 
   const [selectedStopId, setSelectedStopId] = useState<string | null>(stationStops.items[0]?.id ?? null);
   const [selectedDelayId, setSelectedDelayId] = useState<string | null>(delayEvents.items[0]?.id ?? null);
@@ -417,6 +420,24 @@ export function OperationsPage({
                     type="button"
                   >
                     Approve ready runs in schedule
+                  </button>
+                  <button
+                    className="action-button"
+                    disabled={isSaving || batchApprovedRunIds.length === 0}
+                    onClick={() => {
+                      void runAction(
+                        () =>
+                          saveBatchRunApproval({
+                            runIds: batchApprovedRunIds,
+                            isApproved: false,
+                            notes: approvalNotes
+                          }),
+                        `Reopened ${batchApprovedRunIds.length} approved run(s) in this schedule.`
+                      );
+                    }}
+                    type="button"
+                  >
+                    Reopen approved runs in schedule
                   </button>
                   {selectedRun.isApproved ? (
                     <button
@@ -1227,6 +1248,32 @@ export function OperationsPage({
             ))
           ) : (
             <p>No approval events recorded for this run yet.</p>
+          )}
+        </div>
+      </Panel>
+      <Panel title="Schedule approval history" eyebrow={`${scheduleApprovalHistory.items.length} events`}>
+        <div className="list-stack">
+          {scheduleApprovalHistory.items.length ? (
+            scheduleApprovalHistory.items.map((entry) => (
+              <article className="list-row" key={entry.id}>
+                <div>
+                  <strong>{entry.runId}</strong>
+                  <p>
+                    {entry.actorName} · {entry.action}
+                  </p>
+                  <p>{entry.notes}</p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge
+                    label={entry.action}
+                    tone={entry.action === "approved" ? "success" : "warning"}
+                  />
+                  <span>{entry.createdAt}</span>
+                </div>
+              </article>
+            ))
+          ) : (
+            <p>No schedule approval events recorded yet.</p>
           )}
         </div>
       </Panel>

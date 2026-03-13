@@ -37,6 +37,15 @@ export function listTrainRunApprovalHistory(
   };
 }
 
+export function listTrainScheduleApprovalHistory(
+  propertyCode: PropertyCode,
+  runIds: string[]
+): TrainRunApprovalHistoryList {
+  return {
+    items: (historyCatalog[propertyCode] ?? []).filter((entry) => runIds.includes(entry.runId))
+  };
+}
+
 export function recordTrainRunApprovalHistory(
   propertyCode: PropertyCode,
   runId: string,

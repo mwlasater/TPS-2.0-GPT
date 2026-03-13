@@ -799,6 +799,24 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns schedule approval history for a train schedule", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-schedules/ct-101/approval-history",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().items[0]).toMatchObject({
+      runId: "caltrain-run-1",
+      actorName: "Local Development User"
+    });
+    expect(["approved", "unapproved"]).toContain(response.json().items[0].action);
+  });
+
   it("rejects approval when readiness blockers exist", async () => {
     const response = await app.inject({
       method: "PUT",
