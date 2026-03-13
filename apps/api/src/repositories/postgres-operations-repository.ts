@@ -5,7 +5,11 @@ import type {
   CrewAssignment,
   CrewAssignmentList,
   CrewAssignmentUpdate,
+  DelayAdditionalInfo,
+  DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
+  DelayCommonLocation,
+  DelayCommonLocationList,
   DelayEventDeleteResult,
   DelayEvent,
   DelayEventList,
@@ -18,6 +22,8 @@ import type {
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
   PropertyCode,
+  SpecialMovement,
+  SpecialMovementList,
   StationStop,
   StationStopList,
   StationStopUpdate,
@@ -37,7 +43,13 @@ import type {
 
 import { listFareEnforcement, listFareEnforcementSummary } from "../lib/fare-enforcement-data.js";
 import { listConsistEquipment, listCrewAssignments } from "../lib/run-resource-data.js";
-import { listDelayEvents, listStationStops } from "../lib/run-detail-data.js";
+import {
+  getDelayAdditionalInfo,
+  listDelayCommonLocations,
+  listDelayEvents,
+  listSpecialMovements,
+  listStationStops
+} from "../lib/run-detail-data.js";
 
 import type { OperationsRepository } from "./contracts.js";
 import type { Queryable } from "./postgres-client.js";
@@ -86,6 +98,29 @@ interface DelayEventRow {
 
 interface DelayMinutesRow {
   delay_minutes: number;
+}
+
+interface DelayCommonLocationRow {
+  id: string;
+  location_label: string;
+  usage_count: number;
+}
+
+interface SpecialMovementRow {
+  id: string;
+  movement_label: string;
+  description: string;
+}
+
+interface DelayAdditionalInfoRow {
+  delay_id: string;
+  location_detail: string;
+  responsible_party: string;
+  notable_delay_type: string;
+  special_movement_id: string | null;
+  work_order_id: string | null;
+  mechanical_notes: string;
+  passenger_impact_summary: string;
 }
 
 interface ConsistEquipmentRow {
@@ -775,6 +810,179 @@ export class PostgresOperationsRepository implements OperationsRepository {
           reportedAt: toIsoTimestamp(row.reported_at)
         })
       )
+    };
+  }
+
+  async listDelayCommonLocations(propertyCode: PropertyCode): Promise<DelayCommonLocationList> {
+    const result = await this.db.query<DelayCommonLocationRow>(
+      `
+        SELECT id, location_label, usage_count
+        FROM shared.delay_common_location
+        WHERE railroad_code = $1
+        ORDER BY usage_count DESC, location_label
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listDelayCommonLocations(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): DelayCommonLocation => ({
+          id: row.id,
+          label: row.location_label,
+          usageCount: row.usage_count
+        })
+      )
+    };
+  }
+
+  async listSpecialMovements(propertyCode: PropertyCode): Promise<SpecialMovementList> {
+    const result = await this.db.query<SpecialMovementRow>(
+      `
+        SELECT id, movement_label, description
+        FROM shared.special_movement
+        WHERE railroad_code = $1
+        ORDER BY movement_label
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listSpecialMovements(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): SpecialMovement => ({
+          id: row.id,
+          label: row.movement_label,
+          description: row.description
+        })
+      )
+    };
+  }
+
+  async getDelayAdditionalInfo(propertyCode: PropertyCode, delayId: string): Promise<DelayAdditionalInfo> {
+    const result = await this.db.query<DelayAdditionalInfoRow>(
+      `
+        SELECT
+          dai.delay_id,
+          dai.location_detail,
+          dai.responsible_party,
+          dai.notable_delay_type,
+          dai.special_movement_id,
+          dai.work_order_id,
+          dai.mechanical_notes,
+          dai.passenger_impact_summary
+        FROM shared.delay_additional_info dai
+        JOIN shared.delay_event de ON de.id = dai.delay_id
+        JOIN shared.train_run tr ON tr.id = de.train_run_id
+        WHERE tr.railroad_code = $1
+          AND dai.delay_id = $2
+      `,
+      [propertyCode, delayId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      return getDelayAdditionalInfo(propertyCode, delayId);
+    }
+
+    return {
+      delayId: row.delay_id,
+      locationDetail: row.location_detail,
+      responsibleParty: row.responsible_party,
+      notableDelayType: row.notable_delay_type,
+      specialMovementId: row.special_movement_id,
+      workOrderId: row.work_order_id,
+      mechanicalNotes: row.mechanical_notes,
+      passengerImpactSummary: row.passenger_impact_summary
+    };
+  }
+
+  async updateDelayAdditionalInfo(
+    propertyCode: PropertyCode,
+    delayId: string,
+    update: DelayAdditionalInfoUpdate
+  ): Promise<DelayAdditionalInfo> {
+    const result = await this.db.query<DelayAdditionalInfoRow>(
+      `
+        INSERT INTO shared.delay_additional_info (
+          delay_id,
+          railroad_code,
+          location_detail,
+          responsible_party,
+          notable_delay_type,
+          special_movement_id,
+          work_order_id,
+          mechanical_notes,
+          passenger_impact_summary
+        )
+        SELECT
+          de.id,
+          tr.railroad_code,
+          $3,
+          $4,
+          $5,
+          $6,
+          $7,
+          $8,
+          $9
+        FROM shared.delay_event de
+        JOIN shared.train_run tr ON tr.id = de.train_run_id
+        WHERE tr.railroad_code = $1
+          AND de.id = $2
+        ON CONFLICT (delay_id) DO UPDATE
+        SET
+          location_detail = EXCLUDED.location_detail,
+          responsible_party = EXCLUDED.responsible_party,
+          notable_delay_type = EXCLUDED.notable_delay_type,
+          special_movement_id = EXCLUDED.special_movement_id,
+          work_order_id = EXCLUDED.work_order_id,
+          mechanical_notes = EXCLUDED.mechanical_notes,
+          passenger_impact_summary = EXCLUDED.passenger_impact_summary
+        RETURNING
+          delay_id,
+          location_detail,
+          responsible_party,
+          notable_delay_type,
+          special_movement_id,
+          work_order_id,
+          mechanical_notes,
+          passenger_impact_summary
+      `,
+      [
+        propertyCode,
+        delayId,
+        update.locationDetail,
+        update.responsibleParty,
+        update.notableDelayType,
+        update.specialMovementId,
+        update.workOrderId,
+        update.mechanicalNotes,
+        update.passengerImpactSummary
+      ]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("delay_event.not_found");
+    }
+
+    return {
+      delayId: row.delay_id,
+      locationDetail: row.location_detail,
+      responsibleParty: row.responsible_party,
+      notableDelayType: row.notable_delay_type,
+      specialMovementId: row.special_movement_id,
+      workOrderId: row.work_order_id,
+      mechanicalNotes: row.mechanical_notes,
+      passengerImpactSummary: row.passenger_impact_summary
     };
   }
 

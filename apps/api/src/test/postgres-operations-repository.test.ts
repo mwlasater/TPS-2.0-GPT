@@ -685,6 +685,126 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("maps delay common locations into records", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "loc-sfc",
+          location_label: "San Francisco",
+          usage_count: 18
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const locations = await repository.listDelayCommonLocations("caltrain");
+
+    expect(locations).toEqual({
+      items: [
+        {
+          id: "loc-sfc",
+          label: "San Francisco",
+          usageCount: 18
+        }
+      ]
+    });
+  });
+
+  it("maps special movements into records", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "movement-single-track",
+          movement_label: "Single-track meet",
+          description: "Temporary meet requiring dispatch coordination."
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const movements = await repository.listSpecialMovements("caltrain");
+
+    expect(movements).toEqual({
+      items: [
+        {
+          id: "movement-single-track",
+          label: "Single-track meet",
+          description: "Temporary meet requiring dispatch coordination."
+        }
+      ]
+    });
+  });
+
+  it("maps delay additional info into records", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          delay_id: "delay-1",
+          location_detail: "CP Coast interlocking",
+          responsible_party: "Signal Maintainer",
+          notable_delay_type: "Interlocking failure",
+          special_movement_id: "movement-single-track",
+          work_order_id: "WO-1427",
+          mechanical_notes: "",
+          passenger_impact_summary: "Peak riders held through two downstream stops."
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const additionalInfo = await repository.getDelayAdditionalInfo("caltrain", "delay-1");
+
+    expect(additionalInfo).toEqual({
+      delayId: "delay-1",
+      locationDetail: "CP Coast interlocking",
+      responsibleParty: "Signal Maintainer",
+      notableDelayType: "Interlocking failure",
+      specialMovementId: "movement-single-track",
+      workOrderId: "WO-1427",
+      mechanicalNotes: "",
+      passengerImpactSummary: "Peak riders held through two downstream stops."
+    });
+  });
+
+  it("maps updated delay additional info into records", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          delay_id: "delay-1",
+          location_detail: "South approach to Palo Alto",
+          responsible_party: "Dispatch",
+          notable_delay_type: "Traffic interference",
+          special_movement_id: "movement-single-track",
+          work_order_id: "WO-2001",
+          mechanical_notes: "No equipment fault observed.",
+          passenger_impact_summary: "Crowding pushed to next two stops."
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const additionalInfo = await repository.updateDelayAdditionalInfo("caltrain", "delay-1", {
+      locationDetail: "South approach to Palo Alto",
+      responsibleParty: "Dispatch",
+      notableDelayType: "Traffic interference",
+      specialMovementId: "movement-single-track",
+      workOrderId: "WO-2001",
+      mechanicalNotes: "No equipment fault observed.",
+      passengerImpactSummary: "Crowding pushed to next two stops."
+    });
+
+    expect(additionalInfo).toEqual({
+      delayId: "delay-1",
+      locationDetail: "South approach to Palo Alto",
+      responsibleParty: "Dispatch",
+      notableDelayType: "Traffic interference",
+      specialMovementId: "movement-single-track",
+      workOrderId: "WO-2001",
+      mechanicalNotes: "No equipment fault observed.",
+      passengerImpactSummary: "Crowding pushed to next two stops."
+    });
+  });
+
   it("maps consist rows into consist equipment", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [

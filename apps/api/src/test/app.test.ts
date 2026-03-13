@@ -745,6 +745,76 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns delay metadata catalogs and additional info", async () => {
+    const commonLocations = await app.inject({
+      method: "GET",
+      url: "/api/v1/delays/common-locations",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const specialMovements = await app.inject({
+      method: "GET",
+      url: "/api/v1/delays/special-movements",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const additionalInfo = await app.inject({
+      method: "GET",
+      url: "/api/v1/delays/delay-1/additional-info",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(commonLocations.statusCode).toBe(200);
+    expect(commonLocations.json().items[0]).toMatchObject({
+      label: "San Francisco"
+    });
+    expect(specialMovements.statusCode).toBe(200);
+    expect(specialMovements.json().items[0]).toMatchObject({
+      label: "Single-track meet"
+    });
+    expect(additionalInfo.statusCode).toBe(200);
+    expect(additionalInfo.json()).toMatchObject({
+      delayId: "delay-1",
+      responsibleParty: "Signal Maintainer"
+    });
+  });
+
+  it("updates delay additional info for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/delays/delay-1/additional-info",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        locationDetail: "South approach to Palo Alto",
+        responsibleParty: "Dispatch",
+        notableDelayType: "Traffic interference",
+        specialMovementId: "movement-single-track",
+        workOrderId: "WO-2001",
+        mechanicalNotes: "No equipment fault observed.",
+        passengerImpactSummary: "Crowding pushed to next two stops."
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      delayId: "delay-1",
+      responsibleParty: "Dispatch",
+      workOrderId: "WO-2001"
+    });
+  });
+
   it("creates multiple delay events for editable train runs", async () => {
     const response = await app.inject({
       method: "POST",

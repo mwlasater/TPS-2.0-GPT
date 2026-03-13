@@ -3,8 +3,11 @@ import type {
   ConsistEquipmentUpdate,
   CrewAssignmentList,
   CrewAssignmentUpdate,
+  DelayAdditionalInfo,
+  DelayAdditionalInfoUpdate,
   DelayEventCreate,
   DelayEventBatchCreate,
+  DelayCommonLocationList,
   DelayEventDeleteResult,
   DelayEventList,
   DelayEventUpdate,
@@ -15,6 +18,7 @@ import type {
   FareEnforcementUpdate,
   PropertySummary,
   ReferenceDataset,
+  SpecialMovementList,
   StationStop,
   StationStopList,
   StationStopUpdate,
@@ -47,6 +51,9 @@ interface OperationsPageProps {
   runs: TrainRunList;
   approvalHistory: TrainRunApprovalHistoryList;
   scheduleApprovalHistory: TrainRunApprovalHistoryList;
+  delayAdditionalInfo: Record<string, DelayAdditionalInfo>;
+  delayCommonLocations: DelayCommonLocationList;
+  specialMovements: SpecialMovementList;
   schedules: TrainScheduleList;
   selectedRunId: string | null;
   selectRun: (runId: string) => Promise<void>;
@@ -93,6 +100,10 @@ interface OperationsPageProps {
     runId: string,
     input: DelayEventBatchCreate
   ) => Promise<DelayEventList | undefined>;
+  saveDelayAdditionalInfo: (
+    delayId: string,
+    update: DelayAdditionalInfoUpdate
+  ) => Promise<DelayAdditionalInfo | undefined>;
   deleteDelay: (
     runId: string,
     delayId: string
@@ -114,6 +125,9 @@ export function OperationsPage({
   runs,
   approvalHistory,
   scheduleApprovalHistory,
+  delayAdditionalInfo,
+  delayCommonLocations,
+  specialMovements,
   schedules,
   selectedRunId,
   selectRun,
@@ -129,6 +143,7 @@ export function OperationsPage({
   deleteRun,
   saveStop,
   createDelayBatch,
+  saveDelayAdditionalInfo,
   deleteDelay,
   stationStops,
   source
@@ -169,6 +184,16 @@ export function OperationsPage({
     minutes: selectedDelay?.minutes ?? 0,
     notes: selectedDelay?.notes ?? "",
     reportedAt: selectedDelay?.reportedAt ?? ""
+  });
+  const [delayAdditionalForm, setDelayAdditionalForm] = useState<DelayAdditionalInfoUpdate>({
+    locationDetail: delayAdditionalInfo[selectedDelay?.id ?? ""]?.locationDetail ?? "",
+    responsibleParty: delayAdditionalInfo[selectedDelay?.id ?? ""]?.responsibleParty ?? "",
+    notableDelayType: delayAdditionalInfo[selectedDelay?.id ?? ""]?.notableDelayType ?? "",
+    specialMovementId: delayAdditionalInfo[selectedDelay?.id ?? ""]?.specialMovementId ?? null,
+    workOrderId: delayAdditionalInfo[selectedDelay?.id ?? ""]?.workOrderId ?? null,
+    mechanicalNotes: delayAdditionalInfo[selectedDelay?.id ?? ""]?.mechanicalNotes ?? "",
+    passengerImpactSummary:
+      delayAdditionalInfo[selectedDelay?.id ?? ""]?.passengerImpactSummary ?? ""
   });
   const [equipmentForm, setEquipmentForm] = useState<ConsistEquipmentUpdate>({
     position: selectedEquipment?.position ?? 1,
@@ -266,6 +291,19 @@ export function OperationsPage({
       reportedAt: selectedDelay?.reportedAt ?? ""
     });
   }, [selectedDelay]);
+
+  useEffect(() => {
+    const current = selectedDelay ? delayAdditionalInfo[selectedDelay.id] : null;
+    setDelayAdditionalForm({
+      locationDetail: current?.locationDetail ?? "",
+      responsibleParty: current?.responsibleParty ?? "",
+      notableDelayType: current?.notableDelayType ?? "",
+      specialMovementId: current?.specialMovementId ?? null,
+      workOrderId: current?.workOrderId ?? null,
+      mechanicalNotes: current?.mechanicalNotes ?? "",
+      passengerImpactSummary: current?.passengerImpactSummary ?? ""
+    });
+  }, [selectedDelay, delayAdditionalInfo]);
 
   useEffect(() => {
     setEquipmentForm({
@@ -751,6 +789,124 @@ export function OperationsPage({
                   type="button"
                 >
                   Delete selected delay
+                </button>
+              </div>
+              <label className="field-stack editor-span">
+                <span>Location Detail</span>
+                <input
+                  list="delay-common-locations"
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      locationDetail: event.target.value
+                    }));
+                  }}
+                  type="text"
+                  value={delayAdditionalForm.locationDetail}
+                />
+                <datalist id="delay-common-locations">
+                  {delayCommonLocations.items.map((item) => (
+                    <option key={item.id} value={item.label} />
+                  ))}
+                </datalist>
+              </label>
+              <label className="field-stack">
+                <span>Responsible Party</span>
+                <input
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      responsibleParty: event.target.value
+                    }));
+                  }}
+                  type="text"
+                  value={delayAdditionalForm.responsibleParty}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Notable Delay Type</span>
+                <input
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      notableDelayType: event.target.value
+                    }));
+                  }}
+                  type="text"
+                  value={delayAdditionalForm.notableDelayType}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Special Movement</span>
+                <select
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      specialMovementId: event.target.value || null
+                    }));
+                  }}
+                  value={delayAdditionalForm.specialMovementId ?? ""}
+                >
+                  <option value="">None</option>
+                  {specialMovements.items.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-stack">
+                <span>Work Order</span>
+                <input
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      workOrderId: event.target.value || null
+                    }));
+                  }}
+                  type="text"
+                  value={delayAdditionalForm.workOrderId ?? ""}
+                />
+              </label>
+              <label className="field-stack editor-span">
+                <span>Mechanical Notes</span>
+                <textarea
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      mechanicalNotes: event.target.value
+                    }));
+                  }}
+                  rows={2}
+                  value={delayAdditionalForm.mechanicalNotes}
+                />
+              </label>
+              <label className="field-stack editor-span">
+                <span>Passenger Impact Summary</span>
+                <textarea
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      passengerImpactSummary: event.target.value
+                    }));
+                  }}
+                  rows={2}
+                  value={delayAdditionalForm.passengerImpactSummary}
+                />
+              </label>
+              <div className="action-row">
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving}
+                  onClick={() => {
+                    void runAction(
+                      () => saveDelayAdditionalInfo(selectedDelay.id, delayAdditionalForm),
+                      "Delay additional info updated."
+                    );
+                  }}
+                  type="button"
+                >
+                  Save delay metadata
                 </button>
               </div>
             </div>

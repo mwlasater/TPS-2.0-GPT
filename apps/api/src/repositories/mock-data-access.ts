@@ -36,9 +36,13 @@ import {
   createDelayEvents,
   deleteDelayEvent,
   deleteRunDetailState,
+  getDelayAdditionalInfo,
   listDelayEvents,
+  listDelayCommonLocations,
+  listSpecialMovements,
   listStationStops,
   resetRunDetailState,
+  updateDelayAdditionalInfo,
   updateDelayEvent,
   updateStationStop
 } from "../lib/run-detail-data.js";
@@ -157,6 +161,10 @@ export function createMockDataAccess(): DataAccess {
         return updateStationStop(propertyCode, runId, stopId, update);
       },
       listDelayEvents,
+      listDelayCommonLocations,
+      listSpecialMovements,
+      getDelayAdditionalInfo,
+      updateDelayAdditionalInfo,
       createDelayEvents(propertyCode, runId, input) {
         assertRunMutable(propertyCode, runId);
         return createDelayEvents(propertyCode, runId, input);

@@ -1,5 +1,6 @@
 import {
   consistEquipmentUpdateSchema,
+  delayAdditionalInfoUpdateSchema,
   crewAssignmentUpdateSchema,
   delayEventBatchCreateSchema,
   fareEnforcementCreateSchema,
@@ -14,6 +15,7 @@ import type { FastifyInstance } from "fastify";
 import type {
   ConsistEquipmentUpdate,
   CrewAssignmentUpdate,
+  DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
   FareEnforcementCreate,
   DelayEventUpdate,
@@ -153,6 +155,50 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
         request.property,
         params.runId,
         params.stopId,
+        payload
+      );
+    }
+  );
+
+  app.get(
+    "/delays/common-locations",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listDelayCommonLocations(request.property)
+  );
+
+  app.get(
+    "/delays/special-movements",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listSpecialMovements(request.property)
+  );
+
+  app.get(
+    "/delays/:delayId/additional-info",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.getDelayAdditionalInfo(
+      request.property,
+      (request.params as { delayId: string }).delayId
+    )
+  );
+
+  app.put(
+    "/delays/:delayId/additional-info",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = delayAdditionalInfoUpdateSchema.parse(
+        request.body
+      ) as DelayAdditionalInfoUpdate;
+      return app.dataAccess.operations.updateDelayAdditionalInfo(
+        request.property,
+        (request.params as { delayId: string }).delayId,
         payload
       );
     }

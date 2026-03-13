@@ -1,10 +1,14 @@
 import type {
+  DelayAdditionalInfo,
+  DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
+  DelayCommonLocationList,
   DelayEventDeleteResult,
   DelayEvent,
   DelayEventList,
   DelayEventUpdate,
   PropertyCode,
+  SpecialMovementList,
   StationStop,
   StationStopList
 } from "@tps/types";
@@ -72,7 +76,49 @@ const streetcarProperties = new Set<PropertyCode>([
   "octastreetcar"
 ]);
 
+const commuterCommonLocations: DelayCommonLocationList = {
+  items: [
+    { id: "loc-sfc", label: "San Francisco", usageCount: 18 },
+    { id: "loc-pao", label: "Palo Alto", usageCount: 11 },
+    { id: "loc-sjc", label: "San Jose", usageCount: 9 }
+  ]
+};
+
+const streetcarCommonLocations: DelayCommonLocationList = {
+  items: [
+    { id: "loc-main", label: "Main Street", usageCount: 10 },
+    { id: "loc-river", label: "River Market", usageCount: 7 }
+  ]
+};
+
+const commuterSpecialMovements: SpecialMovementList = {
+  items: [
+    {
+      id: "movement-single-track",
+      label: "Single-track meet",
+      description: "Temporary meet requiring dispatch coordination."
+    },
+    {
+      id: "movement-yard-out",
+      label: "Yard departure",
+      description: "Late release from yard or shop movement."
+    }
+  ]
+};
+
+const streetcarSpecialMovements: SpecialMovementList = {
+  items: [
+    {
+      id: "movement-street-escort",
+      label: "Street escort",
+      description: "Manual escort through mixed-traffic segment."
+    }
+  ]
+};
+
 const stopCatalog: Partial<Record<PropertyCode, Partial<Record<string, StationStopList>>>> = {};
+const additionalInfoCatalog: Partial<Record<PropertyCode, Partial<Record<string, DelayAdditionalInfo>>>> =
+  {};
 
 function getRunStops(propertyCode: PropertyCode, runId: string): StationStopList {
   if (!stopCatalog[propertyCode]) {
@@ -135,12 +181,97 @@ function getRunDelays(propertyCode: PropertyCode, runId: string): DelayEventList
   return delayCatalog[propertyCode]![runId]!;
 }
 
+function createDefaultDelayAdditionalInfo(delayId: string): DelayAdditionalInfo {
+  return {
+    delayId,
+    locationDetail: "",
+    responsibleParty: "",
+    notableDelayType: "",
+    specialMovementId: null,
+    workOrderId: null,
+    mechanicalNotes: "",
+    passengerImpactSummary: ""
+  };
+}
+
+function getDelayAdditionalInfoCatalog(propertyCode: PropertyCode): Partial<Record<string, DelayAdditionalInfo>> {
+  if (!additionalInfoCatalog[propertyCode]) {
+    additionalInfoCatalog[propertyCode] = {
+      "delay-1": {
+        delayId: "delay-1",
+        locationDetail: "CP Coast interlocking",
+        responsibleParty: "Signal Maintainer",
+        notableDelayType: "Interlocking failure",
+        specialMovementId: "movement-single-track",
+        workOrderId: "WO-1427",
+        mechanicalNotes: "",
+        passengerImpactSummary: "Peak riders held through two downstream stops."
+      },
+      "delay-2": {
+        delayId: "delay-2",
+        locationDetail: "Palo Alto northbound platform",
+        responsibleParty: "Station Operations",
+        notableDelayType: "Platform crowding",
+        specialMovementId: null,
+        workOrderId: null,
+        mechanicalNotes: "",
+        passengerImpactSummary: "Boarding queue extended onto concourse."
+      },
+      "street-delay-1": {
+        delayId: "street-delay-1",
+        locationDetail: "Downtown crossing gate",
+        responsibleParty: "Traffic Coordination",
+        notableDelayType: "Signal priority override",
+        specialMovementId: "movement-street-escort",
+        workOrderId: null,
+        mechanicalNotes: "",
+        passengerImpactSummary: "Minor platform crowding at next stop."
+      }
+    };
+  }
+
+  return additionalInfoCatalog[propertyCode]!;
+}
+
 export function listStationStops(propertyCode: PropertyCode, runId: string): StationStopList {
   return getRunStops(propertyCode, runId);
 }
 
 export function listDelayEvents(propertyCode: PropertyCode, runId: string): DelayEventList {
   return getRunDelays(propertyCode, runId);
+}
+
+export function listDelayCommonLocations(propertyCode: PropertyCode): DelayCommonLocationList {
+  return streetcarProperties.has(propertyCode) ? streetcarCommonLocations : commuterCommonLocations;
+}
+
+export function listSpecialMovements(propertyCode: PropertyCode): SpecialMovementList {
+  return streetcarProperties.has(propertyCode) ? streetcarSpecialMovements : commuterSpecialMovements;
+}
+
+export function getDelayAdditionalInfo(propertyCode: PropertyCode, delayId: string): DelayAdditionalInfo {
+  const catalog = getDelayAdditionalInfoCatalog(propertyCode);
+
+  if (!catalog[delayId]) {
+    catalog[delayId] = createDefaultDelayAdditionalInfo(delayId);
+  }
+
+  return catalog[delayId]!;
+}
+
+export function updateDelayAdditionalInfo(
+  propertyCode: PropertyCode,
+  delayId: string,
+  update: DelayAdditionalInfoUpdate
+): DelayAdditionalInfo {
+  const next = {
+    delayId,
+    ...update
+  };
+
+  getDelayAdditionalInfoCatalog(propertyCode)[delayId] = next;
+
+  return next;
 }
 
 export function createDelayEvents(
@@ -160,6 +291,11 @@ export function createDelayEvents(
   );
 
   delays.items.unshift(...created);
+  const additionalInfo = getDelayAdditionalInfoCatalog(propertyCode);
+
+  for (const delay of created) {
+    additionalInfo[delay.id] = createDefaultDelayAdditionalInfo(delay.id);
+  }
 
   return {
     items: created
@@ -179,6 +315,7 @@ export function deleteDelayEvent(
   }
 
   delays.items = nextItems;
+  delete getDelayAdditionalInfoCatalog(propertyCode)[delayId];
 
   return {
     deletedId: delayId,
@@ -244,6 +381,12 @@ export function resetRunDetailState(propertyCode: PropertyCode, runId: string): 
 }
 
 export function deleteRunDetailState(propertyCode: PropertyCode, runId: string): void {
+  const existingDelays = delayCatalog[propertyCode]?.[runId]?.items ?? [];
+
+  for (const delay of existingDelays) {
+    delete getDelayAdditionalInfoCatalog(propertyCode)[delay.id];
+  }
+
   delete stopCatalog[propertyCode]?.[runId];
   delete delayCatalog[propertyCode]?.[runId];
 }
@@ -255,5 +398,9 @@ export function resetRunDetailData(): void {
 
   for (const propertyCode of Object.keys(delayCatalog) as PropertyCode[]) {
     delete delayCatalog[propertyCode];
+  }
+
+  for (const propertyCode of Object.keys(additionalInfoCatalog) as PropertyCode[]) {
+    delete additionalInfoCatalog[propertyCode];
   }
 }

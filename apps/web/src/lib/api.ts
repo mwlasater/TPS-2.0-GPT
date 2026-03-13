@@ -7,7 +7,10 @@ import type {
   ConsistEquipmentUpdate,
   CrewAssignmentList,
   CrewAssignmentUpdate,
+  DelayAdditionalInfo,
+  DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
+  DelayCommonLocationList,
   DelayEventDeleteResult,
   DelayEventList,
   DelayEventUpdate,
@@ -35,6 +38,7 @@ import type {
   ReportConfigList,
   ReportConfigRow,
   ReportConfigUpdate,
+  SpecialMovementList,
   StationStop,
   StationStopList,
   StationStopUpdate,
@@ -354,6 +358,38 @@ export function fetchDelayEvents(
   runId: string
 ): Promise<DelayEventList> {
   return fetchPropertyScoped<DelayEventList>(`/train-runs/${runId}/delays`, propertyCode);
+}
+
+export function fetchDelayCommonLocations(
+  propertyCode: PropertyCode
+): Promise<DelayCommonLocationList> {
+  return fetchPropertyScoped<DelayCommonLocationList>("/delays/common-locations", propertyCode);
+}
+
+export function fetchSpecialMovements(
+  propertyCode: PropertyCode
+): Promise<SpecialMovementList> {
+  return fetchPropertyScoped<SpecialMovementList>("/delays/special-movements", propertyCode);
+}
+
+export function fetchDelayAdditionalInfo(
+  propertyCode: PropertyCode,
+  delayId: string
+): Promise<DelayAdditionalInfo> {
+  return fetchPropertyScoped<DelayAdditionalInfo>(`/delays/${delayId}/additional-info`, propertyCode);
+}
+
+export function updateDelayAdditionalInfo(
+  propertyCode: PropertyCode,
+  delayId: string,
+  payload: DelayAdditionalInfoUpdate
+): Promise<DelayAdditionalInfo> {
+  return mutatePropertyScoped<DelayAdditionalInfo>(
+    `/delays/${delayId}/additional-info`,
+    propertyCode,
+    "PUT",
+    payload
+  );
 }
 
 export function createDelayEvents(

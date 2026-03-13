@@ -3,6 +3,8 @@ import type {
   AppBootstrap,
   ConsistEquipmentList,
   CrewAssignmentList,
+  DelayAdditionalInfo,
+  DelayCommonLocationList,
   DelayEventList,
   FareEnforcementList,
   FareEnforcementSummaryList,
@@ -17,6 +19,7 @@ import type {
   PropertySettings,
   ReferenceDataset,
   ReportConfigList,
+  SpecialMovementList,
   StationStopList,
   TrainRunList,
   TrainRunApprovalHistoryList,
@@ -649,6 +652,128 @@ export const demoDelayEvents: Record<PropertyCode, DelayEventList> = {
   octastreetcar: streetcarDelayEvents,
   metrolinkarrow: commuterDelayEvents,
   silverline: commuterDelayEvents
+};
+
+export const demoDelayCommonLocations: Record<PropertyCode, DelayCommonLocationList> = {
+  caltrain: {
+    items: [
+      { id: "loc-sfc", label: "San Francisco", usageCount: 18 },
+      { id: "loc-pao", label: "Palo Alto", usageCount: 11 },
+      { id: "loc-sjc", label: "San Jose", usageCount: 9 }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      { id: "loc-lnr", label: "Leander", usageCount: 8 },
+      { id: "loc-mlk", label: "MLK", usageCount: 5 }
+    ]
+  },
+  kcstreetcar: {
+    items: [{ id: "loc-main", label: "Main Street", usageCount: 10 }]
+  },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoSpecialMovements: Record<PropertyCode, SpecialMovementList> = {
+  caltrain: {
+    items: [
+      {
+        id: "movement-single-track",
+        label: "Single-track meet",
+        description: "Temporary meet requiring dispatch coordination."
+      },
+      {
+        id: "movement-yard-out",
+        label: "Yard departure",
+        description: "Late release from yard or shop movement."
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "movement-escort",
+        label: "Street escort",
+        description: "Manual escort through mixed-traffic segment."
+      }
+    ]
+  },
+  kcstreetcar: {
+    items: [
+      {
+        id: "movement-escort",
+        label: "Street escort",
+        description: "Manual escort through mixed-traffic segment."
+      }
+    ]
+  },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoDelayAdditionalInfo: Record<PropertyCode, Record<string, DelayAdditionalInfo>> = {
+  caltrain: {
+    "delay-1": {
+      delayId: "delay-1",
+      locationDetail: "CP Coast interlocking",
+      responsibleParty: "Signal Maintainer",
+      notableDelayType: "Interlocking failure",
+      specialMovementId: "movement-single-track",
+      workOrderId: "WO-1427",
+      mechanicalNotes: "",
+      passengerImpactSummary: "Peak riders held through two downstream stops."
+    },
+    "delay-2": {
+      delayId: "delay-2",
+      locationDetail: "Palo Alto northbound platform",
+      responsibleParty: "Station Operations",
+      notableDelayType: "Platform crowding",
+      specialMovementId: null,
+      workOrderId: null,
+      mechanicalNotes: "",
+      passengerImpactSummary: "Boarding queue extended onto concourse."
+    }
+  },
+  texrail: {},
+  tre: {},
+  trirail: {},
+  nmrx: {},
+  ctrail: {},
+  ace: {},
+  capmetro: {},
+  kcstreetcar: {
+    "street-delay-1": {
+      delayId: "street-delay-1",
+      locationDetail: "Downtown crossing gate",
+      responsibleParty: "Traffic Coordination",
+      notableDelayType: "Signal priority override",
+      specialMovementId: "movement-escort",
+      workOrderId: null,
+      mechanicalNotes: "",
+      passengerImpactSummary: "Minor platform crowding at next stop."
+    }
+  },
+  okcstreetcar: {},
+  octastreetcar: {},
+  metrolinkarrow: {},
+  silverline: {}
 };
 
 export const demoFareEnforcement: Record<PropertyCode, FareEnforcementList> = {

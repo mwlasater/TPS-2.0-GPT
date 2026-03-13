@@ -3,7 +3,10 @@ import type {
   ConsistEquipmentUpdate,
   CrewAssignmentList,
   CrewAssignmentUpdate,
+  DelayAdditionalInfo,
+  DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
+  DelayCommonLocationList,
   DelayEventDeleteResult,
   DelayEventList,
   DelayEventUpdate,
@@ -14,6 +17,7 @@ import type {
   FareEnforcementUpdate,
   PropertyCode,
   ReferenceDataset,
+  SpecialMovementList,
   StationStop,
   StationStopList,
   StationStopUpdate,
@@ -35,6 +39,8 @@ import {
   createDelayEvents,
   deleteDelayEvent,
   deleteTrainRun,
+  fetchDelayAdditionalInfo,
+  fetchDelayCommonLocations,
   fetchConsistEquipment,
   createFareEnforcement,
   fetchCrewAssignments,
@@ -43,6 +49,7 @@ import {
   fetchFareEnforcementDashboard,
   fetchFareEnforcementSummary,
   fetchReferenceData,
+  fetchSpecialMovements,
   fetchStationStops,
   fetchTrainRuns,
   fetchTrainSchedules,
@@ -52,6 +59,7 @@ import {
   resetTrainRun,
   updateConsistEquipment,
   updateCrewAssignment,
+  updateDelayAdditionalInfo,
   updateDelayEvent,
   updateFareEnforcement,
   updateStationStop,
@@ -61,10 +69,13 @@ import {
 import {
   demoConsistEquipment,
   demoCrewAssignments,
+  demoDelayAdditionalInfo,
+  demoDelayCommonLocations,
   demoDelayEvents,
   demoFareEnforcement,
   demoFareEnforcementSummary,
   demoReferenceData,
+  demoSpecialMovements,
   demoStationStops,
   demoTrainRuns,
   demoTrainRunApprovalHistory,
@@ -151,6 +162,9 @@ interface OperationsDataState {
   selectedRunId: string | null;
   approvalHistory: TrainRunApprovalHistoryList;
   scheduleApprovalHistory: TrainRunApprovalHistoryList;
+  delayAdditionalInfo: Record<string, DelayAdditionalInfo>;
+  delayCommonLocations: DelayCommonLocationList;
+  specialMovements: SpecialMovementList;
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
   fareDashboard: FareEnforcementDashboard;
@@ -185,6 +199,10 @@ interface OperationsDataState {
     runId: string,
     input: DelayEventBatchCreate
   ) => Promise<DelayEventList | undefined>;
+  saveDelayAdditionalInfo: (
+    delayId: string,
+    update: DelayAdditionalInfoUpdate
+  ) => Promise<DelayAdditionalInfo | undefined>;
   deleteDelay: (
     runId: string,
     delayId: string
@@ -219,6 +237,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       propertyCode,
       demoTrainRuns[propertyCode].items[0]?.id ?? null
     ),
+    delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
+    delayCommonLocations: demoDelayCommonLocations[propertyCode],
+    specialMovements: demoSpecialMovements[propertyCode],
     consist: demoConsistEquipment[propertyCode],
     crew: demoCrewAssignments[propertyCode],
     delayEvents: demoDelayEvents[propertyCode],
@@ -235,6 +256,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     initializeRuns: async () => undefined,
     resetRun: async () => undefined,
     deleteRun: async () => undefined,
+    saveDelayAdditionalInfo: async () => undefined,
     saveStop: async () => undefined,
     saveDelay: async () => undefined,
     createDelayBatch: async () => undefined,
@@ -261,6 +283,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         propertyCode,
         demoTrainRuns[propertyCode].items[0]?.id ?? null
       ),
+      delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
+      delayCommonLocations: demoDelayCommonLocations[propertyCode],
+      specialMovements: demoSpecialMovements[propertyCode],
       consist: demoConsistEquipment[propertyCode],
       crew: demoCrewAssignments[propertyCode],
       delayEvents: demoDelayEvents[propertyCode],
@@ -277,6 +302,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       initializeRuns: state.initializeRuns,
       resetRun: state.resetRun,
       deleteRun: state.deleteRun,
+      saveDelayAdditionalInfo: state.saveDelayAdditionalInfo,
       saveStop: state.saveStop,
       saveDelay: state.saveDelay,
       createDelayBatch: state.createDelayBatch,
@@ -289,10 +315,12 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
 
     void Promise.all([
       fetchReferenceData(propertyCode),
+      fetchDelayCommonLocations(propertyCode),
+      fetchSpecialMovements(propertyCode),
       fetchTrainSchedules(propertyCode),
       fetchTrainRuns(propertyCode)
     ])
-      .then(async ([referenceData, schedules, runs]) => {
+      .then(async ([referenceData, delayCommonLocations, specialMovements, schedules, runs]) => {
         const selectedRunId = runs.items[0]?.id ?? null;
         const selectedScheduleId = runs.items.find((run) => run.id === selectedRunId)?.scheduleId;
         const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, fareSummary, fareDashboard] = selectedRunId
@@ -320,15 +348,26 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               demoFareEnforcementSummary[propertyCode],
               getFallbackFareDashboard(propertyCode, runs)
             ];
+        const delayAdditionalInfo = Object.fromEntries(
+          await Promise.all(
+            delayEvents.items.map(async (delay) => [
+              delay.id,
+              await fetchDelayAdditionalInfo(propertyCode, delay.id)
+            ])
+          )
+        );
 
         if (isMounted) {
           setState({
             referenceData,
+            delayCommonLocations,
+            specialMovements,
             schedules,
             runs,
             selectedRunId,
             approvalHistory,
             scheduleApprovalHistory,
+            delayAdditionalInfo,
             consist,
             crew,
             delayEvents,
@@ -345,6 +384,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             initializeRuns: state.initializeRuns,
             resetRun: state.resetRun,
             deleteRun: state.deleteRun,
+            saveDelayAdditionalInfo: state.saveDelayAdditionalInfo,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
             createDelayBatch: state.createDelayBatch,
@@ -371,6 +411,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               propertyCode,
               demoTrainRuns[propertyCode].items[0]?.id ?? null
             ),
+            delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
+            delayCommonLocations: demoDelayCommonLocations[propertyCode],
+            specialMovements: demoSpecialMovements[propertyCode],
             consist: demoConsistEquipment[propertyCode],
             crew: demoCrewAssignments[propertyCode],
             delayEvents: demoDelayEvents[propertyCode],
@@ -387,6 +430,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             initializeRuns: state.initializeRuns,
             resetRun: state.resetRun,
             deleteRun: state.deleteRun,
+            saveDelayAdditionalInfo: state.saveDelayAdditionalInfo,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
             createDelayBatch: state.createDelayBatch,
@@ -424,6 +468,14 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
           ? fetchTrainScheduleApprovalHistory(propertyCode, scheduleId)
           : Promise.resolve(getFallbackApprovalHistory(propertyCode, runId))
       ]);
+      const delayAdditionalInfo = Object.fromEntries(
+        await Promise.all(
+          delayEvents.items.map(async (delay) => [
+            delay.id,
+            await fetchDelayAdditionalInfo(propertyCode, delay.id)
+          ])
+        )
+      );
 
       setState((current) => ({
         ...current,
@@ -435,6 +487,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         fareEnforcement,
         approvalHistory,
         scheduleApprovalHistory,
+        delayAdditionalInfo,
         source: "api",
         isLoading: false
       }));
@@ -444,6 +497,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         selectedRunId: runId,
         stationStops: demoStationStops[propertyCode],
         delayEvents: demoDelayEvents[propertyCode],
+        delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
         consist: demoConsistEquipment[propertyCode],
         crew: demoCrewAssignments[propertyCode],
         fareEnforcement: demoFareEnforcement[propertyCode],
@@ -600,6 +654,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         delayEvents: {
           items: []
         },
+        delayAdditionalInfo: {},
         consist: {
           items: []
         },
@@ -639,6 +694,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             current.selectedRunId === runId ? { items: [] } : current.scheduleApprovalHistory,
           delayEvents:
             current.selectedRunId === runId ? { items: [] } : current.delayEvents,
+          delayAdditionalInfo:
+            current.selectedRunId === runId ? {} : current.delayAdditionalInfo,
           consist:
             current.selectedRunId === runId ? { items: [] } : current.consist,
           crew:
@@ -707,6 +764,26 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     }
   }
 
+  async function saveDelayMetadata(delayId: string, update: DelayAdditionalInfoUpdate) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const next = await updateDelayAdditionalInfo(propertyCode, delayId, update);
+      setState((current) => ({
+        ...current,
+        delayAdditionalInfo: {
+          ...current.delayAdditionalInfo,
+          [delayId]: next
+        },
+        isSaving: false
+      }));
+      return next;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
   async function createDelayBatch(runId: string, input: DelayEventBatchCreate) {
     setState((current) => ({ ...current, isSaving: true }));
 
@@ -720,6 +797,24 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
           ...current,
           delayEvents: {
             items: nextItems
+          },
+          delayAdditionalInfo: {
+            ...current.delayAdditionalInfo,
+            ...Object.fromEntries(
+              created.items.map((delay) => [
+                delay.id,
+                {
+                  delayId: delay.id,
+                  locationDetail: "",
+                  responsibleParty: "",
+                  notableDelayType: "",
+                  specialMovementId: null,
+                  workOrderId: null,
+                  mechanicalNotes: "",
+                  passengerImpactSummary: ""
+                }
+              ])
+            )
           },
           runs: {
             items: current.runs.items.map((item) =>
@@ -752,6 +847,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         delayEvents: {
           items: current.delayEvents.items.filter((item) => item.id !== delayId)
         },
+        delayAdditionalInfo: Object.fromEntries(
+          Object.entries(current.delayAdditionalInfo).filter(([id]) => id !== delayId)
+        ),
         runs: {
           items: current.runs.items.map((item) =>
             item.id === runId
@@ -901,6 +999,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     deleteRun: removeRun,
     saveStop,
     saveDelay,
+    saveDelayAdditionalInfo: saveDelayMetadata,
     createDelayBatch,
     deleteDelay: removeDelay,
     saveConsist,

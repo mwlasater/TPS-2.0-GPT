@@ -228,6 +228,47 @@ export const delayEventDeleteResultSchema = z.object({
   delayMinutes: z.number().int().nonnegative()
 });
 
+export const delayCommonLocationSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  usageCount: z.number().int().nonnegative()
+});
+
+export const delayCommonLocationListSchema = z.object({
+  items: z.array(delayCommonLocationSchema)
+});
+
+export const specialMovementSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  description: z.string()
+});
+
+export const specialMovementListSchema = z.object({
+  items: z.array(specialMovementSchema)
+});
+
+export const delayAdditionalInfoSchema = z.object({
+  delayId: z.string(),
+  locationDetail: z.string(),
+  responsibleParty: z.string(),
+  notableDelayType: z.string(),
+  specialMovementId: z.string().nullable(),
+  workOrderId: z.string().nullable(),
+  mechanicalNotes: z.string(),
+  passengerImpactSummary: z.string()
+});
+
+export const delayAdditionalInfoUpdateSchema = z.object({
+  locationDetail: z.string(),
+  responsibleParty: z.string(),
+  notableDelayType: z.string(),
+  specialMovementId: z.string().nullable(),
+  workOrderId: z.string().nullable(),
+  mechanicalNotes: z.string(),
+  passengerImpactSummary: z.string()
+});
+
 export const delayEventUpdateSchema = z.object({
   category: z.string().min(1),
   minutes: z.number().int().nonnegative(),

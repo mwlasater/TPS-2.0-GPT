@@ -238,6 +238,47 @@ export interface DelayEventDeleteResult {
   delayMinutes: number;
 }
 
+export interface DelayCommonLocation {
+  id: string;
+  label: string;
+  usageCount: number;
+}
+
+export interface DelayCommonLocationList {
+  items: DelayCommonLocation[];
+}
+
+export interface SpecialMovement {
+  id: string;
+  label: string;
+  description: string;
+}
+
+export interface SpecialMovementList {
+  items: SpecialMovement[];
+}
+
+export interface DelayAdditionalInfo {
+  delayId: string;
+  locationDetail: string;
+  responsibleParty: string;
+  notableDelayType: string;
+  specialMovementId: string | null;
+  workOrderId: string | null;
+  mechanicalNotes: string;
+  passengerImpactSummary: string;
+}
+
+export interface DelayAdditionalInfoUpdate {
+  locationDetail: string;
+  responsibleParty: string;
+  notableDelayType: string;
+  specialMovementId: string | null;
+  workOrderId: string | null;
+  mechanicalNotes: string;
+  passengerImpactSummary: string;
+}
+
 export interface DelayEventUpdate {
   category: string;
   minutes: number;

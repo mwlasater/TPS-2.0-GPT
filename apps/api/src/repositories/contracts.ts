@@ -7,7 +7,10 @@ import type {
   CrewAssignment,
   CrewAssignmentList,
   CrewAssignmentUpdate,
+  DelayAdditionalInfo,
+  DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
+  DelayCommonLocationList,
   DelayEventDeleteResult,
   FileServiceList,
   JobProfile,
@@ -25,6 +28,7 @@ import type {
   ReportConfigRow,
   ReportConfigList,
   ReportConfigUpdate,
+  SpecialMovementList,
   DelayEventList,
   DelayEvent,
   DelayEventUpdate,
@@ -148,6 +152,17 @@ export interface OperationsRepository {
     update: StationStopUpdate
   ): MaybePromise<StationStop>;
   listDelayEvents(propertyCode: PropertyCode, runId: string): MaybePromise<DelayEventList>;
+  listDelayCommonLocations(propertyCode: PropertyCode): MaybePromise<DelayCommonLocationList>;
+  listSpecialMovements(propertyCode: PropertyCode): MaybePromise<SpecialMovementList>;
+  getDelayAdditionalInfo(
+    propertyCode: PropertyCode,
+    delayId: string
+  ): MaybePromise<DelayAdditionalInfo>;
+  updateDelayAdditionalInfo(
+    propertyCode: PropertyCode,
+    delayId: string,
+    update: DelayAdditionalInfoUpdate
+  ): MaybePromise<DelayAdditionalInfo>;
   createDelayEvents(
     propertyCode: PropertyCode,
     runId: string,

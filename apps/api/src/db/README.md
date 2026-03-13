@@ -6,12 +6,14 @@ Initial SQL persistence tooling for TPS 2.0.
 - `migrations/0004_run_resources.sql`: consist equipment and crew assignments for train runs
 - `migrations/0005_user_admin.sql`: persisted user metadata, permission arrays, and user/group membership
 - `migrations/0006_reference_admin_actions.sql`: reference datasets and persisted user admin actions
+- `migrations/0010_delay_management.sql`: delay common locations, special movements, and additional metadata
 - `seeds/0001_bootstrap.sql`: bootstrap property settings plus a small set of schedules and runs
 - `seeds/0002_run_resources.sql`: consist and crew records for seeded train runs
 - `seeds/0003_user_admin.sql`: managed users, property access, permission groups, and memberships
 - `seeds/0004_platform_admin.sql`: report config plus file, notification, and Power BI records
 - `seeds/0005_baseline_admin.sql`: job profiles and attendance exceptions
 - `seeds/0006_reference_admin_actions.sql`: delay reasons, crew roles, station codes, and user admin actions
+- `seeds/0010_delay_management.sql`: seeded delay locations, special movements, and additional delay metadata
 
 Commands:
 

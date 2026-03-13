@@ -71,12 +71,16 @@ export function App() {
               runs={operationsData.runs}
               approvalHistory={operationsData.approvalHistory}
               scheduleApprovalHistory={operationsData.scheduleApprovalHistory}
+              delayAdditionalInfo={operationsData.delayAdditionalInfo}
+              delayCommonLocations={operationsData.delayCommonLocations}
+              specialMovements={operationsData.specialMovements}
               selectedRunId={operationsData.selectedRunId}
               selectRun={operationsData.selectRun}
               saveConsist={operationsData.saveConsist}
               saveCrew={operationsData.saveCrew}
               saveDelay={operationsData.saveDelay}
               createDelayBatch={operationsData.createDelayBatch}
+              saveDelayAdditionalInfo={operationsData.saveDelayAdditionalInfo}
               deleteDelay={operationsData.deleteDelay}
               saveBatchRunApproval={operationsData.saveBatchRunApproval}
               initializeRuns={operationsData.initializeRuns}
