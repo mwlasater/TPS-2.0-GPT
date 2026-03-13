@@ -1,4 +1,8 @@
-import { listFareEnforcement, updateFareEnforcement } from "../lib/fare-enforcement-data.js";
+import {
+  listFareEnforcement,
+  listFareEnforcementSummary,
+  updateFareEnforcement
+} from "../lib/fare-enforcement-data.js";
 import {
   listAttendanceExceptions,
   listJobProfiles,
@@ -107,6 +111,7 @@ export function createMockDataAccess(): DataAccess {
         return updateCrewAssignment(propertyCode, assignmentId, update);
       },
       listFareEnforcement,
+      listFareEnforcementSummary,
       updateFareEnforcement
     }
   };

@@ -6,6 +6,7 @@ import type {
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementList,
+  FareEnforcementSummaryList,
   FareEnforcementUpdate,
   PropertyCode,
   ReferenceDataset,
@@ -25,6 +26,7 @@ import {
   fetchCrewAssignments,
   fetchDelayEvents,
   fetchFareEnforcement,
+  fetchFareEnforcementSummary,
   fetchReferenceData,
   fetchStationStops,
   fetchTrainRuns,
@@ -42,6 +44,7 @@ import {
   demoCrewAssignments,
   demoDelayEvents,
   demoFareEnforcement,
+  demoFareEnforcementSummary,
   demoReferenceData,
   demoStationStops,
   demoTrainRuns,
@@ -68,6 +71,7 @@ interface OperationsDataState {
   approvalHistory: TrainRunApprovalHistoryList;
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
+  fareSummary: FareEnforcementSummaryList;
   consist: ConsistEquipmentList;
   crew: CrewAssignmentList;
   stationStops: StationStopList;
@@ -113,6 +117,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     crew: demoCrewAssignments[propertyCode],
     delayEvents: demoDelayEvents[propertyCode],
     fareEnforcement: demoFareEnforcement[propertyCode],
+    fareSummary: demoFareEnforcementSummary[propertyCode],
     stationStops: demoStationStops[propertyCode],
     source: "fallback",
     isLoading: true,
@@ -142,6 +147,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       crew: demoCrewAssignments[propertyCode],
       delayEvents: demoDelayEvents[propertyCode],
       fareEnforcement: demoFareEnforcement[propertyCode],
+      fareSummary: demoFareEnforcementSummary[propertyCode],
       stationStops: demoStationStops[propertyCode],
       source: "fallback",
       isLoading: true,
@@ -162,14 +168,15 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     ])
       .then(async ([referenceData, schedules, runs]) => {
         const selectedRunId = runs.items[0]?.id ?? null;
-        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory] = selectedRunId
+        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, fareSummary] = selectedRunId
           ? await Promise.all([
               fetchStationStops(propertyCode, selectedRunId),
               fetchDelayEvents(propertyCode, selectedRunId),
               fetchConsistEquipment(propertyCode, selectedRunId),
               fetchCrewAssignments(propertyCode, selectedRunId),
               fetchFareEnforcement(propertyCode, selectedRunId),
-              fetchTrainRunApprovalHistory(propertyCode, selectedRunId)
+              fetchTrainRunApprovalHistory(propertyCode, selectedRunId),
+              fetchFareEnforcementSummary(propertyCode)
             ])
           : [
               demoStationStops[propertyCode],
@@ -177,7 +184,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               demoConsistEquipment[propertyCode],
               demoCrewAssignments[propertyCode],
               demoFareEnforcement[propertyCode],
-              getFallbackApprovalHistory(propertyCode, selectedRunId)
+              getFallbackApprovalHistory(propertyCode, selectedRunId),
+              demoFareEnforcementSummary[propertyCode]
             ];
 
         if (isMounted) {
@@ -191,6 +199,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             crew,
             delayEvents,
             fareEnforcement,
+            fareSummary,
             stationStops,
             source: "api",
             isLoading: false,
@@ -220,6 +229,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             crew: demoCrewAssignments[propertyCode],
             delayEvents: demoDelayEvents[propertyCode],
             fareEnforcement: demoFareEnforcement[propertyCode],
+            fareSummary: demoFareEnforcementSummary[propertyCode],
             stationStops: demoStationStops[propertyCode],
             source: "fallback",
             isLoading: false,
@@ -279,6 +289,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         crew: demoCrewAssignments[propertyCode],
         fareEnforcement: demoFareEnforcement[propertyCode],
         approvalHistory: getFallbackApprovalHistory(propertyCode, runId),
+        fareSummary: demoFareEnforcementSummary[propertyCode],
         source: "fallback",
         isLoading: false
       }));
@@ -420,6 +431,33 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         ...current,
         fareEnforcement: {
           items: current.fareEnforcement.items.map((item) => (item.id === recordId ? record : item))
+        },
+        fareSummary: {
+          items: current.fareSummary.items.map((item) =>
+            item.runId === record.runId
+              ? {
+                  ...item,
+                  activityCount: current.fareEnforcement.items
+                    .map((candidate) => (candidate.id === recordId ? record : candidate))
+                    .filter((candidate) => candidate.runId === record.runId)
+                    .reduce((total, candidate) => total + candidate.activityCount, 0),
+                  inspectors: Array.from(
+                    new Set(
+                      current.fareEnforcement.items
+                        .map((candidate) => (candidate.id === recordId ? record : candidate))
+                        .filter((candidate) => candidate.runId === record.runId)
+                        .map((candidate) => candidate.inspectorName)
+                    )
+                  ),
+                  latestCapturedAt: current.fareEnforcement.items
+                    .map((candidate) => (candidate.id === recordId ? record : candidate))
+                    .filter((candidate) => candidate.runId === record.runId)
+                    .map((candidate) => candidate.capturedAt)
+                    .sort()
+                    .at(-1) ?? null
+                }
+              : item
+          )
         },
         isSaving: false
       }));

@@ -11,6 +11,7 @@ import type {
   DelayEventUpdate,
   FareEnforcementList,
   FareEnforcementRecord,
+  FareEnforcementSummaryList,
   FareEnforcementUpdate,
   FileServiceList,
   JobProfile,
@@ -350,6 +351,12 @@ export function fetchFareEnforcement(
 ): Promise<FareEnforcementList> {
   const query = runId ? `?runId=${encodeURIComponent(runId)}` : "";
   return fetchPropertyScoped<FareEnforcementList>(`/fare-enforcement${query}`, propertyCode);
+}
+
+export function fetchFareEnforcementSummary(
+  propertyCode: PropertyCode
+): Promise<FareEnforcementSummaryList> {
+  return fetchPropertyScoped<FareEnforcementSummaryList>("/fare-enforcement/summary", propertyCode);
 }
 
 export function updateFareEnforcement(

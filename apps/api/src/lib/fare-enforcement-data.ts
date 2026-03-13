@@ -1,6 +1,8 @@
 import type {
   FareEnforcementList,
   FareEnforcementRecord,
+  FareEnforcementSummary,
+  FareEnforcementSummaryList,
   FareEnforcementUpdate,
   PropertyCode
 } from "@tps/types";
@@ -55,6 +57,39 @@ export function listFareEnforcement(propertyCode: PropertyCode, runId?: string):
 
   return {
     items: runId ? items.filter((item) => item.runId === runId) : items
+  };
+}
+
+export function listFareEnforcementSummary(propertyCode: PropertyCode): FareEnforcementSummaryList {
+  const items = fareCatalog[propertyCode]?.items ?? [];
+  const summaryByRun = new Map<string, FareEnforcementSummary>();
+
+  for (const item of items) {
+    const current = summaryByRun.get(item.runId) ?? {
+      runId: item.runId,
+      recordCount: 0,
+      activityCount: 0,
+      inspectors: [],
+      latestCapturedAt: null
+    };
+
+    current.recordCount += 1;
+    current.activityCount += item.activityCount;
+
+    if (!current.inspectors.includes(item.inspectorName)) {
+      current.inspectors.push(item.inspectorName);
+    }
+
+    current.latestCapturedAt =
+      current.latestCapturedAt && current.latestCapturedAt > item.capturedAt
+        ? current.latestCapturedAt
+        : item.capturedAt;
+
+    summaryByRun.set(item.runId, current);
+  }
+
+  return {
+    items: Array.from(summaryByRun.values())
   };
 }
 

@@ -259,6 +259,18 @@ export interface FareEnforcementUpdate {
   capturedAt: string;
 }
 
+export interface FareEnforcementSummary {
+  runId: string;
+  recordCount: number;
+  activityCount: number;
+  inspectors: string[];
+  latestCapturedAt: string | null;
+}
+
+export interface FareEnforcementSummaryList {
+  items: FareEnforcementSummary[];
+}
+
 export interface PermissionGroup {
   id: string;
   name: string;

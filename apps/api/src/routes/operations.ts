@@ -187,6 +187,14 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     )
   );
 
+  app.get(
+    "/fare-enforcement/summary",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listFareEnforcementSummary(request.property)
+  );
+
   app.put(
     "/fare-enforcement/:recordId",
     {

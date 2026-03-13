@@ -490,4 +490,33 @@ describe("PostgresOperationsRepository", () => {
       ]
     });
   });
+
+  it("maps fare enforcement summary rows into rollups", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          run_id: "caltrain-run-1",
+          record_count: 2,
+          activity_count: 24,
+          inspectors: ["Jordan Reyes", "Morgan Lee"],
+          latest_captured_at: new Date("2026-03-06T06:40:00Z")
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const summary = await repository.listFareEnforcementSummary("caltrain");
+
+    expect(summary).toEqual({
+      items: [
+        {
+          runId: "caltrain-run-1",
+          recordCount: 2,
+          activityCount: 24,
+          inspectors: ["Jordan Reyes", "Morgan Lee"],
+          latestCapturedAt: "2026-03-06T06:40:00.000Z"
+        }
+      ]
+    });
+  });
 });

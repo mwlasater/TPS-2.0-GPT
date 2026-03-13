@@ -248,6 +248,18 @@ export const fareEnforcementListSchema = z.object({
   items: z.array(fareEnforcementRecordSchema)
 });
 
+export const fareEnforcementSummarySchema = z.object({
+  runId: z.string(),
+  recordCount: z.number(),
+  activityCount: z.number(),
+  inspectors: z.array(z.string()),
+  latestCapturedAt: z.string().nullable()
+});
+
+export const fareEnforcementSummaryListSchema = z.object({
+  items: z.array(fareEnforcementSummarySchema)
+});
+
 export const fareEnforcementUpdateSchema = z.object({
   inspectorName: z.string().min(1),
   firstLocation: z.string().min(1),

@@ -6,6 +6,7 @@ import type {
   DelayEventList,
   DelayEventUpdate,
   FareEnforcementList,
+  FareEnforcementSummaryList,
   FareEnforcementUpdate,
   PropertySummary,
   ReferenceDataset,
@@ -29,6 +30,7 @@ interface OperationsPageProps {
   crew: CrewAssignmentList;
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
+  fareSummary: FareEnforcementSummaryList;
   isSaving: boolean;
   referenceData: ReferenceDataset;
   runs: TrainRunList;
@@ -73,6 +75,7 @@ export function OperationsPage({
   crew,
   delayEvents,
   fareEnforcement,
+  fareSummary,
   isSaving,
   property,
   referenceData,
@@ -697,6 +700,31 @@ export function OperationsPage({
         </Panel>
       </div>
       <Panel title="Fare enforcement" eyebrow={`${fareEnforcement.items.length} records`}>
+        <div className="three-column-grid">
+          {fareSummary.items.length ? (
+            fareSummary.items.map((summary) => (
+              <button
+                className={`selection-card ${summary.runId === selectedRun?.id ? "is-selected" : ""}`}
+                key={summary.runId}
+                onClick={() => {
+                  void selectRun(summary.runId);
+                }}
+                type="button"
+              >
+                <div>
+                  <strong>{summary.runId}</strong>
+                  <p>{summary.recordCount} records</p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge tone="neutral" label={`${summary.activityCount} checks`} />
+                  <span>{summary.inspectors.join(", ")}</span>
+                </div>
+              </button>
+            ))
+          ) : (
+            <p className="editor-span">No fare enforcement summaries available for this property yet.</p>
+          )}
+        </div>
         <div className="list-stack">
           {fareEnforcement.items.length ? (
             fareEnforcement.items.map((record) => (

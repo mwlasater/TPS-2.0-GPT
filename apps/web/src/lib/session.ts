@@ -5,6 +5,7 @@ import type {
   CrewAssignmentList,
   DelayEventList,
   FareEnforcementList,
+  FareEnforcementSummaryList,
   FileServiceList,
   JobProfileList,
   ManagedUserDetail,
@@ -695,6 +696,52 @@ export const demoFareEnforcement: Record<PropertyCode, FareEnforcementList> = {
         activityCount: 9,
         notes: "Morning commuter inspection pass.",
         capturedAt: "2026-03-06T07:24:00Z"
+      }
+    ]
+  },
+  kcstreetcar: { items: [] },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoFareEnforcementSummary: Record<PropertyCode, FareEnforcementSummaryList> = {
+  caltrain: {
+    items: [
+      {
+        runId: "caltrain-run-1",
+        recordCount: 1,
+        activityCount: 16,
+        inspectors: ["Morgan Lee"],
+        latestCapturedAt: "2026-03-06T06:28:00Z"
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: {
+    items: [
+      {
+        runId: "tre-run-1",
+        recordCount: 1,
+        activityCount: 12,
+        inspectors: ["Taylor Brooks"],
+        latestCapturedAt: "2026-03-06T08:08:00Z"
+      }
+    ]
+  },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        runId: "capmetro-run-1",
+        recordCount: 1,
+        activityCount: 9,
+        inspectors: ["Jordan Reyes"],
+        latestCapturedAt: "2026-03-06T07:24:00Z"
       }
     ]
   },

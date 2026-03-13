@@ -10,6 +10,8 @@ import type {
   DelayEventUpdate,
   FareEnforcementList,
   FareEnforcementRecord,
+  FareEnforcementSummary,
+  FareEnforcementSummaryList,
   FareEnforcementUpdate,
   PropertyCode,
   StationStop,
@@ -24,7 +26,7 @@ import type {
   TrainScheduleList
 } from "@tps/types";
 
-import { listFareEnforcement } from "../lib/fare-enforcement-data.js";
+import { listFareEnforcement, listFareEnforcementSummary } from "../lib/fare-enforcement-data.js";
 import { listConsistEquipment, listCrewAssignments } from "../lib/run-resource-data.js";
 import { listDelayEvents, listStationStops } from "../lib/run-detail-data.js";
 
@@ -98,6 +100,14 @@ interface FareEnforcementRow {
   activity_count: number;
   notes: string;
   captured_at: string | Date;
+}
+
+interface FareEnforcementSummaryRow {
+  run_id: string;
+  record_count: number;
+  activity_count: number;
+  inspectors: string[];
+  latest_captured_at: string | Date | null;
 }
 
 interface TrainRunApprovalHistoryRow {
@@ -770,6 +780,41 @@ export class PostgresOperationsRepository implements OperationsRepository {
           activityCount: row.activity_count,
           notes: row.notes,
           capturedAt: toIsoTimestamp(row.captured_at)
+        })
+      )
+    };
+  }
+
+  async listFareEnforcementSummary(propertyCode: PropertyCode): Promise<FareEnforcementSummaryList> {
+    const result = await this.db.query<FareEnforcementSummaryRow>(
+      `
+        SELECT
+          fe.train_run_id AS run_id,
+          COUNT(*)::INTEGER AS record_count,
+          COALESCE(SUM(fe.activity_count), 0)::INTEGER AS activity_count,
+          ARRAY_AGG(DISTINCT fe.inspector_name ORDER BY fe.inspector_name) AS inspectors,
+          MAX(fe.captured_at) AS latest_captured_at
+        FROM shared.fare_enforcement fe
+        JOIN shared.train_run tr ON tr.id = fe.train_run_id
+        WHERE tr.railroad_code = $1
+        GROUP BY fe.train_run_id
+        ORDER BY MAX(fe.captured_at) DESC
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listFareEnforcementSummary(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): FareEnforcementSummary => ({
+          runId: row.run_id,
+          recordCount: row.record_count,
+          activityCount: row.activity_count,
+          inspectors: row.inspectors,
+          latestCapturedAt: row.latest_captured_at ? toIsoTimestamp(row.latest_captured_at) : null
         })
       )
     };
