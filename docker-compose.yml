@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: tps
+      POSTGRES_USER: tps
+      POSTGRES_PASSWORD: tps
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file:
+      - .env.example
+    environment:
+      DATA_ACCESS_MODE: postgres
+      DB_AUTO_BOOTSTRAP: "true"
+      DATABASE_URL: postgres://tps:tps@postgres:5432/tps
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "3000:3000"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "4173:4173"
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - api
+      - web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  postgres-data:
