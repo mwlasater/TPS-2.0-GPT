@@ -232,6 +232,10 @@ describe("PostgresOperationsRepository", () => {
           {
             total_records: 3,
             total_activity_count: 41,
+            total_amtrak_transfers: 4,
+            total_amtrak_tickets: 6,
+            total_upass_count: 11,
+            total_tickets_sold: 9,
             covered_runs: 2
           }
         ]
@@ -260,6 +264,10 @@ describe("PostgresOperationsRepository", () => {
     expect(dashboard).toEqual({
       totalRecords: 3,
       totalActivityCount: 41,
+      totalAmtrakTransfers: 4,
+      totalAmtrakTickets: 6,
+      totalUpassCount: 11,
+      totalTicketsSold: 9,
       coveredRuns: 2,
       uncoveredRuns: ["caltrain-run-3"],
       topInspectors: [
@@ -519,6 +527,10 @@ describe("PostgresOperationsRepository", () => {
           first_location: "SFC",
           second_location: "PAO",
           activity_count: 16,
+          amtrak_transfers: 2,
+          amtrak_tickets: 3,
+          upass_count: 5,
+          tickets_sold: 4,
           notes: "Peak boarding checks completed before Palo Alto.",
           captured_at: new Date("2026-03-06T06:28:00Z")
         }
@@ -537,6 +549,10 @@ describe("PostgresOperationsRepository", () => {
           firstLocation: "SFC",
           secondLocation: "PAO",
           activityCount: 16,
+          amtrakTransfers: 2,
+          amtrakTickets: 3,
+          upassCount: 5,
+          ticketsSold: 4,
           notes: "Peak boarding checks completed before Palo Alto.",
           capturedAt: "2026-03-06T06:28:00.000Z"
         }
@@ -551,6 +567,10 @@ describe("PostgresOperationsRepository", () => {
           run_id: "caltrain-run-1",
           record_count: 2,
           activity_count: 24,
+          amtrak_transfers: 5,
+          amtrak_tickets: 7,
+          upass_count: 9,
+          tickets_sold: 4,
           inspectors: ["Jordan Reyes", "Morgan Lee"],
           latest_captured_at: new Date("2026-03-06T06:40:00Z")
         }
@@ -566,6 +586,10 @@ describe("PostgresOperationsRepository", () => {
           runId: "caltrain-run-1",
           recordCount: 2,
           activityCount: 24,
+          amtrakTransfers: 5,
+          amtrakTickets: 7,
+          upassCount: 9,
+          ticketsSold: 4,
           inspectors: ["Jordan Reyes", "Morgan Lee"],
           latestCapturedAt: "2026-03-06T06:40:00.000Z"
         }
@@ -583,6 +607,10 @@ describe("PostgresOperationsRepository", () => {
           first_location: "SFC",
           second_location: "SJC",
           activity_count: 8,
+          amtrak_transfers: 1,
+          amtrak_tickets: 2,
+          upass_count: 3,
+          tickets_sold: 4,
           notes: "Midday inspection sweep.",
           captured_at: new Date("2026-03-06T09:00:00Z")
         }
@@ -596,6 +624,10 @@ describe("PostgresOperationsRepository", () => {
       firstLocation: "SFC",
       secondLocation: "SJC",
       activityCount: 8,
+      amtrakTransfers: 1,
+      amtrakTickets: 2,
+      upassCount: 3,
+      ticketsSold: 4,
       notes: "Midday inspection sweep.",
       capturedAt: "2026-03-06T09:00:00Z"
     });
@@ -607,6 +639,10 @@ describe("PostgresOperationsRepository", () => {
       firstLocation: "SFC",
       secondLocation: "SJC",
       activityCount: 8,
+      amtrakTransfers: 1,
+      amtrakTickets: 2,
+      upassCount: 3,
+      ticketsSold: 4,
       notes: "Midday inspection sweep.",
       capturedAt: "2026-03-06T09:00:00.000Z"
     });

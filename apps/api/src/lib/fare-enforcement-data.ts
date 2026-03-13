@@ -19,6 +19,10 @@ const fareCatalog: Partial<Record<PropertyCode, FareEnforcementList>> = {
         firstLocation: "SFC",
         secondLocation: "PAO",
         activityCount: 16,
+        amtrakTransfers: 2,
+        amtrakTickets: 3,
+        upassCount: 5,
+        ticketsSold: 4,
         notes: "Peak boarding checks completed before Palo Alto.",
         capturedAt: "2026-03-06T06:28:00Z"
       }
@@ -33,6 +37,10 @@ const fareCatalog: Partial<Record<PropertyCode, FareEnforcementList>> = {
         firstLocation: "LNR",
         secondLocation: "MLK",
         activityCount: 9,
+        amtrakTransfers: 0,
+        amtrakTickets: 1,
+        upassCount: 6,
+        ticketsSold: 2,
         notes: "Morning commuter inspection pass.",
         capturedAt: "2026-03-06T07:24:00Z"
       }
@@ -47,6 +55,10 @@ const fareCatalog: Partial<Record<PropertyCode, FareEnforcementList>> = {
         firstLocation: "DAL",
         secondLocation: "CEN",
         activityCount: 12,
+        amtrakTransfers: 1,
+        amtrakTickets: 2,
+        upassCount: 4,
+        ticketsSold: 3,
         notes: "Manual validation after dispatch hold.",
         capturedAt: "2026-03-06T08:08:00Z"
       }
@@ -71,12 +83,20 @@ export function listFareEnforcementSummary(propertyCode: PropertyCode): FareEnfo
       runId: item.runId,
       recordCount: 0,
       activityCount: 0,
+      amtrakTransfers: 0,
+      amtrakTickets: 0,
+      upassCount: 0,
+      ticketsSold: 0,
       inspectors: [],
       latestCapturedAt: null
     };
 
     current.recordCount += 1;
     current.activityCount += item.activityCount;
+    current.amtrakTransfers += item.amtrakTransfers;
+    current.amtrakTickets += item.amtrakTickets;
+    current.upassCount += item.upassCount;
+    current.ticketsSold += item.ticketsSold;
 
     if (!current.inspectors.includes(item.inspectorName)) {
       current.inspectors.push(item.inspectorName);
@@ -119,6 +139,10 @@ export function getFareEnforcementDashboard(
   return {
     totalRecords: items.length,
     totalActivityCount: items.reduce((total, item) => total + item.activityCount, 0),
+    totalAmtrakTransfers: items.reduce((total, item) => total + item.amtrakTransfers, 0),
+    totalAmtrakTickets: items.reduce((total, item) => total + item.amtrakTickets, 0),
+    totalUpassCount: items.reduce((total, item) => total + item.upassCount, 0),
+    totalTicketsSold: items.reduce((total, item) => total + item.ticketsSold, 0),
     coveredRuns: coveredRuns.size,
     uncoveredRuns: propertyRunIds.filter((runId) => !coveredRuns.has(runId)),
     topInspectors: Array.from(topInspectors.values()).sort(
@@ -145,6 +169,10 @@ export function updateFareEnforcement(
   row.firstLocation = update.firstLocation;
   row.secondLocation = update.secondLocation;
   row.activityCount = update.activityCount;
+  row.amtrakTransfers = update.amtrakTransfers;
+  row.amtrakTickets = update.amtrakTickets;
+  row.upassCount = update.upassCount;
+  row.ticketsSold = update.ticketsSold;
   row.notes = update.notes;
   row.capturedAt = update.capturedAt;
 
@@ -165,6 +193,10 @@ export function createFareEnforcement(
     firstLocation: input.firstLocation,
     secondLocation: input.secondLocation,
     activityCount: input.activityCount,
+    amtrakTransfers: input.amtrakTransfers,
+    amtrakTickets: input.amtrakTickets,
+    upassCount: input.upassCount,
+    ticketsSold: input.ticketsSold,
     notes: input.notes,
     capturedAt: input.capturedAt
   };

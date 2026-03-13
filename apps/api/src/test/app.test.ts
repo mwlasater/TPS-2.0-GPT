@@ -850,6 +850,10 @@ describe("app contracts", () => {
         firstLocation: "SFC",
         secondLocation: "SJC",
         activityCount: 8,
+        amtrakTransfers: 1,
+        amtrakTickets: 2,
+        upassCount: 3,
+        ticketsSold: 4,
         notes: "Midday inspection sweep.",
         capturedAt: "2026-03-06T09:00:00Z"
       }
@@ -894,6 +898,10 @@ describe("app contracts", () => {
         firstLocation: "SFC",
         secondLocation: "SJC",
         activityCount: 18,
+        amtrakTransfers: 3,
+        amtrakTickets: 4,
+        upassCount: 6,
+        ticketsSold: 5,
         notes: "Extended inspection coverage through San Jose.",
         capturedAt: "2026-03-06T06:31:00Z"
       }
@@ -902,17 +910,27 @@ describe("app contracts", () => {
     expect(createResponse.statusCode).toBe(200);
     expect(createResponse.json()).toMatchObject({
       runId: "caltrain-run-1",
-      activityCount: 8
+      activityCount: 8,
+      amtrakTransfers: 1,
+      ticketsSold: 4
     });
     expect(summaryResponse.statusCode).toBe(200);
     expect(summaryResponse.json().items[0]).toMatchObject({
       runId: "caltrain-run-1",
-      activityCount: 24
+      activityCount: 24,
+      amtrakTransfers: 3,
+      amtrakTickets: 5,
+      upassCount: 8,
+      ticketsSold: 8
     });
     expect(dashboardResponse.statusCode).toBe(200);
     expect(dashboardResponse.json()).toMatchObject({
       totalRecords: 2,
       totalActivityCount: 24,
+      totalAmtrakTransfers: 3,
+      totalAmtrakTickets: 5,
+      totalUpassCount: 8,
+      totalTicketsSold: 8,
       coveredRuns: 1,
       uncoveredRuns: expect.arrayContaining(["caltrain-run-2"]),
       topInspectors: expect.arrayContaining([
@@ -923,13 +941,16 @@ describe("app contracts", () => {
     });
     expect(listResponse.statusCode).toBe(200);
     expect(listResponse.json().items[0]).toMatchObject({
-      inspectorName: "Morgan Lee"
+      inspectorName: "Morgan Lee",
+      amtrakTickets: 2
     });
     expect(updateResponse.statusCode).toBe(200);
     expect(updateResponse.json()).toMatchObject({
       id: "fare-caltrain-1",
       secondLocation: "SJC",
-      activityCount: 18
+      activityCount: 18,
+      amtrakTransfers: 3,
+      ticketsSold: 5
     });
   });
 

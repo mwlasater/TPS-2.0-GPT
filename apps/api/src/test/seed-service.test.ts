@@ -15,7 +15,8 @@ describe("seed service", () => {
       "0005_baseline_admin",
       "0006_reference_admin_actions",
       "0007_fare_enforcement_locks",
-      "0008_train_run_approval_history"
+      "0008_train_run_approval_history",
+      "0009_fare_enforcement_counts"
     ]);
   });
 });

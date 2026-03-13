@@ -661,6 +661,10 @@ export const demoFareEnforcement: Record<PropertyCode, FareEnforcementList> = {
         firstLocation: "SFC",
         secondLocation: "PAO",
         activityCount: 16,
+        amtrakTransfers: 2,
+        amtrakTickets: 3,
+        upassCount: 5,
+        ticketsSold: 4,
         notes: "Peak boarding checks completed before Palo Alto.",
         capturedAt: "2026-03-06T06:28:00Z"
       }
@@ -676,6 +680,10 @@ export const demoFareEnforcement: Record<PropertyCode, FareEnforcementList> = {
         firstLocation: "DAL",
         secondLocation: "CEN",
         activityCount: 12,
+        amtrakTransfers: 1,
+        amtrakTickets: 2,
+        upassCount: 4,
+        ticketsSold: 3,
         notes: "Manual validation after dispatch hold.",
         capturedAt: "2026-03-06T08:08:00Z"
       }
@@ -694,6 +702,10 @@ export const demoFareEnforcement: Record<PropertyCode, FareEnforcementList> = {
         firstLocation: "LNR",
         secondLocation: "MLK",
         activityCount: 9,
+        amtrakTransfers: 0,
+        amtrakTickets: 1,
+        upassCount: 6,
+        ticketsSold: 2,
         notes: "Morning commuter inspection pass.",
         capturedAt: "2026-03-06T07:24:00Z"
       }
@@ -713,6 +725,10 @@ export const demoFareEnforcementSummary: Record<PropertyCode, FareEnforcementSum
         runId: "caltrain-run-1",
         recordCount: 1,
         activityCount: 16,
+        amtrakTransfers: 2,
+        amtrakTickets: 3,
+        upassCount: 5,
+        ticketsSold: 4,
         inspectors: ["Morgan Lee"],
         latestCapturedAt: "2026-03-06T06:28:00Z"
       }
@@ -725,6 +741,10 @@ export const demoFareEnforcementSummary: Record<PropertyCode, FareEnforcementSum
         runId: "tre-run-1",
         recordCount: 1,
         activityCount: 12,
+        amtrakTransfers: 1,
+        amtrakTickets: 2,
+        upassCount: 4,
+        ticketsSold: 3,
         inspectors: ["Taylor Brooks"],
         latestCapturedAt: "2026-03-06T08:08:00Z"
       }
@@ -740,6 +760,10 @@ export const demoFareEnforcementSummary: Record<PropertyCode, FareEnforcementSum
         runId: "capmetro-run-1",
         recordCount: 1,
         activityCount: 9,
+        amtrakTransfers: 0,
+        amtrakTickets: 1,
+        upassCount: 6,
+        ticketsSold: 2,
         inspectors: ["Jordan Reyes"],
         latestCapturedAt: "2026-03-06T07:24:00Z"
       }

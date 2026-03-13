@@ -147,6 +147,10 @@ export function OperationsPage({
     firstLocation: selectedFare?.firstLocation ?? "",
     secondLocation: selectedFare?.secondLocation ?? "",
     activityCount: selectedFare?.activityCount ?? 0,
+    amtrakTransfers: selectedFare?.amtrakTransfers ?? 0,
+    amtrakTickets: selectedFare?.amtrakTickets ?? 0,
+    upassCount: selectedFare?.upassCount ?? 0,
+    ticketsSold: selectedFare?.ticketsSold ?? 0,
     notes: selectedFare?.notes ?? "",
     capturedAt: selectedFare?.capturedAt ?? ""
   });
@@ -156,9 +160,14 @@ export function OperationsPage({
     firstLocation: stationStops.items[0]?.stationCode ?? "",
     secondLocation: stationStops.items.at(-1)?.stationCode ?? "",
     activityCount: 0,
+    amtrakTransfers: 0,
+    amtrakTickets: 0,
+    upassCount: 0,
+    ticketsSold: 0,
     notes: "New fare inspection pass.",
     capturedAt: "2026-03-06T09:00:00Z"
   });
+  const [fareInspectorFilter, setFareInspectorFilter] = useState("");
 
   useEffect(() => {
     setSelectedStopId(stationStops.items[0]?.id ?? null);
@@ -218,6 +227,10 @@ export function OperationsPage({
       firstLocation: selectedFare?.firstLocation ?? "",
       secondLocation: selectedFare?.secondLocation ?? "",
       activityCount: selectedFare?.activityCount ?? 0,
+      amtrakTransfers: selectedFare?.amtrakTransfers ?? 0,
+      amtrakTickets: selectedFare?.amtrakTickets ?? 0,
+      upassCount: selectedFare?.upassCount ?? 0,
+      ticketsSold: selectedFare?.ticketsSold ?? 0,
       notes: selectedFare?.notes ?? "",
       capturedAt: selectedFare?.capturedAt ?? ""
     });
@@ -235,6 +248,12 @@ export function OperationsPage({
   useEffect(() => {
     setApprovalNotes(selectedRun?.isApproved ? "Reopened for correction." : "Ready for dispatch closeout.");
   }, [selectedRunId, selectedRun?.isApproved]);
+
+  const filteredFareRecords = fareEnforcement.items.filter((record) =>
+    fareInspectorFilter
+      ? record.inspectorName.toLowerCase().includes(fareInspectorFilter.toLowerCase())
+      : true
+  );
 
   async function runAction(action: () => Promise<unknown>, successMessage: string) {
     setFeedback(null);
@@ -744,6 +763,22 @@ export function OperationsPage({
               <span>Uncovered runs</span>
               <strong>{fareDashboard.uncoveredRuns.length}</strong>
             </article>
+            <article className="metric-card">
+              <span>Amtrak transfers</span>
+              <strong>{fareDashboard.totalAmtrakTransfers}</strong>
+            </article>
+            <article className="metric-card">
+              <span>Amtrak tickets</span>
+              <strong>{fareDashboard.totalAmtrakTickets}</strong>
+            </article>
+            <article className="metric-card">
+              <span>UPass total</span>
+              <strong>{fareDashboard.totalUpassCount}</strong>
+            </article>
+            <article className="metric-card">
+              <span>Tickets sold</span>
+              <strong>{fareDashboard.totalTicketsSold}</strong>
+            </article>
           </div>
           <div className="detail-stack">
             <div>
@@ -795,6 +830,10 @@ export function OperationsPage({
                 <div>
                   <strong>{summary.runId}</strong>
                   <p>{summary.recordCount} records</p>
+                  <p>
+                    Transfers {summary.amtrakTransfers} · Tickets {summary.amtrakTickets} · UPass{" "}
+                    {summary.upassCount} · Sold {summary.ticketsSold}
+                  </p>
                 </div>
                 <div className="list-meta">
                   <StatusBadge tone="neutral" label={`${summary.activityCount} checks`} />
@@ -856,6 +895,62 @@ export function OperationsPage({
                 value={newFareForm.activityCount}
               />
             </label>
+            <label className="field-stack">
+              <span>Amtrak Transfers</span>
+              <input
+                min="0"
+                onChange={(event) => {
+                  setNewFareForm((current) => ({
+                    ...current,
+                    amtrakTransfers: Number(event.target.value)
+                  }));
+                }}
+                type="number"
+                value={newFareForm.amtrakTransfers}
+              />
+            </label>
+            <label className="field-stack">
+              <span>Amtrak Tickets</span>
+              <input
+                min="0"
+                onChange={(event) => {
+                  setNewFareForm((current) => ({
+                    ...current,
+                    amtrakTickets: Number(event.target.value)
+                  }));
+                }}
+                type="number"
+                value={newFareForm.amtrakTickets}
+              />
+            </label>
+            <label className="field-stack">
+              <span>UPass</span>
+              <input
+                min="0"
+                onChange={(event) => {
+                  setNewFareForm((current) => ({
+                    ...current,
+                    upassCount: Number(event.target.value)
+                  }));
+                }}
+                type="number"
+                value={newFareForm.upassCount}
+              />
+            </label>
+            <label className="field-stack">
+              <span>Tickets Sold</span>
+              <input
+                min="0"
+                onChange={(event) => {
+                  setNewFareForm((current) => ({
+                    ...current,
+                    ticketsSold: Number(event.target.value)
+                  }));
+                }}
+                type="number"
+                value={newFareForm.ticketsSold}
+              />
+            </label>
             <label className="field-stack editor-span">
               <span>Notes</span>
               <textarea
@@ -893,9 +988,20 @@ export function OperationsPage({
             </div>
           </div>
         ) : null}
+        <label className="field-stack">
+          <span>Inspector Filter</span>
+          <input
+            onChange={(event) => {
+              setFareInspectorFilter(event.target.value);
+            }}
+            placeholder="Filter current run by inspector"
+            type="text"
+            value={fareInspectorFilter}
+          />
+        </label>
         <div className="list-stack">
-          {fareEnforcement.items.length ? (
-            fareEnforcement.items.map((record) => (
+          {filteredFareRecords.length ? (
+            filteredFareRecords.map((record) => (
               <button
                 className={`selection-card ${record.id === selectedFare?.id ? "is-selected" : ""}`}
                 key={record.id}
@@ -908,6 +1014,10 @@ export function OperationsPage({
                   <strong>{record.inspectorName}</strong>
                   <p>
                     {record.firstLocation} to {record.secondLocation}
+                  </p>
+                  <p>
+                    Transfers {record.amtrakTransfers} · Tickets {record.amtrakTickets} · UPass{" "}
+                    {record.upassCount} · Sold {record.ticketsSold}
                   </p>
                   <p>{record.notes}</p>
                 </div>
@@ -965,6 +1075,62 @@ export function OperationsPage({
                 }}
                 type="number"
                 value={fareForm.activityCount}
+              />
+            </label>
+            <label className="field-stack">
+              <span>Amtrak Transfers</span>
+              <input
+                min="0"
+                onChange={(event) => {
+                  setFareForm((current) => ({
+                    ...current,
+                    amtrakTransfers: Number(event.target.value)
+                  }));
+                }}
+                type="number"
+                value={fareForm.amtrakTransfers}
+              />
+            </label>
+            <label className="field-stack">
+              <span>Amtrak Tickets</span>
+              <input
+                min="0"
+                onChange={(event) => {
+                  setFareForm((current) => ({
+                    ...current,
+                    amtrakTickets: Number(event.target.value)
+                  }));
+                }}
+                type="number"
+                value={fareForm.amtrakTickets}
+              />
+            </label>
+            <label className="field-stack">
+              <span>UPass</span>
+              <input
+                min="0"
+                onChange={(event) => {
+                  setFareForm((current) => ({
+                    ...current,
+                    upassCount: Number(event.target.value)
+                  }));
+                }}
+                type="number"
+                value={fareForm.upassCount}
+              />
+            </label>
+            <label className="field-stack">
+              <span>Tickets Sold</span>
+              <input
+                min="0"
+                onChange={(event) => {
+                  setFareForm((current) => ({
+                    ...current,
+                    ticketsSold: Number(event.target.value)
+                  }));
+                }}
+                type="number"
+                value={fareForm.ticketsSold}
               />
             </label>
             <label className="field-stack editor-span">

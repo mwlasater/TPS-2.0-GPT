@@ -242,6 +242,10 @@ export interface FareEnforcementRecord {
   firstLocation: string;
   secondLocation: string;
   activityCount: number;
+  amtrakTransfers: number;
+  amtrakTickets: number;
+  upassCount: number;
+  ticketsSold: number;
   notes: string;
   capturedAt: string;
 }
@@ -255,6 +259,10 @@ export interface FareEnforcementUpdate {
   firstLocation: string;
   secondLocation: string;
   activityCount: number;
+  amtrakTransfers: number;
+  amtrakTickets: number;
+  upassCount: number;
+  ticketsSold: number;
   notes: string;
   capturedAt: string;
 }
@@ -265,6 +273,10 @@ export interface FareEnforcementCreate {
   firstLocation: string;
   secondLocation: string;
   activityCount: number;
+  amtrakTransfers: number;
+  amtrakTickets: number;
+  upassCount: number;
+  ticketsSold: number;
   notes: string;
   capturedAt: string;
 }
@@ -273,6 +285,10 @@ export interface FareEnforcementSummary {
   runId: string;
   recordCount: number;
   activityCount: number;
+  amtrakTransfers: number;
+  amtrakTickets: number;
+  upassCount: number;
+  ticketsSold: number;
   inspectors: string[];
   latestCapturedAt: string | null;
 }
@@ -284,6 +300,10 @@ export interface FareEnforcementSummaryList {
 export interface FareEnforcementDashboard {
   totalRecords: number;
   totalActivityCount: number;
+  totalAmtrakTransfers: number;
+  totalAmtrakTickets: number;
+  totalUpassCount: number;
+  totalTicketsSold: number;
   coveredRuns: number;
   uncoveredRuns: string[];
   topInspectors: Array<{

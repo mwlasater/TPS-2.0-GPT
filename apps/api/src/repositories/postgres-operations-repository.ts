@@ -100,6 +100,10 @@ interface FareEnforcementRow {
   first_location: string;
   second_location: string;
   activity_count: number;
+  amtrak_transfers: number;
+  amtrak_tickets: number;
+  upass_count: number;
+  tickets_sold: number;
   notes: string;
   captured_at: string | Date;
 }
@@ -108,6 +112,10 @@ interface FareEnforcementSummaryRow {
   run_id: string;
   record_count: number;
   activity_count: number;
+  amtrak_transfers: number;
+  amtrak_tickets: number;
+  upass_count: number;
+  tickets_sold: number;
   inspectors: string[];
   latest_captured_at: string | Date | null;
 }
@@ -115,6 +123,10 @@ interface FareEnforcementSummaryRow {
 interface FareEnforcementDashboardRow {
   total_records: number;
   total_activity_count: number;
+  total_amtrak_transfers: number;
+  total_amtrak_tickets: number;
+  total_upass_count: number;
+  total_tickets_sold: number;
   covered_runs: number;
 }
 
@@ -762,6 +774,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
           fe.first_location,
           fe.second_location,
           fe.activity_count,
+          fe.amtrak_transfers,
+          fe.amtrak_tickets,
+          fe.upass_count,
+          fe.tickets_sold,
           fe.notes,
           fe.captured_at
         FROM shared.fare_enforcement fe
@@ -786,6 +802,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
           firstLocation: row.first_location,
           secondLocation: row.second_location,
           activityCount: row.activity_count,
+          amtrakTransfers: row.amtrak_transfers,
+          amtrakTickets: row.amtrak_tickets,
+          upassCount: row.upass_count,
+          ticketsSold: row.tickets_sold,
           notes: row.notes,
           capturedAt: toIsoTimestamp(row.captured_at)
         })
@@ -800,6 +820,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
           fe.train_run_id AS run_id,
           COUNT(*)::INTEGER AS record_count,
           COALESCE(SUM(fe.activity_count), 0)::INTEGER AS activity_count,
+          COALESCE(SUM(fe.amtrak_transfers), 0)::INTEGER AS amtrak_transfers,
+          COALESCE(SUM(fe.amtrak_tickets), 0)::INTEGER AS amtrak_tickets,
+          COALESCE(SUM(fe.upass_count), 0)::INTEGER AS upass_count,
+          COALESCE(SUM(fe.tickets_sold), 0)::INTEGER AS tickets_sold,
           ARRAY_AGG(DISTINCT fe.inspector_name ORDER BY fe.inspector_name) AS inspectors,
           MAX(fe.captured_at) AS latest_captured_at
         FROM shared.fare_enforcement fe
@@ -821,6 +845,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
           runId: row.run_id,
           recordCount: row.record_count,
           activityCount: row.activity_count,
+          amtrakTransfers: row.amtrak_transfers,
+          amtrakTickets: row.amtrak_tickets,
+          upassCount: row.upass_count,
+          ticketsSold: row.tickets_sold,
           inspectors: row.inspectors,
           latestCapturedAt: row.latest_captured_at ? toIsoTimestamp(row.latest_captured_at) : null
         })
@@ -835,6 +863,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
           SELECT
             COUNT(*)::INTEGER AS total_records,
             COALESCE(SUM(fe.activity_count), 0)::INTEGER AS total_activity_count,
+            COALESCE(SUM(fe.amtrak_transfers), 0)::INTEGER AS total_amtrak_transfers,
+            COALESCE(SUM(fe.amtrak_tickets), 0)::INTEGER AS total_amtrak_tickets,
+            COALESCE(SUM(fe.upass_count), 0)::INTEGER AS total_upass_count,
+            COALESCE(SUM(fe.tickets_sold), 0)::INTEGER AS total_tickets_sold,
             COUNT(DISTINCT fe.train_run_id)::INTEGER AS covered_runs
           FROM shared.fare_enforcement fe
           JOIN shared.train_run tr ON tr.id = fe.train_run_id
@@ -875,12 +907,20 @@ export class PostgresOperationsRepository implements OperationsRepository {
     const totals = totalsResult.rows[0] ?? {
       total_records: 0,
       total_activity_count: 0,
+      total_amtrak_transfers: 0,
+      total_amtrak_tickets: 0,
+      total_upass_count: 0,
+      total_tickets_sold: 0,
       covered_runs: 0
     };
 
     return {
       totalRecords: totals.total_records,
       totalActivityCount: totals.total_activity_count,
+      totalAmtrakTransfers: totals.total_amtrak_transfers,
+      totalAmtrakTickets: totals.total_amtrak_tickets,
+      totalUpassCount: totals.total_upass_count,
+      totalTicketsSold: totals.total_tickets_sold,
       coveredRuns: totals.covered_runs,
       uncoveredRuns: uncoveredRunsResult.rows.map((row) => row.run_id),
       topInspectors: topInspectorsResult.rows.map((row) => ({
@@ -905,10 +945,14 @@ export class PostgresOperationsRepository implements OperationsRepository {
           first_location,
           second_location,
           activity_count,
+          amtrak_transfers,
+          amtrak_tickets,
+          upass_count,
+          tickets_sold,
           notes,
           captured_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING
           id,
           train_run_id,
@@ -916,6 +960,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
           first_location,
           second_location,
           activity_count,
+          amtrak_transfers,
+          amtrak_tickets,
+          upass_count,
+          tickets_sold,
           notes,
           captured_at
       `,
@@ -927,6 +975,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
         input.firstLocation,
         input.secondLocation,
         input.activityCount,
+        input.amtrakTransfers,
+        input.amtrakTickets,
+        input.upassCount,
+        input.ticketsSold,
         input.notes,
         input.capturedAt
       ]
@@ -945,6 +997,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
       firstLocation: row.first_location,
       secondLocation: row.second_location,
       activityCount: row.activity_count,
+      amtrakTransfers: row.amtrak_transfers,
+      amtrakTickets: row.amtrak_tickets,
+      upassCount: row.upass_count,
+      ticketsSold: row.tickets_sold,
       notes: row.notes,
       capturedAt: toIsoTimestamp(row.captured_at)
     };
@@ -963,12 +1019,16 @@ export class PostgresOperationsRepository implements OperationsRepository {
           first_location = $3,
           second_location = $4,
           activity_count = $5,
-          notes = $6,
-          captured_at = $7
+          amtrak_transfers = $6,
+          amtrak_tickets = $7,
+          upass_count = $8,
+          tickets_sold = $9,
+          notes = $10,
+          captured_at = $11
         FROM shared.train_run tr
         WHERE tr.id = fe.train_run_id
           AND tr.railroad_code = $1
-          AND fe.id = $8
+          AND fe.id = $12
         RETURNING
           fe.id,
           fe.train_run_id,
@@ -976,6 +1036,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
           fe.first_location,
           fe.second_location,
           fe.activity_count,
+          fe.amtrak_transfers,
+          fe.amtrak_tickets,
+          fe.upass_count,
+          fe.tickets_sold,
           fe.notes,
           fe.captured_at
       `,
@@ -985,6 +1049,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
         update.firstLocation,
         update.secondLocation,
         update.activityCount,
+        update.amtrakTransfers,
+        update.amtrakTickets,
+        update.upassCount,
+        update.ticketsSold,
         update.notes,
         update.capturedAt,
         recordId
@@ -1004,6 +1072,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
       firstLocation: row.first_location,
       secondLocation: row.second_location,
       activityCount: row.activity_count,
+      amtrakTransfers: row.amtrak_transfers,
+      amtrakTickets: row.amtrak_tickets,
+      upassCount: row.upass_count,
+      ticketsSold: row.tickets_sold,
       notes: row.notes,
       capturedAt: toIsoTimestamp(row.captured_at)
     };

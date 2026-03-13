@@ -240,6 +240,10 @@ export const fareEnforcementRecordSchema = z.object({
   firstLocation: z.string(),
   secondLocation: z.string(),
   activityCount: z.number(),
+  amtrakTransfers: z.number(),
+  amtrakTickets: z.number(),
+  upassCount: z.number(),
+  ticketsSold: z.number(),
   notes: z.string(),
   capturedAt: z.string()
 });
@@ -252,6 +256,10 @@ export const fareEnforcementSummarySchema = z.object({
   runId: z.string(),
   recordCount: z.number(),
   activityCount: z.number(),
+  amtrakTransfers: z.number(),
+  amtrakTickets: z.number(),
+  upassCount: z.number(),
+  ticketsSold: z.number(),
   inspectors: z.array(z.string()),
   latestCapturedAt: z.string().nullable()
 });
@@ -263,6 +271,10 @@ export const fareEnforcementSummaryListSchema = z.object({
 export const fareEnforcementDashboardSchema = z.object({
   totalRecords: z.number(),
   totalActivityCount: z.number(),
+  totalAmtrakTransfers: z.number(),
+  totalAmtrakTickets: z.number(),
+  totalUpassCount: z.number(),
+  totalTicketsSold: z.number(),
   coveredRuns: z.number(),
   uncoveredRuns: z.array(z.string()),
   topInspectors: z.array(
@@ -279,6 +291,10 @@ export const fareEnforcementUpdateSchema = z.object({
   firstLocation: z.string().min(1),
   secondLocation: z.string().min(1),
   activityCount: z.number().int().nonnegative(),
+  amtrakTransfers: z.number().int().nonnegative(),
+  amtrakTickets: z.number().int().nonnegative(),
+  upassCount: z.number().int().nonnegative(),
+  ticketsSold: z.number().int().nonnegative(),
   notes: z.string().min(1),
   capturedAt: z.string().min(1)
 });
@@ -289,6 +305,10 @@ export const fareEnforcementCreateSchema = z.object({
   firstLocation: z.string().min(1),
   secondLocation: z.string().min(1),
   activityCount: z.number().int().nonnegative(),
+  amtrakTransfers: z.number().int().nonnegative(),
+  amtrakTickets: z.number().int().nonnegative(),
+  upassCount: z.number().int().nonnegative(),
+  ticketsSold: z.number().int().nonnegative(),
   notes: z.string().min(1),
   capturedAt: z.string().min(1)
 });

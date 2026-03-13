@@ -98,11 +98,34 @@ function getFallbackFareDashboard(
   return {
     totalRecords: items.length,
     totalActivityCount: items.reduce((total, item) => total + item.activityCount, 0),
+    totalAmtrakTransfers: items.reduce((total, item) => total + item.amtrakTransfers, 0),
+    totalAmtrakTickets: items.reduce((total, item) => total + item.amtrakTickets, 0),
+    totalUpassCount: items.reduce((total, item) => total + item.upassCount, 0),
+    totalTicketsSold: items.reduce((total, item) => total + item.ticketsSold, 0),
     coveredRuns: coveredRuns.size,
     uncoveredRuns: runs.items.map((run) => run.id).filter((runId) => !coveredRuns.has(runId)),
     topInspectors: Array.from(topInspectors.values()).sort(
       (left, right) => right.activityCount - left.activityCount
     )
+  };
+}
+
+function summarizeFareRun(
+  items: FareEnforcementList["items"],
+  runId: string
+): FareEnforcementSummaryList["items"][number] {
+  const runItems = items.filter((item) => item.runId === runId);
+
+  return {
+    runId,
+    recordCount: runItems.length,
+    activityCount: runItems.reduce((total, item) => total + item.activityCount, 0),
+    amtrakTransfers: runItems.reduce((total, item) => total + item.amtrakTransfers, 0),
+    amtrakTickets: runItems.reduce((total, item) => total + item.amtrakTickets, 0),
+    upassCount: runItems.reduce((total, item) => total + item.upassCount, 0),
+    ticketsSold: runItems.reduce((total, item) => total + item.ticketsSold, 0),
+    inspectors: Array.from(new Set(runItems.map((item) => item.inspectorName))),
+    latestCapturedAt: runItems.map((item) => item.capturedAt).sort().at(-1) ?? null
   };
 }
 
@@ -488,41 +511,23 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         updateFareEnforcement(propertyCode, recordId, update),
         fetchFareEnforcementDashboard(propertyCode)
       ]);
-      setState((current) => ({
-        ...current,
-        fareEnforcement: {
-          items: current.fareEnforcement.items.map((item) => (item.id === recordId ? record : item))
-        },
-        fareDashboard,
-        fareSummary: {
-          items: current.fareSummary.items.map((item) =>
-            item.runId === record.runId
-              ? {
-                  ...item,
-                  activityCount: current.fareEnforcement.items
-                    .map((candidate) => (candidate.id === recordId ? record : candidate))
-                    .filter((candidate) => candidate.runId === record.runId)
-                    .reduce((total, candidate) => total + candidate.activityCount, 0),
-                  inspectors: Array.from(
-                    new Set(
-                      current.fareEnforcement.items
-                        .map((candidate) => (candidate.id === recordId ? record : candidate))
-                        .filter((candidate) => candidate.runId === record.runId)
-                        .map((candidate) => candidate.inspectorName)
-                    )
-                  ),
-                  latestCapturedAt: current.fareEnforcement.items
-                    .map((candidate) => (candidate.id === recordId ? record : candidate))
-                    .filter((candidate) => candidate.runId === record.runId)
-                    .map((candidate) => candidate.capturedAt)
-                    .sort()
-                    .at(-1) ?? null
-                }
-              : item
-          )
-        },
-        isSaving: false
-      }));
+      setState((current) => {
+        const nextItems = current.fareEnforcement.items.map((item) => (item.id === recordId ? record : item));
+
+        return {
+          ...current,
+          fareEnforcement: {
+            items: nextItems
+          },
+          fareDashboard,
+          fareSummary: {
+            items: current.fareSummary.items.map((item) =>
+              item.runId === record.runId ? summarizeFareRun(nextItems, record.runId) : item
+            )
+          },
+          isSaving: false
+        };
+      });
       return record;
     } catch (error) {
       setState((current) => ({ ...current, isSaving: false }));
@@ -547,13 +552,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
           ...nextFareItems.filter((item) => item.runId === record.runId),
           ...(current.selectedRunId === record.runId ? [] : [record])
         ];
-        const nextSummaryItem = {
-          runId: record.runId,
-          recordCount: propertyRunItems.length,
-          activityCount: propertyRunItems.reduce((total, item) => total + item.activityCount, 0),
-          inspectors: Array.from(new Set(propertyRunItems.map((item) => item.inspectorName))),
-          latestCapturedAt: propertyRunItems.map((item) => item.capturedAt).sort().at(-1) ?? null
-        };
+        const nextSummaryItem = summarizeFareRun(propertyRunItems, record.runId);
         const existingSummary = current.fareSummary.items.find((item) => item.runId === record.runId);
 
         return {
