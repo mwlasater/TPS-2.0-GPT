@@ -1,6 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { buildApp } from "../app.js";
+import { resetApprovalHistoryData } from "../lib/approval-history-data.js";
+import { resetFareEnforcementData } from "../lib/fare-enforcement-data.js";
+import { resetOperationsData } from "../lib/operations-data.js";
 
 const env = {
   NODE_ENV: "test",
@@ -20,8 +23,19 @@ const env = {
 describe("app contracts", () => {
   const app = buildApp(env);
 
+  function resetMockState() {
+    resetApprovalHistoryData();
+    resetFareEnforcementData();
+    resetOperationsData();
+  }
+
   beforeAll(async () => {
+    resetMockState();
     await app.ready();
+  });
+
+  beforeEach(() => {
+    resetMockState();
   });
 
   afterAll(async () => {
@@ -809,6 +823,19 @@ describe("app contracts", () => {
   });
 
   it("returns schedule approval history for a train schedule", async () => {
+    const approvalResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/approval",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        isApproved: true,
+        notes: "Ready for schedule closeout."
+      }
+    });
+
     const response = await app.inject({
       method: "GET",
       url: "/api/v1/train-schedules/ct-101/approval-history",
@@ -818,6 +845,7 @@ describe("app contracts", () => {
       }
     });
 
+    expect(approvalResponse.statusCode).toBe(200);
     expect(response.statusCode).toBe(200);
     expect(response.json().items[0]).toMatchObject({
       runId: "caltrain-run-1",
@@ -976,7 +1004,9 @@ describe("app contracts", () => {
       ticketsSold: 4
     });
     expect(summaryResponse.statusCode).toBe(200);
-    expect(summaryResponse.json().items[0]).toMatchObject({
+    expect(
+      summaryResponse.json().items.find((item: { runId: string }) => item.runId === "caltrain-run-1")
+    ).toMatchObject({
       runId: "caltrain-run-1",
       activityCount: 24,
       amtrakTransfers: 3,
@@ -1016,6 +1046,19 @@ describe("app contracts", () => {
   });
 
   it("returns approval history for a train run", async () => {
+    const approvalResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/approval",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        isApproved: true,
+        notes: "Ready for run closeout."
+      }
+    });
+
     const response = await app.inject({
       method: "GET",
       url: "/api/v1/train-runs/caltrain-run-1/approval-history",
@@ -1025,6 +1068,7 @@ describe("app contracts", () => {
       }
     });
 
+    expect(approvalResponse.statusCode).toBe(200);
     expect(response.statusCode).toBe(200);
     expect(response.json().items[0]).toMatchObject({
       actorName: "Local Development User"

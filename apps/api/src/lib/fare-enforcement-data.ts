@@ -9,7 +9,7 @@ import type {
   PropertyCode
 } from "@tps/types";
 
-const fareCatalog: Partial<Record<PropertyCode, FareEnforcementList>> = {
+const initialFareCatalog: Partial<Record<PropertyCode, FareEnforcementList>> = {
   caltrain: {
     items: [
       {
@@ -65,6 +65,21 @@ const fareCatalog: Partial<Record<PropertyCode, FareEnforcementList>> = {
     ]
   }
 };
+
+const fareCatalog: Partial<Record<PropertyCode, FareEnforcementList>> = cloneFareCatalog(initialFareCatalog);
+
+function cloneFareCatalog(
+  source: Partial<Record<PropertyCode, FareEnforcementList>>
+): Partial<Record<PropertyCode, FareEnforcementList>> {
+  return Object.fromEntries(
+    Object.entries(source).map(([propertyCode, list]) => [
+      propertyCode,
+      {
+        items: list.items.map((item) => ({ ...item }))
+      }
+    ])
+  ) as Partial<Record<PropertyCode, FareEnforcementList>>;
+}
 
 export function listFareEnforcement(propertyCode: PropertyCode, runId?: string): FareEnforcementList {
   const items = fareCatalog[propertyCode]?.items ?? [];
@@ -204,4 +219,12 @@ export function createFareEnforcement(
   source.items.unshift(record);
 
   return record;
+}
+
+export function resetFareEnforcementData(): void {
+  for (const propertyCode of Object.keys(fareCatalog) as PropertyCode[]) {
+    delete fareCatalog[propertyCode];
+  }
+
+  Object.assign(fareCatalog, cloneFareCatalog(initialFareCatalog));
 }

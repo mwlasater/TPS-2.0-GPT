@@ -201,3 +201,9 @@ export function updateTrainRunApprovalBatch(
     blockedRuns
   };
 }
+
+export function resetOperationsData(): void {
+  for (const propertyCode of Object.keys(runCatalog) as PropertyCode[]) {
+    delete runCatalog[propertyCode];
+  }
+}
