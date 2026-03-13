@@ -26,6 +26,11 @@ export type AppConfig = z.infer<typeof envSchema> & {
 
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
   const parsed = envSchema.parse(env);
+
+  if (parsed.NODE_ENV === "production" && parsed.JWT_DEV_TOKEN === "local-dev-token") {
+    throw new Error("auth.dev_token_forbidden");
+  }
+
   return {
     ...parsed,
     propertyCodes: parsed.PROPERTY_CODES.split(",").map((value) => value.trim()),

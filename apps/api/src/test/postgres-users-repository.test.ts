@@ -120,6 +120,8 @@ describe("PostgresUsersRepository", () => {
       .fn()
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [
           {
@@ -157,7 +159,7 @@ describe("PostgresUsersRepository", () => {
       lastAction: "Password reset sent on 2026-03-01"
     });
     expect(query).toHaveBeenNthCalledWith(
-      2,
+      3,
       expect.stringContaining("INSERT INTO shared.user_property_access"),
       ["ops-manager", ["caltrain", "tre"]]
     );

@@ -49,6 +49,7 @@ import type {
 } from "@tps/types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/api/v1";
+// Replace this development token path with MSAL/PKCE token acquisition before any non-local deployment.
 const developmentToken = import.meta.env.VITE_DEV_BEARER_TOKEN ?? "local-dev-token";
 
 export async function fetchBootstrap(): Promise<AppBootstrap> {

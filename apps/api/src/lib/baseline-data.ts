@@ -103,7 +103,7 @@ export function updateJobProfile(
   update: JobProfileUpdate
 ): JobProfile {
   const source = streetcarProperties.has(propertyCode) ? streetcarProfiles : commuterProfiles;
-  const row = source.items.find((item) => item.id === profileId) ?? source.items[0];
+  const row = source.items.find((item) => item.id === profileId);
 
   if (!row) {
     throw new Error("job_profile.not_found");
@@ -126,7 +126,7 @@ export function updateAttendanceException(
   update: AttendanceExceptionUpdate
 ): AttendanceException {
   const source = streetcarProperties.has(propertyCode) ? streetcarAttendance : commuterAttendance;
-  const row = source.items.find((item) => item.id === exceptionId) ?? source.items[0];
+  const row = source.items.find((item) => item.id === exceptionId);
 
   if (!row) {
     throw new Error("attendance_exception.not_found");

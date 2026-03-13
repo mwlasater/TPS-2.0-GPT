@@ -41,6 +41,15 @@ describe("app contracts", () => {
     });
   });
 
+  it("rejects production startup with dev-token auth config", () => {
+    expect(() =>
+      buildApp({
+        ...env,
+        NODE_ENV: "production"
+      })
+    ).toThrow("auth.dev_token_forbidden");
+  });
+
   it("rejects missing property headers on protected routes", async () => {
     const response = await app.inject({
       method: "GET",

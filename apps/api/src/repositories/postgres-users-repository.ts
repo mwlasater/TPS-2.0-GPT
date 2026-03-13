@@ -212,14 +212,22 @@ export class PostgresUsersRepository implements UserRepository {
     propertyCode: PropertyCode,
     update: UserPropertyAccessUpdate
   ): Promise<ManagedUserDetail> {
-    await this.db.query("DELETE FROM shared.user_property_access WHERE user_id = $1", [userId]);
-    await this.db.query(
-      `
-        INSERT INTO shared.user_property_access (user_id, railroad_code)
-        SELECT $1, UNNEST($2::TEXT[])
-      `,
-      [userId, update.propertyAccess]
-    );
+    await this.db.query("BEGIN");
+
+    try {
+      await this.db.query("DELETE FROM shared.user_property_access WHERE user_id = $1", [userId]);
+      await this.db.query(
+        `
+          INSERT INTO shared.user_property_access (user_id, railroad_code)
+          SELECT $1, UNNEST($2::TEXT[])
+        `,
+        [userId, update.propertyAccess]
+      );
+      await this.db.query("COMMIT");
+    } catch (error) {
+      await this.db.query("ROLLBACK");
+      throw error;
+    }
 
     return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
   }

@@ -144,7 +144,7 @@ export function updateTrainRunApproval(
   update: TrainRunApprovalUpdate
 ): TrainRun {
   const runs = listTrainRuns(propertyCode).items;
-  const run = runs.find((candidate) => candidate.id === runId) ?? runs[0];
+  const run = runs.find((candidate) => candidate.id === runId);
 
   if (!run) {
     throw new Error("train_run.not_found");

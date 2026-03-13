@@ -159,7 +159,7 @@ export function updateFareEnforcement(
   const source = fareCatalog[propertyCode] ?? { items: [] };
   fareCatalog[propertyCode] = source;
 
-  const row = source.items.find((candidate) => candidate.id === recordId) ?? source.items[0];
+  const row = source.items.find((candidate) => candidate.id === recordId);
 
   if (!row) {
     throw new Error("fare_enforcement.not_found");
@@ -187,7 +187,7 @@ export function createFareEnforcement(
   fareCatalog[propertyCode] = source;
 
   const record: FareEnforcementRecord = {
-    id: `fare-${input.runId}-${source.items.length + 1}`,
+    id: `fare-${crypto.randomUUID()}`,
     runId: input.runId,
     inspectorName: input.inspectorName,
     firstLocation: input.firstLocation,

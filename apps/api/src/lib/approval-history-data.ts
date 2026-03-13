@@ -58,7 +58,7 @@ export function recordTrainRunApprovalHistory(
     action: update.isApproved ? "approved" : "unapproved",
     actorName,
     notes: update.notes,
-    createdAt: "2026-03-06T12:30:00Z"
+    createdAt: new Date().toISOString()
   };
 
   if (!historyCatalog[propertyCode]) {

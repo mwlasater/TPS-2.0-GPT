@@ -43,6 +43,11 @@ declare module "fastify" {
 
 export function buildApp(env: NodeJS.ProcessEnv = process.env) {
   const config = loadConfig(env);
+
+  if (config.NODE_ENV === "production") {
+    throw new Error("auth.production_verification_missing");
+  }
+
   const app = Fastify({
     logger:
       config.NODE_ENV === "development"

@@ -120,7 +120,7 @@ export function updateNotification(
   update: NotificationUpdate
 ): NotificationItem {
   const source = streetcarProperties.has(propertyCode) ? streetcarNotifications : commuterNotifications;
-  const row = source.items.find((item) => item.id === notificationId) ?? source.items[0];
+  const row = source.items.find((item) => item.id === notificationId);
 
   if (!row) {
     throw new Error("notification.not_found");

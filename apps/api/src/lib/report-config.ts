@@ -61,7 +61,7 @@ export function updateReportConfig(
   update: ReportConfigUpdate
 ): ReportConfigRow {
   const source = streetcarProperties.has(propertyCode) ? streetcarReports : commuterReports;
-  const row = source.items.find((item) => item.id === reportId) ?? source.items[0];
+  const row = source.items.find((item) => item.id === reportId);
 
   if (!row) {
     throw new Error("report_config.not_found");

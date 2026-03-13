@@ -360,7 +360,7 @@ export class PostgresOperationsRepository implements OperationsRepository {
         VALUES ($1, $2, $3, $4, $5, $6, NOW())
       `,
       [
-        `${runId}-${update.isApproved ? "approved" : "unapproved"}-${Date.now()}`,
+        `${runId}-${update.isApproved ? "approved" : "unapproved"}-${crypto.randomUUID()}`,
         propertyCode,
         runId,
         update.isApproved ? "approved" : "unapproved",
@@ -1050,7 +1050,7 @@ export class PostgresOperationsRepository implements OperationsRepository {
           captured_at
       `,
       [
-        `${input.runId}-${Date.now()}`,
+        `fare-${crypto.randomUUID()}`,
         propertyCode,
         input.runId,
         input.inspectorName,
