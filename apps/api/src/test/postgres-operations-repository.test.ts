@@ -125,6 +125,53 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("maps unapproval updates into train runs", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "capmetro-run-1",
+          schedule_id: "cm-701",
+          train_number: "701",
+          operating_date: new Date("2026-03-06T00:00:00Z"),
+          status: "in_progress",
+          delay_minutes: 2,
+          crew_assigned: 2,
+          is_approved: false,
+          approved_at: null,
+          stop_count: 2,
+          consist_count: 1,
+          crew_count: 2
+        }
+      ]
+    }).mockResolvedValueOnce({
+      rows: []
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const run = await repository.updateTrainRunApproval(
+      "capmetro",
+      "capmetro-run-1",
+      {
+        isApproved: false,
+        notes: "Reopened for crew correction."
+      },
+      "Jordan Reyes"
+    );
+
+    expect(run).toEqual({
+      id: "capmetro-run-1",
+      scheduleId: "cm-701",
+      trainNumber: "701",
+      operatingDate: "2026-03-06",
+      status: "in_progress",
+      delayMinutes: 2,
+      crewAssigned: 2,
+      isApproved: false,
+      approvedAt: null,
+      approvalBlockers: []
+    });
+  });
+
   it("rejects approval when readiness blockers exist", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [

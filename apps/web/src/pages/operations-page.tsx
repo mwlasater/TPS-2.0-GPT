@@ -204,8 +204,8 @@ export function OperationsPage({
   }, [selectedFare]);
 
   useEffect(() => {
-    setApprovalNotes("Ready for dispatch closeout.");
-  }, [selectedRunId]);
+    setApprovalNotes(selectedRun?.isApproved ? "Reopened for correction." : "Ready for dispatch closeout.");
+  }, [selectedRunId, selectedRun?.isApproved]);
 
   async function runAction(action: () => Promise<unknown>, successMessage: string) {
     setFeedback(null);
@@ -336,6 +336,21 @@ export function OperationsPage({
                   >
                     Approve selected run
                   </button>
+                  {selectedRun.isApproved ? (
+                    <button
+                      className="action-button"
+                      disabled={isSaving}
+                      onClick={() => {
+                        void runAction(
+                          () => saveRunApproval(selectedRun.id, { isApproved: false, notes: approvalNotes }),
+                          "Run reopened and editing restored."
+                        );
+                      }}
+                      type="button"
+                    >
+                      Reopen selected run
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
             </div>

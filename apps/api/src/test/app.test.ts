@@ -742,6 +742,29 @@ describe("app contracts", () => {
     });
   });
 
+  it("reopens approved train runs for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/approval",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        isApproved: false,
+        notes: "Reopened for stop correction."
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: "caltrain-run-1",
+      status: "in_progress",
+      isApproved: false,
+      approvedAt: null
+    });
+  });
+
   it("rejects approval when readiness blockers exist", async () => {
     const response = await app.inject({
       method: "PUT",
@@ -864,7 +887,7 @@ describe("app contracts", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().items[0]).toMatchObject({
-      action: "approved",
+      action: "unapproved",
       actorName: "Local Development User"
     });
   });
