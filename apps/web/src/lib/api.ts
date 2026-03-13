@@ -4,8 +4,10 @@ import type {
   AttendanceExceptionUpdate,
   AppBootstrap,
   ConsistEquipmentList,
+  ConsistTemplateList,
   ConsistEquipmentUpdate,
   CrewAssignmentList,
+  CrewTemplateList,
   CrewAssignmentUpdate,
   DelayAdditionalInfo,
   DelayAdditionalInfoUpdate,
@@ -35,6 +37,7 @@ import type {
   PropertySettings,
   PropertySettingsUpdate,
   ReferenceDataset,
+  ResourceSwapRequest,
   ReportConfigList,
   ReportConfigRow,
   ReportConfigUpdate,
@@ -446,6 +449,23 @@ export function fetchConsistEquipment(
   return fetchPropertyScoped<ConsistEquipmentList>(`/train-runs/${runId}/consist`, propertyCode);
 }
 
+export function fetchConsistTemplates(propertyCode: PropertyCode): Promise<ConsistTemplateList> {
+  return fetchPropertyScoped<ConsistTemplateList>("/consist/templates", propertyCode);
+}
+
+export function swapConsistEquipment(
+  propertyCode: PropertyCode,
+  runId: string,
+  payload: ResourceSwapRequest
+): Promise<ConsistEquipmentList> {
+  return mutatePropertyScoped<ConsistEquipmentList>(
+    `/train-runs/${runId}/consist/swap`,
+    propertyCode,
+    "POST",
+    payload
+  );
+}
+
 export function updateConsistEquipment(
   propertyCode: PropertyCode,
   runId: string,
@@ -465,6 +485,23 @@ export function fetchCrewAssignments(
   runId: string
 ): Promise<CrewAssignmentList> {
   return fetchPropertyScoped<CrewAssignmentList>(`/train-runs/${runId}/crew`, propertyCode);
+}
+
+export function fetchCrewTemplates(propertyCode: PropertyCode): Promise<CrewTemplateList> {
+  return fetchPropertyScoped<CrewTemplateList>("/crew/templates", propertyCode);
+}
+
+export function swapCrewAssignments(
+  propertyCode: PropertyCode,
+  runId: string,
+  payload: ResourceSwapRequest
+): Promise<CrewAssignmentList> {
+  return mutatePropertyScoped<CrewAssignmentList>(
+    `/train-runs/${runId}/crew/swap`,
+    propertyCode,
+    "POST",
+    payload
+  );
 }
 
 export function updateCrewAssignment(

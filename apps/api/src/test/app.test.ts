@@ -1120,6 +1120,72 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns consist and crew templates for authorized property context", async () => {
+    const consistResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/consist/templates",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const crewResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/crew/templates",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(consistResponse.statusCode).toBe(200);
+    expect(crewResponse.statusCode).toBe(200);
+    expect(consistResponse.json().items[0]).toMatchObject({
+      id: "consist-commuter-standard",
+      name: "Commuter Standard"
+    });
+    expect(crewResponse.json().items[0]).toMatchObject({
+      id: "crew-commuter-standard",
+      name: "Standard Crew"
+    });
+  });
+
+  it("swaps consist and crew templates for editable train runs", async () => {
+    const consistResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/train-runs/caltrain-run-1/consist/swap",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        templateId: "consist-commuter-short-turn"
+      }
+    });
+
+    const crewResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/train-runs/caltrain-run-1/crew/swap",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        templateId: "crew-commuter-relief"
+      }
+    });
+
+    expect(consistResponse.statusCode).toBe(200);
+    expect(crewResponse.statusCode).toBe(200);
+    expect(consistResponse.json().items[0]).toMatchObject({
+      equipmentNumber: "CAB-911"
+    });
+    expect(crewResponse.json().items[0]).toMatchObject({
+      employeeName: "Morgan Lee"
+    });
+  });
+
   it("returns and updates fare enforcement for authorized property context", async () => {
     const createResponse = await app.inject({
       method: "POST",

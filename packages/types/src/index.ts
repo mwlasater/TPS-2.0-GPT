@@ -298,6 +298,16 @@ export interface ConsistEquipmentList {
   items: ConsistEquipment[];
 }
 
+export interface ConsistTemplate {
+  id: string;
+  name: string;
+  items: ConsistEquipment[];
+}
+
+export interface ConsistTemplateList {
+  items: ConsistTemplate[];
+}
+
 export interface ConsistEquipmentUpdate {
   position: number;
   status: "active" | "bad_order" | "spare";
@@ -315,10 +325,24 @@ export interface CrewAssignmentList {
   items: CrewAssignment[];
 }
 
+export interface CrewTemplate {
+  id: string;
+  name: string;
+  items: CrewAssignment[];
+}
+
+export interface CrewTemplateList {
+  items: CrewTemplate[];
+}
+
 export interface CrewAssignmentUpdate {
   role: string;
   onDutyTime: string;
   status: "assigned" | "pending_relief" | "complete";
+}
+
+export interface ResourceSwapRequest {
+  templateId: string;
 }
 
 export interface FareEnforcementRecord {

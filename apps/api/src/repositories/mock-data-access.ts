@@ -49,8 +49,12 @@ import {
 import {
   deleteRunResourceState,
   listConsistEquipment,
+  listConsistTemplates,
+  listCrewTemplates,
   listCrewAssignments,
   resetRunResourceState,
+  swapConsistEquipment,
+  swapCrewAssignments,
   updateConsistEquipment,
   updateCrewAssignment
 } from "../lib/run-resource-data.js";
@@ -178,11 +182,21 @@ export function createMockDataAccess(): DataAccess {
         return updateDelayEvent(propertyCode, runId, delayId, update);
       },
       listConsistEquipment,
+      listConsistTemplates,
+      swapConsistEquipment(propertyCode, runId, request) {
+        assertRunMutable(propertyCode, runId);
+        return swapConsistEquipment(propertyCode, runId, request);
+      },
       updateConsistEquipment(propertyCode, runId, equipmentId, update) {
         assertRunMutable(propertyCode, runId);
         return updateConsistEquipment(propertyCode, runId, equipmentId, update);
       },
       listCrewAssignments,
+      listCrewTemplates,
+      swapCrewAssignments(propertyCode, runId, request) {
+        assertRunMutable(propertyCode, runId);
+        return swapCrewAssignments(propertyCode, runId, request);
+      },
       updateCrewAssignment(propertyCode, runId, assignmentId, update) {
         assertRunMutable(propertyCode, runId);
         return updateCrewAssignment(propertyCode, runId, assignmentId, update);

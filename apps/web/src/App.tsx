@@ -60,7 +60,9 @@ export function App() {
           element={
             <OperationsPage
               consist={operationsData.consist}
+              consistTemplates={operationsData.consistTemplates}
               crew={operationsData.crew}
+              crewTemplates={operationsData.crewTemplates}
               delayEvents={operationsData.delayEvents}
               fareEnforcement={operationsData.fareEnforcement}
               fareDashboard={operationsData.fareDashboard}
@@ -78,6 +80,8 @@ export function App() {
               selectRun={operationsData.selectRun}
               saveConsist={operationsData.saveConsist}
               saveCrew={operationsData.saveCrew}
+              swapConsist={operationsData.swapConsist}
+              swapCrew={operationsData.swapCrew}
               saveDelay={operationsData.saveDelay}
               createDelayBatch={operationsData.createDelayBatch}
               saveDelayAdditionalInfo={operationsData.saveDelayAdditionalInfo}

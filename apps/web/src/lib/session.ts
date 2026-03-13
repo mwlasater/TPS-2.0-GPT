@@ -2,7 +2,9 @@ import type {
   AttendanceExceptionList,
   AppBootstrap,
   ConsistEquipmentList,
+  ConsistTemplateList,
   CrewAssignmentList,
+  CrewTemplateList,
   DelayAdditionalInfo,
   DelayCommonLocationList,
   DelayEventList,
@@ -1014,6 +1016,125 @@ export const demoCrewAssignments: Record<PropertyCode, CrewAssignmentList> = {
   octastreetcar: streetcarCrew,
   metrolinkarrow: commuterCrew,
   silverline: commuterCrew
+};
+
+export const demoConsistTemplates: Record<PropertyCode, ConsistTemplateList> = {
+  caltrain: {
+    items: [
+      {
+        id: "consist-commuter-standard",
+        name: "Commuter Standard",
+        items: demoConsistEquipment.caltrain.items.map((item) => ({ ...item }))
+      },
+      {
+        id: "consist-commuter-short-turn",
+        name: "Short Turn",
+        items: [
+          {
+            id: "template-equip-1",
+            equipmentNumber: "CAB-911",
+            equipmentType: "Cab Car",
+            position: 1,
+            status: "active"
+          },
+          {
+            id: "template-equip-2",
+            equipmentNumber: "COACH-510",
+            equipmentType: "Coach",
+            position: 2,
+            status: "active"
+          },
+          {
+            id: "template-equip-3",
+            equipmentNumber: "LOCO-201",
+            equipmentType: "Locomotive",
+            position: 3,
+            status: "active"
+          }
+        ]
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "consist-capmetro-standard",
+        name: "Streetcar Standard",
+        items: [
+          {
+            id: "street-template-equip-1",
+            equipmentNumber: "SC-01",
+            equipmentType: "Streetcar Vehicle",
+            position: 1,
+            status: "active"
+          }
+        ]
+      }
+    ]
+  },
+  kcstreetcar: { items: [] },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoCrewTemplates: Record<PropertyCode, CrewTemplateList> = {
+  caltrain: {
+    items: [
+      {
+        id: "crew-commuter-standard",
+        name: "Standard Crew",
+        items: demoCrewAssignments.caltrain.items.map((item) => ({ ...item }))
+      },
+      {
+        id: "crew-commuter-relief",
+        name: "Relief Crew",
+        items: [
+          {
+            id: "template-crew-1",
+            employeeName: "Morgan Lee",
+            role: "Engineer",
+            onDutyTime: "05:55",
+            status: "assigned"
+          },
+          {
+            id: "template-crew-2",
+            employeeName: "Alex Carter",
+            role: "Conductor",
+            onDutyTime: "06:00",
+            status: "assigned"
+          }
+        ]
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "crew-capmetro-standard",
+        name: "Streetcar Crew",
+        items: demoCrewAssignments.capmetro.items.map((item) => ({ ...item }))
+      }
+    ]
+  },
+  kcstreetcar: { items: [] },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
 };
 
 const commuterPermissionGroups: PermissionGroupList = {

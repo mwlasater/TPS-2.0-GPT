@@ -3,9 +3,11 @@ import type {
   AttendanceExceptionList,
   ConsistEquipment,
   ConsistEquipmentList,
+  ConsistTemplateList,
   ConsistEquipmentUpdate,
   CrewAssignment,
   CrewAssignmentList,
+  CrewTemplateList,
   CrewAssignmentUpdate,
   DelayAdditionalInfo,
   DelayAdditionalInfoUpdate,
@@ -25,6 +27,7 @@ import type {
   PropertySettings,
   PropertySettingsUpdate,
   ReferenceDataset,
+  ResourceSwapRequest,
   ReportConfigRow,
   ReportConfigList,
   ReportConfigUpdate,
@@ -183,6 +186,12 @@ export interface OperationsRepository {
     propertyCode: PropertyCode,
     runId: string
   ): MaybePromise<ConsistEquipmentList>;
+  listConsistTemplates(propertyCode: PropertyCode): MaybePromise<ConsistTemplateList>;
+  swapConsistEquipment(
+    propertyCode: PropertyCode,
+    runId: string,
+    request: ResourceSwapRequest
+  ): MaybePromise<ConsistEquipmentList>;
   updateConsistEquipment(
     propertyCode: PropertyCode,
     runId: string,
@@ -192,6 +201,12 @@ export interface OperationsRepository {
   listCrewAssignments(
     propertyCode: PropertyCode,
     runId: string
+  ): MaybePromise<CrewAssignmentList>;
+  listCrewTemplates(propertyCode: PropertyCode): MaybePromise<CrewTemplateList>;
+  swapCrewAssignments(
+    propertyCode: PropertyCode,
+    runId: string,
+    request: ResourceSwapRequest
   ): MaybePromise<CrewAssignmentList>;
   updateCrewAssignment(
     propertyCode: PropertyCode,

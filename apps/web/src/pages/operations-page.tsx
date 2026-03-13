@@ -1,7 +1,9 @@
 import type {
   ConsistEquipmentList,
+  ConsistTemplateList,
   ConsistEquipmentUpdate,
   CrewAssignmentList,
+  CrewTemplateList,
   CrewAssignmentUpdate,
   DelayAdditionalInfo,
   DelayAdditionalInfoUpdate,
@@ -41,7 +43,9 @@ import { StatusBadge } from "../components/status-badge.js";
 interface OperationsPageProps {
   property: PropertySummary;
   consist: ConsistEquipmentList;
+  consistTemplates: ConsistTemplateList;
   crew: CrewAssignmentList;
+  crewTemplates: CrewTemplateList;
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
   fareDashboard: FareEnforcementDashboard;
@@ -67,6 +71,8 @@ interface OperationsPageProps {
     assignmentId: string,
     update: CrewAssignmentUpdate
   ) => Promise<CrewAssignmentList["items"][number] | undefined>;
+  swapConsist: (runId: string, templateId: string) => Promise<ConsistEquipmentList | undefined>;
+  swapCrew: (runId: string, templateId: string) => Promise<CrewAssignmentList | undefined>;
   saveDelay: (
     runId: string,
     delayId: string,
@@ -114,7 +120,9 @@ interface OperationsPageProps {
 
 export function OperationsPage({
   consist,
+  consistTemplates,
   crew,
+  crewTemplates,
   delayEvents,
   fareEnforcement,
   fareDashboard,
@@ -133,6 +141,8 @@ export function OperationsPage({
   selectRun,
   saveConsist,
   saveCrew,
+  swapConsist,
+  swapCrew,
   saveDelay,
   createFare,
   saveFare,
@@ -164,6 +174,12 @@ export function OperationsPage({
   const [selectedDelayId, setSelectedDelayId] = useState<string | null>(delayEvents.items[0]?.id ?? null);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(consist.items[0]?.id ?? null);
   const [selectedCrewId, setSelectedCrewId] = useState<string | null>(crew.items[0]?.id ?? null);
+  const [selectedConsistTemplateId, setSelectedConsistTemplateId] = useState(
+    consistTemplates.items[0]?.id ?? ""
+  );
+  const [selectedCrewTemplateId, setSelectedCrewTemplateId] = useState(
+    crewTemplates.items[0]?.id ?? ""
+  );
   const [selectedFareId, setSelectedFareId] = useState<string | null>(fareEnforcement.items[0]?.id ?? null);
 
   const selectedStop = stationStops.items.find((item) => item.id === selectedStopId) ?? stationStops.items[0];
@@ -270,6 +286,14 @@ export function OperationsPage({
   useEffect(() => {
     setSelectedCrewId(crew.items[0]?.id ?? null);
   }, [crew]);
+
+  useEffect(() => {
+    setSelectedConsistTemplateId(consistTemplates.items[0]?.id ?? "");
+  }, [consistTemplates]);
+
+  useEffect(() => {
+    setSelectedCrewTemplateId(crewTemplates.items[0]?.id ?? "");
+  }, [crewTemplates]);
 
   useEffect(() => {
     setSelectedFareId(fareEnforcement.items[0]?.id ?? null);
@@ -1033,6 +1057,22 @@ export function OperationsPage({
           </div>
           {selectedRun && selectedEquipment ? (
             <div className="editor-grid">
+              <label className="field-stack editor-span">
+                <span>Swap Template</span>
+                <select
+                  onChange={(event) => {
+                    setSelectedConsistTemplateId(event.target.value);
+                  }}
+                  value={selectedConsistTemplateId}
+                >
+                  <option value="">Select template</option>
+                  {consistTemplates.items.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="field-stack">
                 <span>Position</span>
                 <input
@@ -1064,6 +1104,19 @@ export function OperationsPage({
                 </select>
               </label>
               <div className="action-row">
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving || !selectedConsistTemplateId}
+                  onClick={() => {
+                    void runAction(
+                      () => swapConsist(selectedRun.id, selectedConsistTemplateId),
+                      "Consist swapped from template."
+                    );
+                  }}
+                  type="button"
+                >
+                  Swap consist
+                </button>
                 <button
                   className="action-button"
                   disabled={selectedRun.isApproved || isSaving}
@@ -1115,6 +1168,22 @@ export function OperationsPage({
           </div>
           {selectedRun && selectedCrew ? (
             <div className="editor-grid">
+              <label className="field-stack editor-span">
+                <span>Swap Template</span>
+                <select
+                  onChange={(event) => {
+                    setSelectedCrewTemplateId(event.target.value);
+                  }}
+                  value={selectedCrewTemplateId}
+                >
+                  <option value="">Select template</option>
+                  {crewTemplates.items.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="field-stack">
                 <span>Role</span>
                 <input
@@ -1152,6 +1221,19 @@ export function OperationsPage({
                 </select>
               </label>
               <div className="action-row">
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving || !selectedCrewTemplateId}
+                  onClick={() => {
+                    void runAction(
+                      () => swapCrew(selectedRun.id, selectedCrewTemplateId),
+                      "Crew assignment swapped from template."
+                    );
+                  }}
+                  type="button"
+                >
+                  Swap crew
+                </button>
                 <button
                   className="action-button"
                   disabled={selectedRun.isApproved || isSaving}

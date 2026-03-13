@@ -6,6 +6,7 @@ import {
   fareEnforcementCreateSchema,
   delayEventUpdateSchema,
   fareEnforcementUpdateSchema,
+  resourceSwapRequestSchema,
   stationStopUpdateSchema,
   trainRunInitializeRequestSchema,
   trainRunBatchApprovalUpdateSchema,
@@ -20,6 +21,7 @@ import type {
   FareEnforcementCreate,
   DelayEventUpdate,
   FareEnforcementUpdate,
+  ResourceSwapRequest,
   StationStopUpdate,
   TrainRunInitializeRequest,
   TrainRunBatchApprovalUpdate,
@@ -274,6 +276,29 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     )
   );
 
+  app.get(
+    "/consist/templates",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listConsistTemplates(request.property)
+  );
+
+  app.post(
+    "/train-runs/:runId/consist/swap",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = resourceSwapRequestSchema.parse(request.body) as ResourceSwapRequest;
+      return app.dataAccess.operations.swapConsistEquipment(
+        request.property,
+        (request.params as { runId: string }).runId,
+        payload
+      );
+    }
+  );
+
   app.put(
     "/train-runs/:runId/consist/:equipmentId",
     {
@@ -301,6 +326,29 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       request.property,
       (request.params as { runId: string }).runId
     )
+  );
+
+  app.get(
+    "/crew/templates",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listCrewTemplates(request.property)
+  );
+
+  app.post(
+    "/train-runs/:runId/crew/swap",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = resourceSwapRequestSchema.parse(request.body) as ResourceSwapRequest;
+      return app.dataAccess.operations.swapCrewAssignments(
+        request.property,
+        (request.params as { runId: string }).runId,
+        payload
+      );
+    }
   );
 
   app.put(

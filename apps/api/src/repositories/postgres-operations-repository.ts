@@ -1,9 +1,13 @@
 import type {
   ConsistEquipment,
   ConsistEquipmentList,
+  ConsistTemplate,
+  ConsistTemplateList,
   ConsistEquipmentUpdate,
   CrewAssignment,
   CrewAssignmentList,
+  CrewTemplate,
+  CrewTemplateList,
   CrewAssignmentUpdate,
   DelayAdditionalInfo,
   DelayAdditionalInfoUpdate,
@@ -22,6 +26,7 @@ import type {
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
   PropertyCode,
+  ResourceSwapRequest,
   SpecialMovement,
   SpecialMovementList,
   StationStop,
@@ -42,7 +47,12 @@ import type {
 } from "@tps/types";
 
 import { listFareEnforcement, listFareEnforcementSummary } from "../lib/fare-enforcement-data.js";
-import { listConsistEquipment, listCrewAssignments } from "../lib/run-resource-data.js";
+import {
+  listConsistEquipment,
+  listConsistTemplates,
+  listCrewAssignments,
+  listCrewTemplates
+} from "../lib/run-resource-data.js";
 import {
   getDelayAdditionalInfo,
   listDelayCommonLocations,
@@ -133,6 +143,26 @@ interface ConsistEquipmentRow {
 
 interface CrewAssignmentRow {
   id: string;
+  employee_name: string;
+  role_name: string;
+  on_duty_time: string;
+  status: CrewAssignment["status"];
+}
+
+interface ConsistTemplateRow {
+  template_id: string;
+  template_name: string;
+  item_id: string;
+  equipment_number: string;
+  equipment_type: string;
+  position_index: number;
+  status: ConsistEquipment["status"];
+}
+
+interface CrewTemplateRow {
+  template_id: string;
+  template_name: string;
+  item_id: string;
   employee_name: string;
   role_name: string;
   on_duty_time: string;
@@ -1295,6 +1325,97 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
+  async listConsistTemplates(propertyCode: PropertyCode): Promise<ConsistTemplateList> {
+    const result = await this.db.query<ConsistTemplateRow>(
+      `
+        SELECT
+          ct.id AS template_id,
+          ct.template_name,
+          cti.id AS item_id,
+          cti.equipment_number,
+          cti.equipment_type,
+          cti.position_index,
+          cti.status
+        FROM shared.consist_template ct
+        JOIN shared.consist_template_item cti ON cti.template_id = ct.id
+        WHERE ct.railroad_code = $1
+        ORDER BY ct.template_name, cti.position_index
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listConsistTemplates(propertyCode);
+    }
+
+    const templates = new Map<string, ConsistTemplate>();
+
+    for (const row of result.rows) {
+      const template = templates.get(row.template_id) ?? {
+        id: row.template_id,
+        name: row.template_name,
+        items: []
+      };
+
+      template.items.push({
+        id: row.item_id,
+        equipmentNumber: row.equipment_number,
+        equipmentType: row.equipment_type,
+        position: row.position_index,
+        status: row.status
+      });
+
+      templates.set(row.template_id, template);
+    }
+
+    return {
+      items: Array.from(templates.values())
+    };
+  }
+
+  async swapConsistEquipment(
+    propertyCode: PropertyCode,
+    runId: string,
+    request: ResourceSwapRequest
+  ): Promise<ConsistEquipmentList> {
+    await this.assertRunMutable(propertyCode, runId);
+
+    const template = await this.listConsistTemplates(propertyCode);
+    const selected = template.items.find((item) => item.id === request.templateId);
+
+    if (!selected) {
+      throw new Error("consist_template.not_found");
+    }
+
+    await this.db.query("DELETE FROM shared.consist_equipment WHERE train_run_id = $1", [runId]);
+
+    for (const item of selected.items) {
+      await this.db.query(
+        `
+          INSERT INTO shared.consist_equipment (
+            id,
+            train_run_id,
+            equipment_number,
+            equipment_type,
+            position_index,
+            status
+          )
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `,
+        [
+          `consist_${crypto.randomUUID()}`,
+          runId,
+          item.equipmentNumber,
+          item.equipmentType,
+          item.position,
+          item.status
+        ]
+      );
+    }
+
+    return this.listConsistEquipment(propertyCode, runId);
+  }
+
   async listCrewAssignments(
     propertyCode: PropertyCode,
     runId: string
@@ -1331,6 +1452,97 @@ export class PostgresOperationsRepository implements OperationsRepository {
         })
       )
     };
+  }
+
+  async listCrewTemplates(propertyCode: PropertyCode): Promise<CrewTemplateList> {
+    const result = await this.db.query<CrewTemplateRow>(
+      `
+        SELECT
+          ct.id AS template_id,
+          ct.template_name,
+          cti.id AS item_id,
+          cti.employee_name,
+          cti.role_name,
+          cti.on_duty_time,
+          cti.status
+        FROM shared.crew_template ct
+        JOIN shared.crew_template_item cti ON cti.template_id = ct.id
+        WHERE ct.railroad_code = $1
+        ORDER BY ct.template_name, cti.on_duty_time
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listCrewTemplates(propertyCode);
+    }
+
+    const templates = new Map<string, CrewTemplate>();
+
+    for (const row of result.rows) {
+      const template = templates.get(row.template_id) ?? {
+        id: row.template_id,
+        name: row.template_name,
+        items: []
+      };
+
+      template.items.push({
+        id: row.item_id,
+        employeeName: row.employee_name,
+        role: row.role_name,
+        onDutyTime: row.on_duty_time,
+        status: row.status
+      });
+
+      templates.set(row.template_id, template);
+    }
+
+    return {
+      items: Array.from(templates.values())
+    };
+  }
+
+  async swapCrewAssignments(
+    propertyCode: PropertyCode,
+    runId: string,
+    request: ResourceSwapRequest
+  ): Promise<CrewAssignmentList> {
+    await this.assertRunMutable(propertyCode, runId);
+
+    const template = await this.listCrewTemplates(propertyCode);
+    const selected = template.items.find((item) => item.id === request.templateId);
+
+    if (!selected) {
+      throw new Error("crew_template.not_found");
+    }
+
+    await this.db.query("DELETE FROM shared.crew_assignment WHERE train_run_id = $1", [runId]);
+
+    for (const item of selected.items) {
+      await this.db.query(
+        `
+          INSERT INTO shared.crew_assignment (
+            id,
+            train_run_id,
+            employee_name,
+            role_name,
+            on_duty_time,
+            status
+          )
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `,
+        [
+          `crew_${crypto.randomUUID()}`,
+          runId,
+          item.employeeName,
+          item.role,
+          item.onDutyTime,
+          item.status
+        ]
+      );
+    }
+
+    return this.listCrewAssignments(propertyCode, runId);
   }
 
   async updateConsistEquipment(

@@ -837,6 +837,59 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("maps consist template rows into consist templates", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          template_id: "consist-commuter-standard",
+          template_name: "Commuter Standard",
+          item_id: "template-equip-1",
+          equipment_number: "CAB-901",
+          equipment_type: "Cab Car",
+          position_index: 1,
+          status: "active"
+        },
+        {
+          template_id: "consist-commuter-standard",
+          template_name: "Commuter Standard",
+          item_id: "template-equip-2",
+          equipment_number: "COACH-442",
+          equipment_type: "Coach",
+          position_index: 2,
+          status: "active"
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const templates = await repository.listConsistTemplates("caltrain");
+
+    expect(templates).toEqual({
+      items: [
+        {
+          id: "consist-commuter-standard",
+          name: "Commuter Standard",
+          items: [
+            {
+              id: "template-equip-1",
+              equipmentNumber: "CAB-901",
+              equipmentType: "Cab Car",
+              position: 1,
+              status: "active"
+            },
+            {
+              id: "template-equip-2",
+              equipmentNumber: "COACH-442",
+              equipmentType: "Coach",
+              position: 2,
+              status: "active"
+            }
+          ]
+        }
+      ]
+    });
+  });
+
   it("maps consist updates into consist equipment", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [{ is_approved: false }]
@@ -872,6 +925,55 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("maps consist swaps into consist equipment", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            template_id: "consist-commuter-short-turn",
+            template_name: "Short Turn",
+            item_id: "template-equip-1",
+            equipment_number: "CAB-911",
+            equipment_type: "Cab Car",
+            position_index: 1,
+            status: "active"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "consist-generated-1",
+            equipment_number: "CAB-911",
+            equipment_type: "Cab Car",
+            position_index: 1,
+            status: "active"
+          }
+        ]
+      });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const consist = await repository.swapConsistEquipment("caltrain", "caltrain-run-1", {
+      templateId: "consist-commuter-short-turn"
+    });
+
+    expect(consist).toEqual({
+      items: [
+        {
+          id: "consist-generated-1",
+          equipmentNumber: "CAB-911",
+          equipmentType: "Cab Car",
+          position: 1,
+          status: "active"
+        }
+      ]
+    });
+  });
+
   it("maps crew rows into crew assignments", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [
@@ -899,6 +1001,59 @@ describe("PostgresOperationsRepository", () => {
           role: "Engineer",
           onDutyTime: "05:30",
           status: "assigned"
+        }
+      ]
+    });
+  });
+
+  it("maps crew template rows into crew templates", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          template_id: "crew-commuter-standard",
+          template_name: "Standard Crew",
+          item_id: "template-crew-1",
+          employee_name: "Jordan Reyes",
+          role_name: "Engineer",
+          on_duty_time: "05:30",
+          status: "assigned"
+        },
+        {
+          template_id: "crew-commuter-standard",
+          template_name: "Standard Crew",
+          item_id: "template-crew-2",
+          employee_name: "Taylor Brooks",
+          role_name: "Conductor",
+          on_duty_time: "05:35",
+          status: "assigned"
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const templates = await repository.listCrewTemplates("caltrain");
+
+    expect(templates).toEqual({
+      items: [
+        {
+          id: "crew-commuter-standard",
+          name: "Standard Crew",
+          items: [
+            {
+              id: "template-crew-1",
+              employeeName: "Jordan Reyes",
+              role: "Engineer",
+              onDutyTime: "05:30",
+              status: "assigned"
+            },
+            {
+              id: "template-crew-2",
+              employeeName: "Taylor Brooks",
+              role: "Conductor",
+              onDutyTime: "05:35",
+              status: "assigned"
+            }
+          ]
         }
       ]
     });
@@ -937,6 +1092,55 @@ describe("PostgresOperationsRepository", () => {
       role: "Engineer",
       onDutyTime: "05:45",
       status: "pending_relief"
+    });
+  });
+
+  it("maps crew swaps into crew assignments", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            template_id: "crew-commuter-relief",
+            template_name: "Relief Crew",
+            item_id: "template-crew-1",
+            employee_name: "Morgan Lee",
+            role_name: "Engineer",
+            on_duty_time: "05:55",
+            status: "assigned"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "crew-generated-1",
+            employee_name: "Morgan Lee",
+            role_name: "Engineer",
+            on_duty_time: "05:55",
+            status: "assigned"
+          }
+        ]
+      });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const crew = await repository.swapCrewAssignments("caltrain", "caltrain-run-1", {
+      templateId: "crew-commuter-relief"
+    });
+
+    expect(crew).toEqual({
+      items: [
+        {
+          id: "crew-generated-1",
+          employeeName: "Morgan Lee",
+          role: "Engineer",
+          onDutyTime: "05:55",
+          status: "assigned"
+        }
+      ]
     });
   });
 

@@ -1,7 +1,9 @@
 import type {
   ConsistEquipmentList,
+  ConsistTemplateList,
   ConsistEquipmentUpdate,
   CrewAssignmentList,
+  CrewTemplateList,
   CrewAssignmentUpdate,
   DelayAdditionalInfo,
   DelayAdditionalInfoUpdate,
@@ -39,9 +41,11 @@ import {
   createDelayEvents,
   deleteDelayEvent,
   deleteTrainRun,
+  fetchConsistTemplates,
   fetchDelayAdditionalInfo,
   fetchDelayCommonLocations,
   fetchConsistEquipment,
+  fetchCrewTemplates,
   createFareEnforcement,
   fetchCrewAssignments,
   fetchDelayEvents,
@@ -57,6 +61,8 @@ import {
   fetchTrainScheduleApprovalHistory,
   initializeTrainRuns,
   resetTrainRun,
+  swapConsistEquipment,
+  swapCrewAssignments,
   updateConsistEquipment,
   updateCrewAssignment,
   updateDelayAdditionalInfo,
@@ -68,7 +74,9 @@ import {
 } from "../lib/api.js";
 import {
   demoConsistEquipment,
+  demoConsistTemplates,
   demoCrewAssignments,
+  demoCrewTemplates,
   demoDelayAdditionalInfo,
   demoDelayCommonLocations,
   demoDelayEvents,
@@ -170,7 +178,9 @@ interface OperationsDataState {
   fareDashboard: FareEnforcementDashboard;
   fareSummary: FareEnforcementSummaryList;
   consist: ConsistEquipmentList;
+  consistTemplates: ConsistTemplateList;
   crew: CrewAssignmentList;
+  crewTemplates: CrewTemplateList;
   stationStops: StationStopList;
   source: "api" | "fallback";
   isLoading: boolean;
@@ -217,6 +227,11 @@ interface OperationsDataState {
     assignmentId: string,
     update: CrewAssignmentUpdate
   ) => Promise<CrewAssignmentList["items"][number] | undefined>;
+  swapConsist: (
+    runId: string,
+    templateId: string
+  ) => Promise<ConsistEquipmentList | undefined>;
+  swapCrew: (runId: string, templateId: string) => Promise<CrewAssignmentList | undefined>;
   saveFare: (
     recordId: string,
     update: FareEnforcementUpdate
@@ -241,7 +256,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     delayCommonLocations: demoDelayCommonLocations[propertyCode],
     specialMovements: demoSpecialMovements[propertyCode],
     consist: demoConsistEquipment[propertyCode],
+    consistTemplates: demoConsistTemplates[propertyCode],
     crew: demoCrewAssignments[propertyCode],
+    crewTemplates: demoCrewTemplates[propertyCode],
     delayEvents: demoDelayEvents[propertyCode],
     fareEnforcement: demoFareEnforcement[propertyCode],
     fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
@@ -263,6 +280,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     deleteDelay: async () => undefined,
     saveConsist: async () => undefined,
     saveCrew: async () => undefined,
+    swapConsist: async () => undefined,
+    swapCrew: async () => undefined,
     saveFare: async () => undefined,
     createFare: async () => undefined
   });
@@ -287,7 +306,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       delayCommonLocations: demoDelayCommonLocations[propertyCode],
       specialMovements: demoSpecialMovements[propertyCode],
       consist: demoConsistEquipment[propertyCode],
+      consistTemplates: demoConsistTemplates[propertyCode],
       crew: demoCrewAssignments[propertyCode],
+      crewTemplates: demoCrewTemplates[propertyCode],
       delayEvents: demoDelayEvents[propertyCode],
       fareEnforcement: demoFareEnforcement[propertyCode],
       fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
@@ -309,6 +330,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       deleteDelay: state.deleteDelay,
       saveConsist: state.saveConsist,
       saveCrew: state.saveCrew,
+      swapConsist: state.swapConsist,
+      swapCrew: state.swapCrew,
       saveFare: state.saveFare,
       createFare: state.createFare
     });
@@ -317,10 +340,21 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       fetchReferenceData(propertyCode),
       fetchDelayCommonLocations(propertyCode),
       fetchSpecialMovements(propertyCode),
+      fetchConsistTemplates(propertyCode),
+      fetchCrewTemplates(propertyCode),
       fetchTrainSchedules(propertyCode),
       fetchTrainRuns(propertyCode)
     ])
-      .then(async ([referenceData, delayCommonLocations, specialMovements, schedules, runs]) => {
+      .then(
+        async ([
+          referenceData,
+          delayCommonLocations,
+          specialMovements,
+          consistTemplates,
+          crewTemplates,
+          schedules,
+          runs
+        ]) => {
         const selectedRunId = runs.items[0]?.id ?? null;
         const selectedScheduleId = runs.items.find((run) => run.id === selectedRunId)?.scheduleId;
         const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, fareSummary, fareDashboard] = selectedRunId
@@ -369,7 +403,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             scheduleApprovalHistory,
             delayAdditionalInfo,
             consist,
+            consistTemplates,
             crew,
+            crewTemplates,
             delayEvents,
             fareEnforcement,
             fareDashboard,
@@ -391,11 +427,14 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             deleteDelay: state.deleteDelay,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
+            swapConsist: state.swapConsist,
+            swapCrew: state.swapCrew,
             saveFare: state.saveFare,
             createFare: state.createFare
           });
         }
-      })
+      }
+      )
       .catch(() => {
         if (isMounted) {
           setState({
@@ -415,7 +454,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             delayCommonLocations: demoDelayCommonLocations[propertyCode],
             specialMovements: demoSpecialMovements[propertyCode],
             consist: demoConsistEquipment[propertyCode],
+            consistTemplates: demoConsistTemplates[propertyCode],
             crew: demoCrewAssignments[propertyCode],
+            crewTemplates: demoCrewTemplates[propertyCode],
             delayEvents: demoDelayEvents[propertyCode],
             fareEnforcement: demoFareEnforcement[propertyCode],
             fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
@@ -437,6 +478,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             deleteDelay: state.deleteDelay,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
+            swapConsist: state.swapConsist,
+            swapCrew: state.swapCrew,
             saveFare: state.saveFare,
             createFare: state.createFare
           });
@@ -989,6 +1032,40 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     }
   }
 
+  async function swapConsist(runId: string, templateId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const consist = await swapConsistEquipment(propertyCode, runId, { templateId });
+      setState((current) => ({
+        ...current,
+        consist,
+        isSaving: false
+      }));
+      return consist;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function swapCrew(runId: string, templateId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const crew = await swapCrewAssignments(propertyCode, runId, { templateId });
+      setState((current) => ({
+        ...current,
+        crew,
+        isSaving: false
+      }));
+      return crew;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
   return {
     ...state,
     selectRun,
@@ -1004,6 +1081,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     deleteDelay: removeDelay,
     saveConsist,
     saveCrew,
+    swapConsist,
+    swapCrew,
     saveFare,
     createFare
   };

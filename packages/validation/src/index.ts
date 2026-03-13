@@ -288,6 +288,16 @@ export const consistEquipmentListSchema = z.object({
   items: z.array(consistEquipmentSchema)
 });
 
+export const consistTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  items: z.array(consistEquipmentSchema)
+});
+
+export const consistTemplateListSchema = z.object({
+  items: z.array(consistTemplateSchema)
+});
+
 export const consistEquipmentUpdateSchema = z.object({
   position: z.number().int().positive(),
   status: z.enum(["active", "bad_order", "spare"])
@@ -305,10 +315,24 @@ export const crewAssignmentListSchema = z.object({
   items: z.array(crewAssignmentSchema)
 });
 
+export const crewTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  items: z.array(crewAssignmentSchema)
+});
+
+export const crewTemplateListSchema = z.object({
+  items: z.array(crewTemplateSchema)
+});
+
 export const crewAssignmentUpdateSchema = z.object({
   role: z.string().min(1),
   onDutyTime: z.string().min(1),
   status: z.enum(["assigned", "pending_relief", "complete"])
+});
+
+export const resourceSwapRequestSchema = z.object({
+  templateId: z.string().min(1)
 });
 
 export const fareEnforcementRecordSchema = z.object({

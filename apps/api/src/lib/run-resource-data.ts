@@ -1,11 +1,14 @@
 import type {
   ConsistEquipment,
   ConsistEquipmentList,
+  ConsistTemplateList,
   ConsistEquipmentUpdate,
   CrewAssignment,
   CrewAssignmentList,
+  CrewTemplateList,
   CrewAssignmentUpdate,
-  PropertyCode
+  PropertyCode,
+  ResourceSwapRequest
 } from "@tps/types";
 
 const commuterConsist: ConsistEquipmentList = {
@@ -97,6 +100,63 @@ const streetcarProperties = new Set<PropertyCode>([
   "octastreetcar"
 ]);
 
+const commuterConsistTemplates: ConsistTemplateList = {
+  items: [
+    {
+      id: "consist-commuter-standard",
+      name: "Commuter Standard",
+      items: commuterConsist.items.map((item) => ({ ...item }))
+    },
+    {
+      id: "consist-commuter-short-turn",
+      name: "Short Turn",
+      items: [
+        { id: "swap-equip-1", equipmentNumber: "CAB-911", equipmentType: "Cab Car", position: 1, status: "active" },
+        { id: "swap-equip-2", equipmentNumber: "COACH-510", equipmentType: "Coach", position: 2, status: "active" },
+        { id: "swap-equip-3", equipmentNumber: "LOCO-201", equipmentType: "Locomotive", position: 3, status: "active" }
+      ]
+    }
+  ]
+};
+
+const commuterCrewTemplates: CrewTemplateList = {
+  items: [
+    {
+      id: "crew-commuter-standard",
+      name: "Standard Crew",
+      items: commuterCrew.items.map((item) => ({ ...item }))
+    },
+    {
+      id: "crew-commuter-relief",
+      name: "Relief Crew",
+      items: [
+        { id: "swap-crew-1", employeeName: "Morgan Lee", role: "Engineer", onDutyTime: "05:55", status: "assigned" },
+        { id: "swap-crew-2", employeeName: "Alex Carter", role: "Conductor", onDutyTime: "06:00", status: "assigned" }
+      ]
+    }
+  ]
+};
+
+const streetcarConsistTemplates: ConsistTemplateList = {
+  items: [
+    {
+      id: "consist-street-standard",
+      name: "Streetcar Standard",
+      items: streetcarConsist.items.map((item) => ({ ...item }))
+    }
+  ]
+};
+
+const streetcarCrewTemplates: CrewTemplateList = {
+  items: [
+    {
+      id: "crew-street-standard",
+      name: "Streetcar Crew",
+      items: streetcarCrew.items.map((item) => ({ ...item }))
+    }
+  ]
+};
+
 const consistCatalog: Partial<Record<PropertyCode, Partial<Record<string, ConsistEquipmentList>>>> = {};
 const crewCatalog: Partial<Record<PropertyCode, Partial<Record<string, CrewAssignmentList>>>> = {};
 
@@ -144,6 +204,58 @@ export function listConsistEquipment(propertyCode: PropertyCode, runId: string):
 
 export function listCrewAssignments(propertyCode: PropertyCode, runId: string): CrewAssignmentList {
   return getRunCrew(propertyCode, runId);
+}
+
+export function listConsistTemplates(propertyCode: PropertyCode): ConsistTemplateList {
+  return streetcarProperties.has(propertyCode) ? streetcarConsistTemplates : commuterConsistTemplates;
+}
+
+export function listCrewTemplates(propertyCode: PropertyCode): CrewTemplateList {
+  return streetcarProperties.has(propertyCode) ? streetcarCrewTemplates : commuterCrewTemplates;
+}
+
+export function swapConsistEquipment(
+  propertyCode: PropertyCode,
+  runId: string,
+  request: ResourceSwapRequest
+): ConsistEquipmentList {
+  const template = listConsistTemplates(propertyCode).items.find((item) => item.id === request.templateId);
+
+  if (!template) {
+    throw new Error("consist_template.not_found");
+  }
+
+  if (!consistCatalog[propertyCode]) {
+    consistCatalog[propertyCode] = {};
+  }
+
+  consistCatalog[propertyCode]![runId] = {
+    items: template.items.map((item) => ({ ...item }))
+  };
+
+  return consistCatalog[propertyCode]![runId]!;
+}
+
+export function swapCrewAssignments(
+  propertyCode: PropertyCode,
+  runId: string,
+  request: ResourceSwapRequest
+): CrewAssignmentList {
+  const template = listCrewTemplates(propertyCode).items.find((item) => item.id === request.templateId);
+
+  if (!template) {
+    throw new Error("crew_template.not_found");
+  }
+
+  if (!crewCatalog[propertyCode]) {
+    crewCatalog[propertyCode] = {};
+  }
+
+  crewCatalog[propertyCode]![runId] = {
+    items: template.items.map((item) => ({ ...item }))
+  };
+
+  return crewCatalog[propertyCode]![runId]!;
 }
 
 export function updateConsistEquipment(
