@@ -621,7 +621,8 @@ describe("app contracts", () => {
     });
     expect(runsResponse.json().items[0]).toMatchObject({
       status: "in_progress",
-      isApproved: false
+      isApproved: false,
+      approvalBlockers: []
     });
   });
 
@@ -735,7 +736,27 @@ describe("app contracts", () => {
     expect(response.json()).toMatchObject({
       id: "caltrain-run-1",
       status: "approved",
-      isApproved: true
+      isApproved: true,
+      approvalBlockers: []
+    });
+  });
+
+  it("rejects approval when readiness blockers exist", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-2/approval",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        isApproved: true
+      }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      error: "train_run.approval_blocked"
     });
   });
 

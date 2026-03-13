@@ -86,22 +86,36 @@ const scheduleCatalog: Record<PropertyCode, TrainSchedule[]> = {
 
 const runCatalog: Partial<Record<PropertyCode, TrainRun[]>> = {};
 
+function getApprovalBlockers(runId: string): string[] {
+  if (runId.endsWith("-run-2")) {
+    return [
+      "Crew assignment required before approval.",
+      "Consist assignment required before approval.",
+      "Station stop records required before approval."
+    ];
+  }
+
+  return [];
+}
+
 function buildRuns(propertyCode: PropertyCode): TrainRun[] {
   const schedules = scheduleCatalog[propertyCode];
 
   return schedules.map((schedule, index) => {
-    const isApproved = propertyCode === "capmetro" || index > 0;
+    const isApproved = propertyCode === "capmetro";
+    const runId = `${propertyCode}-run-${index + 1}`;
 
     return {
-      id: `${propertyCode}-run-${index + 1}`,
+      id: runId,
       scheduleId: schedule.id,
       trainNumber: schedule.trainNumber,
       operatingDate: "2026-03-06",
-      status: isApproved ? "approved" : "in_progress",
+      status: isApproved ? "approved" : index === 0 ? "in_progress" : "scheduled",
       delayMinutes: isApproved ? 2 : 7,
       crewAssigned: propertyCode === "capmetro" ? 2 : 3,
       isApproved,
-      approvedAt: isApproved ? "2026-03-06T12:15:00Z" : null
+      approvedAt: isApproved ? "2026-03-06T12:15:00Z" : null,
+      approvalBlockers: getApprovalBlockers(runId)
     };
   });
 }
@@ -132,6 +146,10 @@ export function updateTrainRunApproval(
 
   if (!run) {
     throw new Error("train_run.not_found");
+  }
+
+  if (update.isApproved && run.approvalBlockers.length) {
+    throw new Error("train_run.approval_blocked");
   }
 
   run.isApproved = update.isApproved;

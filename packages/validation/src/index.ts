@@ -133,7 +133,8 @@ export const trainRunSchema = z.object({
   delayMinutes: z.number(),
   crewAssigned: z.number(),
   isApproved: z.boolean(),
-  approvedAt: z.string().nullable()
+  approvedAt: z.string().nullable(),
+  approvalBlockers: z.array(z.string())
 });
 
 export const trainRunListSchema = z.object({

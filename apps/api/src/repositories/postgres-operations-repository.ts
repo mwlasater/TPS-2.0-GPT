@@ -48,6 +48,9 @@ interface TrainRunRow {
   crew_assigned: number;
   is_approved: boolean;
   approved_at: string | Date | null;
+  stop_count?: number;
+  consist_count?: number;
+  crew_count?: number;
 }
 
 interface StationStopRow {
@@ -114,6 +117,24 @@ function toIsoTimestamp(value: string | Date): string {
 export class PostgresOperationsRepository implements OperationsRepository {
   constructor(private readonly db: Queryable) {}
 
+  private getApprovalBlockers(row: Pick<TrainRunRow, "stop_count" | "consist_count" | "crew_count">): string[] {
+    const blockers: string[] = [];
+
+    if (!row.crew_count) {
+      blockers.push("Crew assignment required before approval.");
+    }
+
+    if (!row.consist_count) {
+      blockers.push("Consist assignment required before approval.");
+    }
+
+    if (!row.stop_count) {
+      blockers.push("Station stop records required before approval.");
+    }
+
+    return blockers;
+  }
+
   private async assertRunMutable(propertyCode: PropertyCode, runId: string): Promise<void> {
     const result = await this.db.query<{ is_approved: boolean }>(
       `
@@ -134,6 +155,29 @@ export class PostgresOperationsRepository implements OperationsRepository {
     if (row.is_approved) {
       throw new Error("train_run.locked");
     }
+  }
+
+  private async loadApprovalBlockers(propertyCode: PropertyCode, runId: string): Promise<string[]> {
+    const result = await this.db.query<Pick<TrainRunRow, "stop_count" | "consist_count" | "crew_count">>(
+      `
+        SELECT
+          (SELECT COUNT(*)::INTEGER FROM shared.station_stop WHERE train_run_id = tr.id) AS stop_count,
+          (SELECT COUNT(*)::INTEGER FROM shared.consist_equipment WHERE train_run_id = tr.id) AS consist_count,
+          (SELECT COUNT(*)::INTEGER FROM shared.crew_assignment WHERE train_run_id = tr.id) AS crew_count
+        FROM shared.train_run tr
+        WHERE tr.railroad_code = $1
+          AND tr.id = $2
+      `,
+      [propertyCode, runId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("train_run.not_found");
+    }
+
+    return this.getApprovalBlockers(row);
   }
 
   async listTrainSchedules(propertyCode: PropertyCode): Promise<TrainScheduleList> {
@@ -179,7 +223,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
           tr.delay_minutes,
           tr.crew_assigned,
           tr.is_approved,
-          tr.approved_at
+          tr.approved_at,
+          (SELECT COUNT(*)::INTEGER FROM shared.station_stop WHERE train_run_id = tr.id) AS stop_count,
+          (SELECT COUNT(*)::INTEGER FROM shared.consist_equipment WHERE train_run_id = tr.id) AS consist_count,
+          (SELECT COUNT(*)::INTEGER FROM shared.crew_assignment WHERE train_run_id = tr.id) AS crew_count
         FROM shared.train_run tr
         JOIN shared.train_schedule ts ON ts.id = tr.schedule_id
         WHERE tr.railroad_code = $1
@@ -199,7 +246,8 @@ export class PostgresOperationsRepository implements OperationsRepository {
           delayMinutes: row.delay_minutes,
           crewAssigned: row.crew_assigned,
           isApproved: row.is_approved,
-          approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null
+          approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null,
+          approvalBlockers: this.getApprovalBlockers(row)
         })
       )
     };
@@ -210,6 +258,14 @@ export class PostgresOperationsRepository implements OperationsRepository {
     runId: string,
     update: TrainRunApprovalUpdate
   ): Promise<TrainRun> {
+    if (update.isApproved) {
+      const blockers = await this.loadApprovalBlockers(propertyCode, runId);
+
+      if (blockers.length) {
+        throw new Error("train_run.approval_blocked");
+      }
+    }
+
     const result = await this.db.query<TrainRunRow>(
       `
         UPDATE shared.train_run
@@ -232,7 +288,10 @@ export class PostgresOperationsRepository implements OperationsRepository {
           delay_minutes,
           crew_assigned,
           is_approved,
-          approved_at
+          approved_at,
+          (SELECT COUNT(*)::INTEGER FROM shared.station_stop WHERE train_run_id = shared.train_run.id) AS stop_count,
+          (SELECT COUNT(*)::INTEGER FROM shared.consist_equipment WHERE train_run_id = shared.train_run.id) AS consist_count,
+          (SELECT COUNT(*)::INTEGER FROM shared.crew_assignment WHERE train_run_id = shared.train_run.id) AS crew_count
       `,
       [propertyCode, runId, update.isApproved]
     );
@@ -252,7 +311,8 @@ export class PostgresOperationsRepository implements OperationsRepository {
       delayMinutes: row.delay_minutes,
       crewAssigned: row.crew_assigned,
       isApproved: row.is_approved,
-      approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null
+      approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null,
+      approvalBlockers: this.getApprovalBlockers(row)
     };
   }
 

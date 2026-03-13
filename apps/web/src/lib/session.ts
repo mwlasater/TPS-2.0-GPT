@@ -413,18 +413,24 @@ export const demoTrainRuns: Record<PropertyCode, TrainRunList> = {
         delayMinutes: 7,
         crewAssigned: 3,
         isApproved: false,
-        approvedAt: null
+        approvedAt: null,
+        approvalBlockers: []
       },
       {
         id: "caltrain-run-2",
         scheduleId: "ct-154",
         trainNumber: "154",
         operatingDate: "2026-03-06",
-        status: "approved",
+        status: "scheduled",
         delayMinutes: 0,
         crewAssigned: 3,
-        isApproved: true,
-        approvedAt: "2026-03-06T12:15:00Z"
+        isApproved: false,
+        approvedAt: null,
+        approvalBlockers: [
+          "Crew assignment required before approval.",
+          "Consist assignment required before approval.",
+          "Station stop records required before approval."
+        ]
       }
     ]
   },
@@ -440,7 +446,8 @@ export const demoTrainRuns: Record<PropertyCode, TrainRunList> = {
         delayMinutes: 4,
         crewAssigned: 3,
         isApproved: false,
-        approvedAt: null
+        approvedAt: null,
+        approvalBlockers: []
       }
     ]
   },
@@ -459,7 +466,8 @@ export const demoTrainRuns: Record<PropertyCode, TrainRunList> = {
         delayMinutes: 2,
         crewAssigned: 2,
         isApproved: true,
-        approvedAt: "2026-03-06T07:26:00Z"
+        approvedAt: "2026-03-06T07:26:00Z",
+        approvalBlockers: []
       }
     ]
   },
@@ -474,7 +482,8 @@ export const demoTrainRuns: Record<PropertyCode, TrainRunList> = {
         delayMinutes: 2,
         crewAssigned: 1,
         isApproved: false,
-        approvedAt: null
+        approvedAt: null,
+        approvalBlockers: []
       }
     ]
   },

@@ -106,6 +106,8 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
         ? error.statusCode
         : error instanceof ZodError
           ? 400
+          : inferredMessage.endsWith(".approval_blocked")
+            ? 409
           : inferredMessage.endsWith(".not_found")
             ? 404
             : inferredMessage.endsWith(".locked")

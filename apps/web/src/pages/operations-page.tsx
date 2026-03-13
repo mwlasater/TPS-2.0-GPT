@@ -221,6 +221,8 @@ export function OperationsPage({
           <StatusBadge tone={source === "api" ? "success" : "neutral"} label={source} />
           {selectedRun?.isApproved ? (
             <StatusBadge tone="warning" label="run locked" />
+          ) : selectedRun?.approvalBlockers.length ? (
+            <StatusBadge tone="warning" label={`${selectedRun.approvalBlockers.length} blockers`} />
           ) : (
             <StatusBadge tone="neutral" label="run editable" />
           )}
@@ -278,6 +280,9 @@ export function OperationsPage({
                       <strong>{run.operatingDate}</strong>
                       <p>{run.trainNumber}</p>
                       <p>{run.isApproved ? `Approved ${run.approvedAt ?? ""}` : "Editable until approved"}</p>
+                      {run.approvalBlockers.length ? (
+                        <p>{run.approvalBlockers.join(" ")}</p>
+                      ) : null}
                     </div>
                     <div className="list-meta">
                       <StatusBadge
@@ -297,9 +302,12 @@ export function OperationsPage({
               </div>
               {selectedRun ? (
                 <div className="action-row">
+                  {selectedRun.approvalBlockers.length ? (
+                    <p className="inline-feedback">{selectedRun.approvalBlockers.join(" ")}</p>
+                  ) : null}
                   <button
                     className="action-button"
-                    disabled={selectedRun.isApproved || isSaving}
+                    disabled={selectedRun.isApproved || isSaving || selectedRun.approvalBlockers.length > 0}
                     onClick={() => {
                       void runAction(
                         () => saveRunApproval(selectedRun.id, { isApproved: true }),

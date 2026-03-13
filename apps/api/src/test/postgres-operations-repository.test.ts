@@ -46,7 +46,10 @@ describe("PostgresOperationsRepository", () => {
           delay_minutes: 7,
           crew_assigned: 3,
           is_approved: false,
-          approved_at: null
+          approved_at: null,
+          stop_count: 3,
+          consist_count: 3,
+          crew_count: 3
         }
       ]
     });
@@ -65,7 +68,8 @@ describe("PostgresOperationsRepository", () => {
           delayMinutes: 7,
           crewAssigned: 3,
           isApproved: false,
-          approvedAt: null
+          approvedAt: null,
+          approvalBlockers: []
         }
       ]
     });
@@ -73,6 +77,14 @@ describe("PostgresOperationsRepository", () => {
 
   it("maps approval updates into train runs", async () => {
     const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          stop_count: 3,
+          consist_count: 3,
+          crew_count: 3
+        }
+      ]
+    }).mockResolvedValueOnce({
       rows: [
         {
           id: "caltrain-run-1",
@@ -83,7 +95,10 @@ describe("PostgresOperationsRepository", () => {
           delay_minutes: 7,
           crew_assigned: 3,
           is_approved: true,
-          approved_at: new Date("2026-03-06T12:30:00Z")
+          approved_at: new Date("2026-03-06T12:30:00Z"),
+          stop_count: 3,
+          consist_count: 3,
+          crew_count: 3
         }
       ]
     });
@@ -102,8 +117,27 @@ describe("PostgresOperationsRepository", () => {
       delayMinutes: 7,
       crewAssigned: 3,
       isApproved: true,
-      approvedAt: "2026-03-06T12:30:00.000Z"
+      approvedAt: "2026-03-06T12:30:00.000Z",
+      approvalBlockers: []
     });
+  });
+
+  it("rejects approval when readiness blockers exist", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          stop_count: 0,
+          consist_count: 0,
+          crew_count: 0
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+
+    await expect(
+      repository.updateTrainRunApproval("caltrain", "caltrain-run-2", { isApproved: true })
+    ).rejects.toThrow("train_run.approval_blocked");
   });
 
   it("maps station stop rows into run stops", async () => {

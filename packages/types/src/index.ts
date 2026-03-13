@@ -136,6 +136,7 @@ export interface TrainRun {
   crewAssigned: number;
   isApproved: boolean;
   approvedAt: string | null;
+  approvalBlockers: string[];
 }
 
 export interface TrainRunList {
