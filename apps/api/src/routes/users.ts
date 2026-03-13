@@ -33,6 +33,19 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
     async () => app.dataAccess.users.listUserAdminActions()
   );
 
+  app.post(
+    "/users/:userId/actions/:actionId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) =>
+      app.dataAccess.users.executeUserAdminAction(
+        (request.params as { userId: string; actionId: string }).userId,
+        request.property,
+        (request.params as { userId: string; actionId: string }).actionId
+      )
+  );
+
   app.put(
     "/users/:userId/property-access",
     {

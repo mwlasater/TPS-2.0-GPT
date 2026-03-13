@@ -38,6 +38,7 @@ const userDetails: Record<string, Omit<ManagedUserDetail, "propertyAccess">> = {
     lastAction: "Invitation resent on 2026-03-05"
   }
 };
+const initialUserDetails = JSON.parse(JSON.stringify(userDetails)) as typeof userDetails;
 
 const defaultActions: UserAdminActionList = {
   items: [
@@ -100,4 +101,41 @@ export function updateManagedUserPermissionGroups(
 
 export function listUserAdminActions(): UserAdminActionList {
   return defaultActions;
+}
+
+export function executeUserAdminAction(
+  userId: string,
+  propertyCode: PropertyCode,
+  actionId: string
+): ManagedUserDetail {
+  const detail = userDetails[userId] ?? userDetails["ops-manager"]!;
+
+  switch (actionId) {
+    case "reset-password":
+      detail.lastAction = "Password reset sent on 2026-03-13";
+      break;
+    case "resend-invite":
+      detail.status = "invited";
+      detail.lastAction = "Invitation resent on 2026-03-13";
+      break;
+    case "disable-user":
+      detail.status = "disabled";
+      detail.lastAction = "User disabled on 2026-03-13";
+      break;
+    default:
+      throw new Error("user_admin_action.not_found");
+  }
+
+  userDetails[userId] = detail;
+  return getManagedUserDetail(userId, propertyCode);
+}
+
+export function resetUserAdminData(): void {
+  for (const userId of Object.keys(userDetails)) {
+    delete userDetails[userId];
+  }
+
+  for (const [userId, detail] of Object.entries(initialUserDetails)) {
+    userDetails[userId] = { ...detail, groups: [...detail.groups] };
+  }
 }

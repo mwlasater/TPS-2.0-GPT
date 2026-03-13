@@ -71,6 +71,7 @@ import {
   recordTrainRunApprovalHistory
 } from "../lib/approval-history-data.js";
 import {
+  executeUserAdminAction,
   getManagedUserDetail,
   listUserAdminActions,
   updateManagedUserPermissionGroups,
@@ -102,6 +103,7 @@ export function createMockDataAccess(): DataAccess {
     users: {
       listUsers: listManagedUsers,
       getUserDetail: getManagedUserDetail,
+      executeUserAdminAction,
       updateUserPropertyAccess: updateManagedUserPropertyAccess,
       updateUserPermissionGroups: updateManagedUserPermissionGroups,
       listUserAdminActions,

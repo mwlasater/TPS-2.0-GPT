@@ -190,6 +190,19 @@ export function fetchUserAdminActions(
   return fetchPropertyScoped<UserAdminActionList>(`/users/${userId}/actions`, propertyCode);
 }
 
+export function executeUserAdminAction(
+  propertyCode: PropertyCode,
+  userId: string,
+  actionId: string
+): Promise<ManagedUserDetail> {
+  return mutatePropertyScoped<ManagedUserDetail>(
+    `/users/${userId}/actions/${actionId}`,
+    propertyCode,
+    "POST",
+    {}
+  );
+}
+
 export function fetchPermissionGroups(propertyCode: PropertyCode): Promise<PermissionGroupList> {
   return fetchPropertyScoped<PermissionGroupList>("/permission-groups", propertyCode);
 }

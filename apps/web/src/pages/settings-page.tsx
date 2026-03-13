@@ -61,6 +61,7 @@ interface SettingsPageProps {
   saveReferenceData: (update: ReferenceDataset) => Promise<void>;
   saveSettings: (update: PropertySettingsUpdate) => Promise<void>;
   saveSpecialMovement: (movementId: string, update: SpecialMovementUpdate) => Promise<void>;
+  runUserAdminAction: (actionId: string) => Promise<void>;
   settings: PropertySettings;
   specialMovements: SpecialMovementList;
   source: "api" | "fallback";
@@ -95,6 +96,7 @@ export function SettingsPage({
   saveReferenceData,
   saveSettings,
   saveSpecialMovement,
+  runUserAdminAction,
   settings,
   specialMovements,
   source,
@@ -287,17 +289,27 @@ export function SettingsPage({
         <Panel title="Admin actions" eyebrow={`${managedUserActions.items.length} available`}>
           <div className="badge-row">
             {managedUserActions.items.map((action) => (
-              <StatusBadge
+              <button
                 key={action.id}
-                tone={
-                  action.style === "primary"
-                    ? "success"
-                    : action.style === "warning"
-                      ? "warning"
-                      : "neutral"
+                type="button"
+                onClick={() =>
+                  void runAction(
+                    () => runUserAdminAction(action.id),
+                    `${action.label} executed.`
+                  )
                 }
-                label={action.label}
-              />
+              >
+                <StatusBadge
+                  tone={
+                    action.style === "primary"
+                      ? "success"
+                      : action.style === "warning"
+                        ? "warning"
+                        : "neutral"
+                  }
+                  label={action.label}
+                />
+              </button>
             ))}
           </div>
         </Panel>

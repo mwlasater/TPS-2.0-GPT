@@ -139,6 +139,7 @@ export function App() {
               saveReferenceData={propertyData.saveReferenceData}
               saveSettings={propertyData.saveSettings}
               saveSpecialMovement={adminData.saveSpecialMovement}
+              runUserAdminAction={userAdminData.runAdminAction}
               settings={propertyData.settings}
               specialMovements={adminData.specialMovements}
               source={propertyData.source}

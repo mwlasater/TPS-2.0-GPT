@@ -8,6 +8,7 @@ import { resetPersonnelData } from "../lib/personnel-data.js";
 import { resetReferenceData } from "../lib/reference-data.js";
 import { resetRunDetailData } from "../lib/run-detail-data.js";
 import { resetRunResourceData } from "../lib/run-resource-data.js";
+import { resetUserAdminData } from "../lib/user-admin-data.js";
 
 const env = {
   NODE_ENV: "test",
@@ -35,6 +36,7 @@ describe("app contracts", () => {
     resetReferenceData();
     resetRunDetailData();
     resetRunResourceData();
+    resetUserAdminData();
   }
 
   beforeAll(async () => {
@@ -565,6 +567,24 @@ describe("app contracts", () => {
     });
     expect(actionsResponse.json().items[0]).toMatchObject({
       label: "Reset Password"
+    });
+  });
+
+  it("executes managed user admin actions", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/ops-manager/actions/disable-user",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: "ops-manager",
+      status: "disabled",
+      lastAction: "User disabled on 2026-03-13"
     });
   });
 

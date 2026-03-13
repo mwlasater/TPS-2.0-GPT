@@ -299,6 +299,49 @@ describe("PostgresUsersRepository", () => {
     });
   });
 
+  it("executes user admin actions and returns refreshed detail", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ user_id: "ops-manager" }]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "ops-manager",
+            display_name: "Jordan Reyes",
+            email: "jordan.reyes@herzog.com",
+            status: "disabled",
+            role_label: "Operations Manager",
+            last_seen_at: new Date("2026-03-06T14:10:00Z"),
+            last_action_text: "User disabled on 2026-03-13"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ railroad_code: "caltrain" }, { railroad_code: "capmetro" }]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ name: "Dispatch Leadership" }, { name: "Operations Admin" }]
+      });
+
+    const repository = new PostgresUsersRepository({ query });
+    const user = await repository.executeUserAdminAction("ops-manager", "caltrain", "disable-user");
+
+    expect(user).toEqual({
+      id: "ops-manager",
+      displayName: "Jordan Reyes",
+      email: "jordan.reyes@herzog.com",
+      status: "disabled",
+      roleLabel: "Operations Manager",
+      lastSeen: "2026-03-06T14:10:00.000Z",
+      propertyAccess: ["caltrain", "capmetro"],
+      groups: ["Dispatch Leadership", "Operations Admin"],
+      lastAction: "User disabled on 2026-03-13"
+    });
+  });
+
   it("maps job profile rows", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [

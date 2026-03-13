@@ -220,6 +220,40 @@ export class PostgresUsersRepository implements UserRepository {
     return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
   }
 
+  async executeUserAdminAction(
+    userId: string,
+    propertyCode: PropertyCode,
+    actionId: string
+  ): Promise<ManagedUserDetail> {
+    const status =
+      actionId === "disable-user" ? "disabled" : actionId === "resend-invite" ? "invited" : null;
+    const lastAction =
+      actionId === "reset-password"
+        ? "Password reset sent on 2026-03-13"
+        : actionId === "resend-invite"
+          ? "Invitation resent on 2026-03-13"
+          : actionId === "disable-user"
+            ? "User disabled on 2026-03-13"
+            : null;
+
+    if (!lastAction) {
+      throw new Error("user_admin_action.not_found");
+    }
+
+    await this.db.query(
+      `
+        UPDATE shared.user_account
+        SET
+          status = COALESCE($2, status),
+          last_action_text = $3
+        WHERE id = $1
+      `,
+      [userId, status, lastAction]
+    );
+
+    return (await this.getUserDetail(userId, propertyCode)) ?? getManagedUserDetail(userId, propertyCode);
+  }
+
   async updateUserPropertyAccess(
     userId: string,
     propertyCode: PropertyCode,

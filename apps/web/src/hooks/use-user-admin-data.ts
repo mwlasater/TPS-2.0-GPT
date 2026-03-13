@@ -8,6 +8,7 @@ import type {
 import { useEffect, useState } from "react";
 
 import {
+  executeUserAdminAction,
   fetchManagedUserDetail,
   fetchUserAdminActions,
   updateManagedUserPermissionGroups,
@@ -21,6 +22,7 @@ interface UserAdminDataState {
   source: "api" | "fallback";
   isLoading: boolean;
   isSaving: boolean;
+  runAdminAction: (actionId: string) => Promise<void>;
   savePropertyAccess: (update: UserPropertyAccessUpdate) => Promise<void>;
   savePermissionGroups: (update: UserPermissionGroupUpdate) => Promise<void>;
 }
@@ -35,6 +37,7 @@ export function useUserAdminData(
     source: "fallback",
     isLoading: true,
     isSaving: false,
+    runAdminAction: async () => undefined,
     savePropertyAccess: async () => undefined,
     savePermissionGroups: async () => undefined
   });
@@ -48,6 +51,7 @@ export function useUserAdminData(
       source: "fallback",
       isLoading: true,
       isSaving: false,
+      runAdminAction: state.runAdminAction,
       savePropertyAccess: state.savePropertyAccess,
       savePermissionGroups: state.savePermissionGroups
     });
@@ -64,6 +68,7 @@ export function useUserAdminData(
             source: "api",
             isLoading: false,
             isSaving: false,
+            runAdminAction: state.runAdminAction,
             savePropertyAccess: state.savePropertyAccess,
             savePermissionGroups: state.savePermissionGroups
           });
@@ -77,6 +82,7 @@ export function useUserAdminData(
             source: "fallback",
             isLoading: false,
             isSaving: false,
+            runAdminAction: state.runAdminAction,
             savePropertyAccess: state.savePropertyAccess,
             savePermissionGroups: state.savePermissionGroups
           });
@@ -122,8 +128,26 @@ export function useUserAdminData(
     }
   }
 
+  async function runAdminAction(actionId: string): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const detail = await executeUserAdminAction(propertyCode, userId, actionId);
+      setState((current) => ({
+        ...current,
+        detail,
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("user_action.execute_failed");
+    }
+  }
+
   return {
     ...state,
+    runAdminAction,
     savePropertyAccess,
     savePermissionGroups
   };

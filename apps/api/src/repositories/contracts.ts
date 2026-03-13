@@ -88,6 +88,11 @@ export interface PropertyRepository {
 export interface UserRepository {
   listUsers(propertyCode: PropertyCode): MaybePromise<ManagedUserList>;
   getUserDetail(userId: string, propertyCode: PropertyCode): MaybePromise<ManagedUserDetail>;
+  executeUserAdminAction(
+    userId: string,
+    propertyCode: PropertyCode,
+    actionId: string
+  ): MaybePromise<ManagedUserDetail>;
   updateUserPropertyAccess(
     userId: string,
     propertyCode: PropertyCode,
