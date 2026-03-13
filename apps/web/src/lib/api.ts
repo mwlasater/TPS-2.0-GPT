@@ -35,6 +35,9 @@ import type {
   NotificationList,
   NotificationItem,
   NotificationUpdate,
+  PersonnelRecord,
+  PersonnelRecordList,
+  PersonnelStatusUpdate,
   PermissionGroupList,
   PowerBiEmbedList,
   PropertyCode,
@@ -263,6 +266,23 @@ export function updateReportConfig(
 
 export function fetchJobProfiles(propertyCode: PropertyCode): Promise<JobProfileList> {
   return fetchPropertyScoped<JobProfileList>("/job-profiles", propertyCode);
+}
+
+export function fetchPersonnelRecords(propertyCode: PropertyCode): Promise<PersonnelRecordList> {
+  return fetchPropertyScoped<PersonnelRecordList>("/personnel", propertyCode);
+}
+
+export function updatePersonnelStatus(
+  propertyCode: PropertyCode,
+  personnelId: string,
+  payload: PersonnelStatusUpdate
+): Promise<PersonnelRecord> {
+  return mutatePropertyScoped<PersonnelRecord>(
+    `/personnel/${personnelId}/status`,
+    propertyCode,
+    "PUT",
+    payload
+  );
 }
 
 export function updateJobProfile(

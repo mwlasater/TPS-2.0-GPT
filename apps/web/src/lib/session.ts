@@ -16,6 +16,7 @@ import type {
   ManagedUserDetail,
   ManagedUserList,
   NotificationList,
+  PersonnelRecordList,
   PermissionGroupList,
   PowerBiEmbedList,
   PropertyCode,
@@ -252,6 +253,63 @@ export const demoManagedUsers: Record<PropertyCode, ManagedUserList> = {
         status: "active",
         roleLabel: "Streetcar Operations Lead",
         lastSeen: "2026-03-06T14:10:00Z"
+      }
+    ]
+  },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoPersonnelRecords: Record<PropertyCode, PersonnelRecordList> = {
+  caltrain: {
+    items: [
+      {
+        id: "personnel-1",
+        employeeId: "HZG-1001",
+        employeeName: "Jordan Reyes",
+        status: "active",
+        primaryRole: "Engineer",
+        certifications: ["FRA Engineer", "Rules Qualified"]
+      },
+      {
+        id: "personnel-2",
+        employeeId: "HZG-1002",
+        employeeName: "Taylor Brooks",
+        status: "on_leave",
+        primaryRole: "Conductor",
+        certifications: ["Conductor", "Roadway Worker Protection"]
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "personnel-1",
+        employeeId: "HZG-1001",
+        employeeName: "Jordan Reyes",
+        status: "active",
+        primaryRole: "Engineer",
+        certifications: ["FRA Engineer", "Rules Qualified"]
+      }
+    ]
+  },
+  kcstreetcar: {
+    items: [
+      {
+        id: "personnel-street-1",
+        employeeId: "HZG-2001",
+        employeeName: "Morgan Lee",
+        status: "active",
+        primaryRole: "Operator",
+        certifications: ["Streetcar Operations", "Traffic Control"]
       }
     ]
   },

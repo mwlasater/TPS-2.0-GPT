@@ -13,6 +13,7 @@ import {
   updateJobProfile
 } from "../lib/baseline-data.js";
 import { listManagedUsers } from "../lib/managed-users.js";
+import { listPersonnelRecords, updatePersonnelStatus } from "../lib/personnel-data.js";
 import {
   deleteTrainRun,
   initializeTrainRuns,
@@ -106,6 +107,8 @@ export function createMockDataAccess(): DataAccess {
       listUserAdminActions,
       listPermissionGroups,
       listJobProfiles,
+      listPersonnelRecords,
+      updatePersonnelStatus,
       updateJobProfile,
       listAttendanceExceptions,
       updateAttendanceException

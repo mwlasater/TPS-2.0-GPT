@@ -121,6 +121,7 @@ export function App() {
               managedUserActions={userAdminData.actions}
               managedUserDetail={userAdminData.detail}
               notifications={platformData.notifications}
+              personnel={baselineData.personnel}
               permissionGroups={adminData.permissionGroups}
               powerBi={platformData.powerBi}
               property={activeProperty}
@@ -131,6 +132,7 @@ export function App() {
               saveAttendance={baselineData.saveAttendance}
               saveJobProfile={baselineData.saveJobProfile}
               saveNotification={platformData.saveNotification}
+              savePersonnelStatus={baselineData.savePersonnelStatus}
               savePermissionGroups={userAdminData.savePermissionGroups}
               savePropertyAccess={userAdminData.savePropertyAccess}
               saveReportConfig={adminData.saveReportConfig}

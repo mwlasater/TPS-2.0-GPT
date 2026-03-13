@@ -19,7 +19,8 @@ describe("seed service", () => {
       "0009_fare_enforcement_counts",
       "0010_delay_management",
       "0011_resource_templates",
-      "0012_delay_templates"
+      "0012_delay_templates",
+      "0013_personnel_directory"
     ]);
   });
 });

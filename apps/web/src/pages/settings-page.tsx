@@ -12,6 +12,8 @@ import type {
   ManagedUserList,
   NotificationUpdate,
   NotificationList,
+  PersonnelRecordList,
+  PersonnelStatusUpdate,
   PermissionGroupList,
   PowerBiEmbedList,
   PropertySettingsUpdate,
@@ -41,6 +43,7 @@ interface SettingsPageProps {
   managedUserActions: UserAdminActionList;
   managedUserDetail: ManagedUserDetail;
   permissionGroups: PermissionGroupList;
+  personnel: PersonnelRecordList;
   notifications: NotificationList;
   powerBi: PowerBiEmbedList;
   property: PropertySummary;
@@ -51,6 +54,7 @@ interface SettingsPageProps {
   saveAttendance: (exceptionId: string, update: AttendanceExceptionUpdate) => Promise<void>;
   saveJobProfile: (profileId: string, update: JobProfileUpdate) => Promise<void>;
   saveNotification: (notificationId: string, update: NotificationUpdate) => Promise<void>;
+  savePersonnelStatus: (personnelId: string, update: PersonnelStatusUpdate) => Promise<void>;
   savePermissionGroups: (update: UserPermissionGroupUpdate) => Promise<void>;
   savePropertyAccess: (update: UserPropertyAccessUpdate) => Promise<void>;
   saveReportConfig: (reportId: string, update: ReportConfigUpdate) => Promise<void>;
@@ -72,6 +76,7 @@ export function SettingsPage({
   jobProfiles,
   managedUserActions,
   managedUserDetail,
+  personnel,
   notifications,
   permissionGroups,
   powerBi,
@@ -83,6 +88,7 @@ export function SettingsPage({
   saveAttendance,
   saveJobProfile,
   saveNotification,
+  savePersonnelStatus,
   savePermissionGroups,
   savePropertyAccess,
   saveReportConfig,
@@ -455,6 +461,50 @@ export function SettingsPage({
         </Panel>
       </div>
       <div className="two-column-grid">
+        <Panel title="Personnel directory" eyebrow={`${personnel.items.length} records`}>
+          <div className="list-stack">
+            {personnel.items.map((record) => (
+              <article className="list-row" key={record.id}>
+                <div>
+                  <strong>{record.employeeName}</strong>
+                  <p>
+                    {record.employeeId} · {record.primaryRole}
+                  </p>
+                  <p>{record.certifications.join(", ")}</p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge
+                    tone={
+                      record.status === "active"
+                        ? "success"
+                        : record.status === "on_leave"
+                          ? "warning"
+                          : "neutral"
+                    }
+                    label={record.status}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+          {personnel.items[0] ? (
+            <button
+              type="button"
+              onClick={() =>
+                void runAction(
+                  () =>
+                    savePersonnelStatus(personnel.items[0]!.id, {
+                      status: personnel.items[0]!.status === "active" ? "on_leave" : "active",
+                      primaryRole: personnel.items[0]!.primaryRole
+                    }),
+                  "Personnel status updated."
+                )
+              }
+            >
+              Toggle first personnel status
+            </button>
+          ) : null}
+        </Panel>
         <Panel title="Job profiles" eyebrow={`${jobProfiles.items.length} roles`}>
           <div className="list-stack">
             {jobProfiles.items.map((profile) => (

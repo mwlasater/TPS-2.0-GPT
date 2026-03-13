@@ -4,6 +4,7 @@ import {
   delayTemplateUpdateSchema,
   jobProfileUpdateSchema,
   notificationUpdateSchema,
+  personnelStatusUpdateSchema,
   reportConfigUpdateSchema,
   specialMovementUpdateSchema
 } from "@tps/validation";
@@ -14,6 +15,7 @@ import type {
   DelayTemplateUpdate,
   JobProfileUpdate,
   NotificationUpdate,
+  PersonnelStatusUpdate,
   ReportConfigUpdate,
   SpecialMovementUpdate
 } from "@tps/types";
@@ -45,6 +47,29 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       return app.dataAccess.platform.updateReportConfig(
         request.property,
         (request.params as { reportId: string }).reportId,
+        payload
+      );
+    }
+  );
+
+  app.get(
+    "/personnel",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.users.listPersonnelRecords(request.property)
+  );
+
+  app.put(
+    "/personnel/:personnelId/status",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = personnelStatusUpdateSchema.parse(request.body) as PersonnelStatusUpdate;
+      return app.dataAccess.users.updatePersonnelStatus(
+        request.property,
+        (request.params as { personnelId: string }).personnelId,
         payload
       );
     }

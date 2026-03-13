@@ -3,6 +3,8 @@ import type {
   AttendanceExceptionList,
   JobProfileUpdate,
   JobProfileList,
+  PersonnelRecordList,
+  PersonnelStatusUpdate,
   PropertyCode
 } from "@tps/types";
 import { useEffect, useState } from "react";
@@ -10,18 +12,22 @@ import { useEffect, useState } from "react";
 import {
   fetchAttendanceExceptions,
   fetchJobProfiles,
+  fetchPersonnelRecords,
   updateAttendanceException,
-  updateJobProfile
+  updateJobProfile,
+  updatePersonnelStatus
 } from "../lib/api.js";
-import { demoAttendanceExceptions, demoJobProfiles } from "../lib/session.js";
+import { demoAttendanceExceptions, demoJobProfiles, demoPersonnelRecords } from "../lib/session.js";
 
 interface BaselineDataState {
   attendance: AttendanceExceptionList;
   jobProfiles: JobProfileList;
+  personnel: PersonnelRecordList;
   source: "api" | "fallback";
   isLoading: boolean;
   isSaving: boolean;
   saveJobProfile: (profileId: string, update: JobProfileUpdate) => Promise<void>;
+  savePersonnelStatus: (personnelId: string, update: PersonnelStatusUpdate) => Promise<void>;
   saveAttendance: (exceptionId: string, update: AttendanceExceptionUpdate) => Promise<void>;
 }
 
@@ -29,10 +35,12 @@ export function useBaselineData(propertyCode: PropertyCode): BaselineDataState {
   const [state, setState] = useState<BaselineDataState>({
     attendance: demoAttendanceExceptions[propertyCode],
     jobProfiles: demoJobProfiles[propertyCode],
+    personnel: demoPersonnelRecords[propertyCode],
     source: "fallback",
     isLoading: true,
     isSaving: false,
     saveJobProfile: async () => undefined,
+    savePersonnelStatus: async () => undefined,
     saveAttendance: async () => undefined
   });
 
@@ -42,26 +50,31 @@ export function useBaselineData(propertyCode: PropertyCode): BaselineDataState {
     setState({
       attendance: demoAttendanceExceptions[propertyCode],
       jobProfiles: demoJobProfiles[propertyCode],
+      personnel: demoPersonnelRecords[propertyCode],
       source: "fallback",
       isLoading: true,
       isSaving: false,
       saveJobProfile: state.saveJobProfile,
+      savePersonnelStatus: state.savePersonnelStatus,
       saveAttendance: state.saveAttendance
     });
 
     void Promise.all([
       fetchJobProfiles(propertyCode),
-      fetchAttendanceExceptions(propertyCode)
+      fetchAttendanceExceptions(propertyCode),
+      fetchPersonnelRecords(propertyCode)
     ])
-      .then(([jobProfiles, attendance]) => {
+      .then(([jobProfiles, attendance, personnel]) => {
         if (isMounted) {
           setState({
             attendance,
             jobProfiles,
+            personnel,
             source: "api",
             isLoading: false,
             isSaving: false,
             saveJobProfile: state.saveJobProfile,
+            savePersonnelStatus: state.savePersonnelStatus,
             saveAttendance: state.saveAttendance
           });
         }
@@ -71,10 +84,12 @@ export function useBaselineData(propertyCode: PropertyCode): BaselineDataState {
           setState({
             attendance: demoAttendanceExceptions[propertyCode],
             jobProfiles: demoJobProfiles[propertyCode],
+            personnel: demoPersonnelRecords[propertyCode],
             source: "fallback",
             isLoading: false,
             isSaving: false,
             saveJobProfile: state.saveJobProfile,
+            savePersonnelStatus: state.savePersonnelStatus,
             saveAttendance: state.saveAttendance
           });
         }
@@ -126,9 +141,32 @@ export function useBaselineData(propertyCode: PropertyCode): BaselineDataState {
     }
   }
 
+  async function savePersonnelStatus(
+    personnelId: string,
+    update: PersonnelStatusUpdate
+  ): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const updated = await updatePersonnelStatus(propertyCode, personnelId, update);
+      setState((current) => ({
+        ...current,
+        personnel: {
+          items: current.personnel.items.map((item) => (item.id === personnelId ? updated : item))
+        },
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("personnel.update_failed");
+    }
+  }
+
   return {
     ...state,
     saveJobProfile,
+    savePersonnelStatus,
     saveAttendance
   };
 }

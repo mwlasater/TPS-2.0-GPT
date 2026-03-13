@@ -25,6 +25,9 @@ import type {
   ManagedUserList,
   NotificationItem,
   NotificationList,
+  PersonnelRecord,
+  PersonnelRecordList,
+  PersonnelStatusUpdate,
   PermissionGroupList,
   PowerBiEmbedList,
   PropertyCode,
@@ -98,6 +101,12 @@ export interface UserRepository {
   listUserAdminActions(): MaybePromise<UserAdminActionList>;
   listPermissionGroups(propertyCode: PropertyCode): MaybePromise<PermissionGroupList>;
   listJobProfiles(propertyCode: PropertyCode): MaybePromise<JobProfileList>;
+  listPersonnelRecords(propertyCode: PropertyCode): MaybePromise<PersonnelRecordList>;
+  updatePersonnelStatus(
+    propertyCode: PropertyCode,
+    personnelId: string,
+    update: PersonnelStatusUpdate
+  ): MaybePromise<PersonnelRecord>;
   updateJobProfile(
     propertyCode: PropertyCode,
     profileId: string,

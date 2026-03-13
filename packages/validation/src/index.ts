@@ -81,6 +81,24 @@ export const managedUserListSchema = z.object({
   items: z.array(managedUserSchema)
 });
 
+export const personnelRecordSchema = z.object({
+  id: z.string(),
+  employeeId: z.string(),
+  employeeName: z.string(),
+  status: z.enum(["active", "inactive", "on_leave"]),
+  primaryRole: z.string(),
+  certifications: z.array(z.string())
+});
+
+export const personnelRecordListSchema = z.object({
+  items: z.array(personnelRecordSchema)
+});
+
+export const personnelStatusUpdateSchema = z.object({
+  status: z.enum(["active", "inactive", "on_leave"]),
+  primaryRole: z.string().min(1)
+});
+
 export const managedUserDetailSchema = managedUserSchema.extend({
   propertyAccess: z.array(z.string()),
   groups: z.array(z.string()),

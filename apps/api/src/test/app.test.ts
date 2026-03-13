@@ -4,6 +4,7 @@ import { buildApp } from "../app.js";
 import { resetApprovalHistoryData } from "../lib/approval-history-data.js";
 import { resetFareEnforcementData } from "../lib/fare-enforcement-data.js";
 import { resetOperationsData } from "../lib/operations-data.js";
+import { resetPersonnelData } from "../lib/personnel-data.js";
 import { resetReferenceData } from "../lib/reference-data.js";
 import { resetRunDetailData } from "../lib/run-detail-data.js";
 import { resetRunResourceData } from "../lib/run-resource-data.js";
@@ -30,6 +31,7 @@ describe("app contracts", () => {
     resetApprovalHistoryData();
     resetFareEnforcementData();
     resetOperationsData();
+    resetPersonnelData();
     resetReferenceData();
     resetRunDetailData();
     resetRunResourceData();
@@ -306,6 +308,42 @@ describe("app contracts", () => {
     });
     expect(attendanceResponse.json().items[0]).toMatchObject({
       exceptionType: "absence"
+    });
+  });
+
+  it("returns and updates personnel records for authorized property context", async () => {
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/personnel",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const updateResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/personnel/personnel-1/status",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        status: "on_leave",
+        primaryRole: "Engineer"
+      }
+    });
+
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json().items[0]).toMatchObject({
+      employeeName: "Jordan Reyes",
+      primaryRole: "Engineer"
+    });
+    expect(updateResponse.statusCode).toBe(200);
+    expect(updateResponse.json()).toMatchObject({
+      id: "personnel-1",
+      status: "on_leave",
+      primaryRole: "Engineer"
     });
   });
 

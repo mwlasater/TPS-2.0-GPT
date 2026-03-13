@@ -83,6 +83,24 @@ export interface ManagedUserList {
   items: ManagedUser[];
 }
 
+export interface PersonnelRecord {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  status: "active" | "inactive" | "on_leave";
+  primaryRole: string;
+  certifications: string[];
+}
+
+export interface PersonnelRecordList {
+  items: PersonnelRecord[];
+}
+
+export interface PersonnelStatusUpdate {
+  status: "active" | "inactive" | "on_leave";
+  primaryRole: string;
+}
+
 export interface ManagedUserDetail extends ManagedUser {
   propertyAccess: PropertyCode[];
   groups: string[];

@@ -8,6 +8,9 @@ import type {
   ManagedUser,
   ManagedUserDetail,
   ManagedUserList,
+  PersonnelRecord,
+  PersonnelRecordList,
+  PersonnelStatusUpdate,
   PermissionGroup,
   PermissionGroupList,
   PropertyCode,
@@ -19,6 +22,7 @@ import type {
 
 import { listAttendanceExceptions, listJobProfiles } from "../lib/baseline-data.js";
 import { listManagedUsers } from "../lib/managed-users.js";
+import { listPersonnelRecords } from "../lib/personnel-data.js";
 import { listPermissionGroups } from "../lib/permission-groups.js";
 import { getManagedUserDetail, listUserAdminActions } from "../lib/user-admin-data.js";
 
@@ -65,6 +69,15 @@ interface AttendanceExceptionRow {
   start_date: string | Date;
   status: AttendanceException["status"];
   notes: string;
+}
+
+interface PersonnelRecordRow {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  status: PersonnelRecord["status"];
+  primary_role: string;
+  certifications: string[];
 }
 
 interface UserAdminActionRow {
@@ -322,6 +335,81 @@ export class PostgresUsersRepository implements UserRepository {
           permissions: row.permissions
         })
       )
+    };
+  }
+
+  async listPersonnelRecords(propertyCode: PropertyCode): Promise<PersonnelRecordList> {
+    const result = await this.db.query<PersonnelRecordRow>(
+      `
+        SELECT
+          id,
+          employee_id,
+          employee_name,
+          status,
+          primary_role,
+          certifications
+        FROM shared.personnel_record
+        WHERE railroad_code = $1
+        ORDER BY employee_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listPersonnelRecords(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): PersonnelRecord => ({
+          id: row.id,
+          employeeId: row.employee_id,
+          employeeName: row.employee_name,
+          status: row.status,
+          primaryRole: row.primary_role,
+          certifications: row.certifications
+        })
+      )
+    };
+  }
+
+  async updatePersonnelStatus(
+    propertyCode: PropertyCode,
+    personnelId: string,
+    update: PersonnelStatusUpdate
+  ): Promise<PersonnelRecord> {
+    const result = await this.db.query<PersonnelRecordRow>(
+      `
+        UPDATE shared.personnel_record
+        SET
+          status = $3,
+          primary_role = $4
+        WHERE railroad_code = $1
+          AND id = $2
+        RETURNING
+          id,
+          employee_id,
+          employee_name,
+          status,
+          primary_role,
+          certifications
+      `,
+      [propertyCode, personnelId, update.status, update.primaryRole]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("personnel_record.not_found");
+    }
+
+    return {
+      id: row.id,
+      employeeId: row.employee_id,
+      employeeName: row.employee_name,
+      status: row.status,
+      primaryRole: row.primary_role,
+      certifications: row.certifications
     };
   }
 

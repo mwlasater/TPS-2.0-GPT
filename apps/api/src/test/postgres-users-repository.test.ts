@@ -115,6 +115,67 @@ describe("PostgresUsersRepository", () => {
     });
   });
 
+  it("maps personnel record rows", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "personnel-1",
+          employee_id: "HZG-1001",
+          employee_name: "Jordan Reyes",
+          status: "active",
+          primary_role: "Engineer",
+          certifications: ["FRA Engineer", "Rules Qualified"]
+        }
+      ]
+    });
+
+    const repository = new PostgresUsersRepository({ query });
+    const personnel = await repository.listPersonnelRecords("caltrain");
+
+    expect(personnel).toEqual({
+      items: [
+        {
+          id: "personnel-1",
+          employeeId: "HZG-1001",
+          employeeName: "Jordan Reyes",
+          status: "active",
+          primaryRole: "Engineer",
+          certifications: ["FRA Engineer", "Rules Qualified"]
+        }
+      ]
+    });
+  });
+
+  it("updates personnel record status", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "personnel-1",
+          employee_id: "HZG-1001",
+          employee_name: "Jordan Reyes",
+          status: "on_leave",
+          primary_role: "Engineer",
+          certifications: ["FRA Engineer", "Rules Qualified"]
+        }
+      ]
+    });
+
+    const repository = new PostgresUsersRepository({ query });
+    const personnel = await repository.updatePersonnelStatus("caltrain", "personnel-1", {
+      status: "on_leave",
+      primaryRole: "Engineer"
+    });
+
+    expect(personnel).toEqual({
+      id: "personnel-1",
+      employeeId: "HZG-1001",
+      employeeName: "Jordan Reyes",
+      status: "on_leave",
+      primaryRole: "Engineer",
+      certifications: ["FRA Engineer", "Rules Qualified"]
+    });
+  });
+
   it("updates user property access and returns refreshed detail", async () => {
     const query = vi
       .fn()
