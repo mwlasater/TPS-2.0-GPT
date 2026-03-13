@@ -50,6 +50,7 @@ interface OperationsDataState {
   referenceData: ReferenceDataset;
   schedules: TrainScheduleList;
   runs: TrainRunList;
+  selectedRunId: string | null;
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
   consist: ConsistEquipmentList;
@@ -58,6 +59,7 @@ interface OperationsDataState {
   source: "api" | "fallback";
   isLoading: boolean;
   isSaving: boolean;
+  selectRun: (runId: string) => Promise<void>;
   saveRunApproval: (runId: string, update: TrainRunApprovalUpdate) => Promise<TrainRun | undefined>;
   saveStop: (
     runId: string,
@@ -90,6 +92,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     referenceData: demoReferenceData[propertyCode],
     schedules: demoTrainSchedules[propertyCode],
     runs: demoTrainRuns[propertyCode],
+    selectedRunId: demoTrainRuns[propertyCode].items[0]?.id ?? null,
     consist: demoConsistEquipment[propertyCode],
     crew: demoCrewAssignments[propertyCode],
     delayEvents: demoDelayEvents[propertyCode],
@@ -98,6 +101,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     source: "fallback",
     isLoading: true,
     isSaving: false,
+    selectRun: async () => undefined,
     saveRunApproval: async () => undefined,
     saveStop: async () => undefined,
     saveDelay: async () => undefined,
@@ -113,6 +117,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       referenceData: demoReferenceData[propertyCode],
       schedules: demoTrainSchedules[propertyCode],
       runs: demoTrainRuns[propertyCode],
+      selectedRunId: demoTrainRuns[propertyCode].items[0]?.id ?? null,
       consist: demoConsistEquipment[propertyCode],
       crew: demoCrewAssignments[propertyCode],
       delayEvents: demoDelayEvents[propertyCode],
@@ -121,6 +126,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       source: "fallback",
       isLoading: true,
       isSaving: false,
+      selectRun: state.selectRun,
       saveRunApproval: state.saveRunApproval,
       saveStop: state.saveStop,
       saveDelay: state.saveDelay,
@@ -135,14 +141,14 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       fetchTrainRuns(propertyCode)
     ])
       .then(async ([referenceData, schedules, runs]) => {
-        const firstRunId = runs.items[0]?.id;
-        const [stationStops, delayEvents, consist, crew, fareEnforcement] = firstRunId
+        const selectedRunId = runs.items[0]?.id ?? null;
+        const [stationStops, delayEvents, consist, crew, fareEnforcement] = selectedRunId
           ? await Promise.all([
-              fetchStationStops(propertyCode, firstRunId),
-              fetchDelayEvents(propertyCode, firstRunId),
-              fetchConsistEquipment(propertyCode, firstRunId),
-              fetchCrewAssignments(propertyCode, firstRunId),
-              fetchFareEnforcement(propertyCode, firstRunId)
+              fetchStationStops(propertyCode, selectedRunId),
+              fetchDelayEvents(propertyCode, selectedRunId),
+              fetchConsistEquipment(propertyCode, selectedRunId),
+              fetchCrewAssignments(propertyCode, selectedRunId),
+              fetchFareEnforcement(propertyCode, selectedRunId)
             ])
           : [
               demoStationStops[propertyCode],
@@ -157,6 +163,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             referenceData,
             schedules,
             runs,
+            selectedRunId,
             consist,
             crew,
             delayEvents,
@@ -165,6 +172,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             source: "api",
             isLoading: false,
             isSaving: false,
+            selectRun: state.selectRun,
             saveRunApproval: state.saveRunApproval,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
@@ -180,6 +188,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             referenceData: demoReferenceData[propertyCode],
             schedules: demoTrainSchedules[propertyCode],
             runs: demoTrainRuns[propertyCode],
+            selectedRunId: demoTrainRuns[propertyCode].items[0]?.id ?? null,
             consist: demoConsistEquipment[propertyCode],
             crew: demoCrewAssignments[propertyCode],
             delayEvents: demoDelayEvents[propertyCode],
@@ -188,6 +197,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             source: "fallback",
             isLoading: false,
             isSaving: false,
+            selectRun: state.selectRun,
             saveRunApproval: state.saveRunApproval,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
@@ -202,6 +212,48 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       isMounted = false;
     };
   }, [propertyCode]);
+
+  async function selectRun(runId: string): Promise<void> {
+    setState((current) => ({
+      ...current,
+      selectedRunId: runId,
+      isLoading: true
+    }));
+
+    try {
+      const [stationStops, delayEvents, consist, crew, fareEnforcement] = await Promise.all([
+        fetchStationStops(propertyCode, runId),
+        fetchDelayEvents(propertyCode, runId),
+        fetchConsistEquipment(propertyCode, runId),
+        fetchCrewAssignments(propertyCode, runId),
+        fetchFareEnforcement(propertyCode, runId)
+      ]);
+
+      setState((current) => ({
+        ...current,
+        selectedRunId: runId,
+        stationStops,
+        delayEvents,
+        consist,
+        crew,
+        fareEnforcement,
+        source: "api",
+        isLoading: false
+      }));
+    } catch {
+      setState((current) => ({
+        ...current,
+        selectedRunId: runId,
+        stationStops: demoStationStops[propertyCode],
+        delayEvents: demoDelayEvents[propertyCode],
+        consist: demoConsistEquipment[propertyCode],
+        crew: demoCrewAssignments[propertyCode],
+        fareEnforcement: demoFareEnforcement[propertyCode],
+        source: "fallback",
+        isLoading: false
+      }));
+    }
+  }
 
   async function saveRunApproval(runId: string, update: TrainRunApprovalUpdate) {
     setState((current) => ({ ...current, isSaving: true }));
@@ -337,6 +389,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
 
   return {
     ...state,
+    selectRun,
     saveRunApproval,
     saveStop,
     saveDelay,

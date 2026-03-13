@@ -67,6 +67,8 @@ export function App() {
               property={activeProperty}
               referenceData={operationsData.referenceData}
               runs={operationsData.runs}
+              selectedRunId={operationsData.selectedRunId}
+              selectRun={operationsData.selectRun}
               saveConsist={operationsData.saveConsist}
               saveCrew={operationsData.saveCrew}
               saveDelay={operationsData.saveDelay}

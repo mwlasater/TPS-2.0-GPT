@@ -279,11 +279,77 @@ h2 {
   margin: 0.1rem 0;
 }
 
+.selectable-row {
+  border-radius: 0.6rem;
+}
+
+.selected-row {
+  background: rgba(30, 58, 95, 0.06);
+}
+
+.selection-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--border-gray);
+  border-radius: 0.7rem;
+  background: #ffffff;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.selection-card.is-selected {
+  border-color: var(--navy-blue);
+  background: rgba(30, 58, 95, 0.06);
+}
+
 .action-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-gray);
+}
+
+.editor-span {
+  grid-column: 1 / -1;
+}
+
+.field-stack {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field-stack span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--navy-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.field-stack input,
+.field-stack select,
+.field-stack textarea {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border-gray);
+  border-radius: 0.55rem;
+  background: #ffffff;
+  color: var(--dark-gray);
+  font: inherit;
 }
 
 .action-button {
@@ -404,6 +470,10 @@ h2 {
   }
 
   .matrix-table {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-grid {
     grid-template-columns: 1fr;
   }
 

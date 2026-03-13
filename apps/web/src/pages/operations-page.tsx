@@ -15,10 +15,9 @@ import type {
   TrainRun,
   TrainRunApprovalUpdate,
   TrainRunList,
-  TrainSchedule,
   TrainScheduleList
 } from "@tps/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Panel } from "../components/panel.js";
 import { StatusBadge } from "../components/status-badge.js";
@@ -32,6 +31,9 @@ interface OperationsPageProps {
   isSaving: boolean;
   referenceData: ReferenceDataset;
   runs: TrainRunList;
+  schedules: TrainScheduleList;
+  selectedRunId: string | null;
+  selectRun: (runId: string) => Promise<void>;
   saveConsist: (
     runId: string,
     equipmentId: string,
@@ -60,7 +62,6 @@ interface OperationsPageProps {
     stopId: string,
     update: StationStopUpdate
   ) => Promise<StationStop | undefined>;
-  schedules: TrainScheduleList;
   stationStops: StationStopList;
   source: "api" | "fallback";
 }
@@ -74,20 +75,129 @@ export function OperationsPage({
   property,
   referenceData,
   runs,
+  schedules,
+  selectedRunId,
+  selectRun,
   saveConsist,
   saveCrew,
   saveDelay,
   saveFare,
   saveRunApproval,
   saveStop,
-  schedules,
   stationStops,
   source
 }: OperationsPageProps) {
   const [feedback, setFeedback] = useState<string | null>(null);
-  const selectedSchedule: TrainSchedule | undefined = schedules.items[0];
+  const selectedRun = runs.items.find((run) => run.id === selectedRunId) ?? runs.items[0];
+  const selectedSchedule =
+    schedules.items.find((schedule) => schedule.id === selectedRun?.scheduleId) ?? schedules.items[0];
   const scheduleRuns = runs.items.filter((run) => run.scheduleId === selectedSchedule?.id);
-  const selectedRun = scheduleRuns[0];
+
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(stationStops.items[0]?.id ?? null);
+  const [selectedDelayId, setSelectedDelayId] = useState<string | null>(delayEvents.items[0]?.id ?? null);
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(consist.items[0]?.id ?? null);
+  const [selectedCrewId, setSelectedCrewId] = useState<string | null>(crew.items[0]?.id ?? null);
+  const [selectedFareId, setSelectedFareId] = useState<string | null>(fareEnforcement.items[0]?.id ?? null);
+
+  const selectedStop = stationStops.items.find((item) => item.id === selectedStopId) ?? stationStops.items[0];
+  const selectedDelay = delayEvents.items.find((item) => item.id === selectedDelayId) ?? delayEvents.items[0];
+  const selectedEquipment =
+    consist.items.find((item) => item.id === selectedEquipmentId) ?? consist.items[0];
+  const selectedCrew = crew.items.find((item) => item.id === selectedCrewId) ?? crew.items[0];
+  const selectedFare =
+    fareEnforcement.items.find((item) => item.id === selectedFareId) ?? fareEnforcement.items[0];
+
+  const [stopForm, setStopForm] = useState<StationStopUpdate>({
+    actualTime: selectedStop?.actualTime ?? null,
+    boardings: selectedStop?.boardings ?? 0,
+    alightings: selectedStop?.alightings ?? 0
+  });
+  const [delayForm, setDelayForm] = useState<DelayEventUpdate>({
+    category: selectedDelay?.category ?? "",
+    minutes: selectedDelay?.minutes ?? 0,
+    notes: selectedDelay?.notes ?? "",
+    reportedAt: selectedDelay?.reportedAt ?? ""
+  });
+  const [equipmentForm, setEquipmentForm] = useState<ConsistEquipmentUpdate>({
+    position: selectedEquipment?.position ?? 1,
+    status: selectedEquipment?.status ?? "active"
+  });
+  const [crewForm, setCrewForm] = useState<CrewAssignmentUpdate>({
+    role: selectedCrew?.role ?? "",
+    onDutyTime: selectedCrew?.onDutyTime ?? "",
+    status: selectedCrew?.status ?? "assigned"
+  });
+  const [fareForm, setFareForm] = useState<FareEnforcementUpdate>({
+    inspectorName: selectedFare?.inspectorName ?? "",
+    firstLocation: selectedFare?.firstLocation ?? "",
+    secondLocation: selectedFare?.secondLocation ?? "",
+    activityCount: selectedFare?.activityCount ?? 0,
+    notes: selectedFare?.notes ?? "",
+    capturedAt: selectedFare?.capturedAt ?? ""
+  });
+
+  useEffect(() => {
+    setSelectedStopId(stationStops.items[0]?.id ?? null);
+  }, [stationStops]);
+
+  useEffect(() => {
+    setSelectedDelayId(delayEvents.items[0]?.id ?? null);
+  }, [delayEvents]);
+
+  useEffect(() => {
+    setSelectedEquipmentId(consist.items[0]?.id ?? null);
+  }, [consist]);
+
+  useEffect(() => {
+    setSelectedCrewId(crew.items[0]?.id ?? null);
+  }, [crew]);
+
+  useEffect(() => {
+    setSelectedFareId(fareEnforcement.items[0]?.id ?? null);
+  }, [fareEnforcement]);
+
+  useEffect(() => {
+    setStopForm({
+      actualTime: selectedStop?.actualTime ?? null,
+      boardings: selectedStop?.boardings ?? 0,
+      alightings: selectedStop?.alightings ?? 0
+    });
+  }, [selectedStop]);
+
+  useEffect(() => {
+    setDelayForm({
+      category: selectedDelay?.category ?? "",
+      minutes: selectedDelay?.minutes ?? 0,
+      notes: selectedDelay?.notes ?? "",
+      reportedAt: selectedDelay?.reportedAt ?? ""
+    });
+  }, [selectedDelay]);
+
+  useEffect(() => {
+    setEquipmentForm({
+      position: selectedEquipment?.position ?? 1,
+      status: selectedEquipment?.status ?? "active"
+    });
+  }, [selectedEquipment]);
+
+  useEffect(() => {
+    setCrewForm({
+      role: selectedCrew?.role ?? "",
+      onDutyTime: selectedCrew?.onDutyTime ?? "",
+      status: selectedCrew?.status ?? "assigned"
+    });
+  }, [selectedCrew]);
+
+  useEffect(() => {
+    setFareForm({
+      inspectorName: selectedFare?.inspectorName ?? "",
+      firstLocation: selectedFare?.firstLocation ?? "",
+      secondLocation: selectedFare?.secondLocation ?? "",
+      activityCount: selectedFare?.activityCount ?? 0,
+      notes: selectedFare?.notes ?? "",
+      capturedAt: selectedFare?.capturedAt ?? ""
+    });
+  }, [selectedFare]);
 
   async function runAction(action: () => Promise<unknown>, successMessage: string) {
     setFeedback(null);
@@ -104,8 +214,8 @@ export function OperationsPage({
     <div className="page-stack">
       <Panel title="Operations staging" eyebrow={property.name}>
         <p>
-          This route now carries schedules, run detail, fare enforcement, and the first approved-run
-          lock workflow from the SRD instead of staying read-only.
+          The operations route is now selection-driven: choose a run, load its dependent resources,
+          then edit the currently selected record in each run-detail module.
         </p>
         <div className="badge-row">
           <StatusBadge tone={source === "api" ? "success" : "neutral"} label={source} />
@@ -123,7 +233,10 @@ export function OperationsPage({
           <div className="list-stack">
             {schedules.items.length ? (
               schedules.items.map((schedule) => (
-                <article className="list-row" key={schedule.id}>
+                <article
+                  className={`list-row selectable-row ${schedule.id === selectedSchedule?.id ? "selected-row" : ""}`}
+                  key={schedule.id}
+                >
                   <div>
                     <strong>{schedule.trainNumber}</strong>
                     <p>{schedule.routeName}</p>
@@ -141,7 +254,7 @@ export function OperationsPage({
         </Panel>
         <Panel
           title={selectedSchedule ? `Run detail for ${selectedSchedule.trainNumber}` : "Train run detail"}
-          eyebrow="Master/detail pattern"
+          eyebrow="Selection-driven detail"
         >
           {selectedSchedule ? (
             <div className="detail-stack">
@@ -153,7 +266,14 @@ export function OperationsPage({
               </div>
               <div className="list-stack">
                 {scheduleRuns.map((run) => (
-                  <article className="list-row" key={run.id}>
+                  <button
+                    className={`selection-card ${run.id === selectedRun?.id ? "is-selected" : ""}`}
+                    key={run.id}
+                    onClick={() => {
+                      void selectRun(run.id);
+                    }}
+                    type="button"
+                  >
                     <div>
                       <strong>{run.operatingDate}</strong>
                       <p>{run.trainNumber}</p>
@@ -172,7 +292,7 @@ export function OperationsPage({
                       />
                       <span>{run.delayMinutes} min</span>
                     </div>
-                  </article>
+                  </button>
                 ))}
               </div>
               {selectedRun ? (
@@ -199,10 +319,188 @@ export function OperationsPage({
         </Panel>
       </div>
       <div className="two-column-grid">
+        <Panel title="Station stops" eyebrow={`${stationStops.items.length} stops`}>
+          <div className="list-stack">
+            {stationStops.items.map((stop) => (
+              <button
+                className={`selection-card ${stop.id === selectedStop?.id ? "is-selected" : ""}`}
+                key={stop.id}
+                onClick={() => {
+                  setSelectedStopId(stop.id);
+                }}
+                type="button"
+              >
+                <div>
+                  <strong>
+                    {stop.sequence}. {stop.stationCode}
+                  </strong>
+                  <p>
+                    Scheduled {stop.scheduledTime}
+                    {stop.actualTime ? `, actual ${stop.actualTime}` : ", pending"}
+                  </p>
+                </div>
+                <div className="list-meta">
+                  <span>+{stop.boardings}</span>
+                  <span>-{stop.alightings}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+          {selectedRun && selectedStop ? (
+            <div className="editor-grid">
+              <label className="field-stack">
+                <span>Actual Time</span>
+                <input
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setStopForm((current) => ({ ...current, actualTime: value || null }));
+                  }}
+                  type="text"
+                  value={stopForm.actualTime ?? ""}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Boardings</span>
+                <input
+                  min="0"
+                  onChange={(event) => {
+                    setStopForm((current) => ({
+                      ...current,
+                      boardings: Number(event.target.value)
+                    }));
+                  }}
+                  type="number"
+                  value={stopForm.boardings}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Alightings</span>
+                <input
+                  min="0"
+                  onChange={(event) => {
+                    setStopForm((current) => ({
+                      ...current,
+                      alightings: Number(event.target.value)
+                    }));
+                  }}
+                  type="number"
+                  value={stopForm.alightings}
+                />
+              </label>
+              <div className="action-row">
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving}
+                  onClick={() => {
+                    void runAction(
+                      () => saveStop(selectedRun.id, selectedStop.id, stopForm),
+                      "Station stop updated."
+                    );
+                  }}
+                  type="button"
+                >
+                  Save selected stop
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </Panel>
+        <Panel title="Delay log" eyebrow={`${delayEvents.items.length} events`}>
+          <div className="list-stack">
+            {delayEvents.items.map((delay) => (
+              <button
+                className={`selection-card ${delay.id === selectedDelay?.id ? "is-selected" : ""}`}
+                key={delay.id}
+                onClick={() => {
+                  setSelectedDelayId(delay.id);
+                }}
+                type="button"
+              >
+                <div>
+                  <strong>{delay.category}</strong>
+                  <p>{delay.notes}</p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge tone="warning" label={`${delay.minutes} min`} />
+                  <span>{delay.reportedAt}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+          {selectedRun && selectedDelay ? (
+            <div className="editor-grid">
+              <label className="field-stack">
+                <span>Category</span>
+                <input
+                  onChange={(event) => {
+                    setDelayForm((current) => ({ ...current, category: event.target.value }));
+                  }}
+                  type="text"
+                  value={delayForm.category}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Minutes</span>
+                <input
+                  min="0"
+                  onChange={(event) => {
+                    setDelayForm((current) => ({ ...current, minutes: Number(event.target.value) }));
+                  }}
+                  type="number"
+                  value={delayForm.minutes}
+                />
+              </label>
+              <label className="field-stack editor-span">
+                <span>Notes</span>
+                <textarea
+                  onChange={(event) => {
+                    setDelayForm((current) => ({ ...current, notes: event.target.value }));
+                  }}
+                  rows={3}
+                  value={delayForm.notes}
+                />
+              </label>
+              <label className="field-stack editor-span">
+                <span>Reported At</span>
+                <input
+                  onChange={(event) => {
+                    setDelayForm((current) => ({ ...current, reportedAt: event.target.value }));
+                  }}
+                  type="text"
+                  value={delayForm.reportedAt}
+                />
+              </label>
+              <div className="action-row">
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving}
+                  onClick={() => {
+                    void runAction(
+                      () => saveDelay(selectedRun.id, selectedDelay.id, delayForm),
+                      "Delay event updated."
+                    );
+                  }}
+                  type="button"
+                >
+                  Save selected delay
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </Panel>
+      </div>
+      <div className="two-column-grid">
         <Panel title="Consist and equipment" eyebrow={`${consist.items.length} units`}>
           <div className="list-stack">
             {consist.items.map((equipment) => (
-              <article className="list-row" key={equipment.id}>
+              <button
+                className={`selection-card ${equipment.id === selectedEquipment?.id ? "is-selected" : ""}`}
+                key={equipment.id}
+                onClick={() => {
+                  setSelectedEquipmentId(equipment.id);
+                }}
+                type="button"
+              >
                 <div>
                   <strong>
                     {equipment.position}. {equipment.equipmentNumber}
@@ -215,41 +513,70 @@ export function OperationsPage({
                     label={equipment.status}
                   />
                 </div>
-              </article>
+              </button>
             ))}
           </div>
-          {selectedRun && consist.items[0] ? (
-            <div className="action-row">
-              <button
-                className="action-button"
-                disabled={selectedRun.isApproved || isSaving}
-                onClick={() => {
-                  const firstEquipment = consist.items[0];
-
-                  if (!firstEquipment) {
-                    return;
-                  }
-
-                  void runAction(
-                    () =>
-                      saveConsist(selectedRun.id, firstEquipment.id, {
-                        position: firstEquipment.position,
-                        status: firstEquipment.status === "active" ? "spare" : "active"
-                      }),
-                    "Consist equipment updated."
-                  );
-                }}
-                type="button"
-              >
-                Toggle first consist status
-              </button>
+          {selectedRun && selectedEquipment ? (
+            <div className="editor-grid">
+              <label className="field-stack">
+                <span>Position</span>
+                <input
+                  min="1"
+                  onChange={(event) => {
+                    setEquipmentForm((current) => ({
+                      ...current,
+                      position: Number(event.target.value)
+                    }));
+                  }}
+                  type="number"
+                  value={equipmentForm.position}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Status</span>
+                <select
+                  onChange={(event) => {
+                    setEquipmentForm((current) => ({
+                      ...current,
+                      status: event.target.value as ConsistEquipmentUpdate["status"]
+                    }));
+                  }}
+                  value={equipmentForm.status}
+                >
+                  <option value="active">active</option>
+                  <option value="bad_order">bad_order</option>
+                  <option value="spare">spare</option>
+                </select>
+              </label>
+              <div className="action-row">
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving}
+                  onClick={() => {
+                    void runAction(
+                      () => saveConsist(selectedRun.id, selectedEquipment.id, equipmentForm),
+                      "Consist equipment updated."
+                    );
+                  }}
+                  type="button"
+                >
+                  Save selected equipment
+                </button>
+              </div>
             </div>
           ) : null}
         </Panel>
         <Panel title="Crew assignment" eyebrow={`${crew.items.length} assigned`}>
           <div className="list-stack">
             {crew.items.map((assignment) => (
-              <article className="list-row" key={assignment.id}>
+              <button
+                className={`selection-card ${assignment.id === selectedCrew?.id ? "is-selected" : ""}`}
+                key={assignment.id}
+                onClick={() => {
+                  setSelectedCrewId(assignment.id);
+                }}
+                type="button"
+              >
                 <div>
                   <strong>{assignment.employeeName}</strong>
                   <p>
@@ -268,132 +595,62 @@ export function OperationsPage({
                     label={assignment.status}
                   />
                 </div>
-              </article>
+              </button>
             ))}
           </div>
-          {selectedRun && crew.items[0] ? (
-            <div className="action-row">
-              <button
-                className="action-button"
-                disabled={selectedRun.isApproved || isSaving}
-                onClick={() => {
-                  const firstAssignment = crew.items[0];
-
-                  if (!firstAssignment) {
-                    return;
-                  }
-
-                  void runAction(
-                    () =>
-                      saveCrew(selectedRun.id, firstAssignment.id, {
-                        role: firstAssignment.role,
-                        onDutyTime: firstAssignment.onDutyTime,
-                        status:
-                          firstAssignment.status === "assigned" ? "pending_relief" : "assigned"
-                      }),
-                    "Crew assignment updated."
-                  );
-                }}
-                type="button"
-              >
-                Toggle first crew status
-              </button>
-            </div>
-          ) : null}
-        </Panel>
-      </div>
-      <div className="two-column-grid">
-        <Panel title="Station stops" eyebrow={`${stationStops.items.length} stops`}>
-          <div className="list-stack">
-            {stationStops.items.map((stop) => (
-              <article className="list-row" key={stop.id}>
-                <div>
-                  <strong>
-                    {stop.sequence}. {stop.stationCode}
-                  </strong>
-                  <p>
-                    Scheduled {stop.scheduledTime}
-                    {stop.actualTime ? `, actual ${stop.actualTime}` : ", pending"}
-                  </p>
-                </div>
-                <div className="list-meta">
-                  <span>+{stop.boardings}</span>
-                  <span>-{stop.alightings}</span>
-                </div>
-              </article>
-            ))}
-          </div>
-          {selectedRun && stationStops.items[0] ? (
-            <div className="action-row">
-              <button
-                className="action-button"
-                disabled={selectedRun.isApproved || isSaving}
-                onClick={() => {
-                  const firstStop = stationStops.items[0];
-
-                  if (!firstStop) {
-                    return;
-                  }
-
-                  void runAction(
-                    () =>
-                      saveStop(selectedRun.id, firstStop.id, {
-                        actualTime: firstStop.actualTime ?? firstStop.scheduledTime,
-                        boardings: firstStop.boardings + 3,
-                        alightings: firstStop.alightings
-                      }),
-                    "Station stop updated."
-                  );
-                }}
-                type="button"
-              >
-                Add boardings to first stop
-              </button>
-            </div>
-          ) : null}
-        </Panel>
-        <Panel title="Delay log" eyebrow={`${delayEvents.items.length} events`}>
-          <div className="list-stack">
-            {delayEvents.items.map((delay) => (
-              <article className="list-row" key={delay.id}>
-                <div>
-                  <strong>{delay.category}</strong>
-                  <p>{delay.notes}</p>
-                </div>
-                <div className="list-meta">
-                  <StatusBadge tone="warning" label={`${delay.minutes} min`} />
-                  <span>{delay.reportedAt}</span>
-                </div>
-              </article>
-            ))}
-          </div>
-          {selectedRun && delayEvents.items[0] ? (
-            <div className="action-row">
-              <button
-                className="action-button"
-                disabled={selectedRun.isApproved || isSaving}
-                onClick={() => {
-                  const firstDelay = delayEvents.items[0];
-
-                  if (!firstDelay) {
-                    return;
-                  }
-
-                  void runAction(
-                    () =>
-                      saveDelay(selectedRun.id, firstDelay.id, {
-                        category: firstDelay.category,
-                        minutes: firstDelay.minutes + 1,
-                        notes: `${firstDelay.notes} Updated from operations console.`,
-                        reportedAt: firstDelay.reportedAt
-                      }),
-                    "Delay event updated."
-                  );
-                }}
-                type="button"
-              >
-                Increment first delay event
-              </button>
+          {selectedRun && selectedCrew ? (
+            <div className="editor-grid">
+              <label className="field-stack">
+                <span>Role</span>
+                <input
+                  onChange={(event) => {
+                    setCrewForm((current) => ({ ...current, role: event.target.value }));
+                  }}
+                  type="text"
+                  value={crewForm.role}
+                />
+              </label>
+              <label className="field-stack">
+                <span>On Duty</span>
+                <input
+                  onChange={(event) => {
+                    setCrewForm((current) => ({ ...current, onDutyTime: event.target.value }));
+                  }}
+                  type="text"
+                  value={crewForm.onDutyTime}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Status</span>
+                <select
+                  onChange={(event) => {
+                    setCrewForm((current) => ({
+                      ...current,
+                      status: event.target.value as CrewAssignmentUpdate["status"]
+                    }));
+                  }}
+                  value={crewForm.status}
+                >
+                  <option value="assigned">assigned</option>
+                  <option value="pending_relief">pending_relief</option>
+                  <option value="complete">complete</option>
+                </select>
+              </label>
+              <div className="action-row">
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving}
+                  onClick={() => {
+                    void runAction(
+                      () => saveCrew(selectedRun.id, selectedCrew.id, crewForm),
+                      "Crew assignment updated."
+                    );
+                  }}
+                  type="button"
+                >
+                  Save selected crew
+                </button>
+              </div>
             </div>
           ) : null}
         </Panel>
@@ -402,7 +659,14 @@ export function OperationsPage({
         <div className="list-stack">
           {fareEnforcement.items.length ? (
             fareEnforcement.items.map((record) => (
-              <article className="list-row" key={record.id}>
+              <button
+                className={`selection-card ${record.id === selectedFare?.id ? "is-selected" : ""}`}
+                key={record.id}
+                onClick={() => {
+                  setSelectedFareId(record.id);
+                }}
+                type="button"
+              >
                 <div>
                   <strong>{record.inspectorName}</strong>
                   <p>
@@ -414,41 +678,93 @@ export function OperationsPage({
                   <StatusBadge tone="neutral" label={`${record.activityCount} checks`} />
                   <span>{record.capturedAt}</span>
                 </div>
-              </article>
+              </button>
             ))
           ) : (
             <p>No fare enforcement records seeded for this run yet.</p>
           )}
         </div>
-        {fareEnforcement.items[0] ? (
-          <div className="action-row">
-            <button
-              className="action-button"
-              disabled={isSaving}
-              onClick={() => {
-                const firstRecord = fareEnforcement.items[0];
-
-                if (!firstRecord) {
-                  return;
-                }
-
-                void runAction(
-                  () =>
-                    saveFare(firstRecord.id, {
-                      inspectorName: firstRecord.inspectorName,
-                      firstLocation: firstRecord.firstLocation,
-                      secondLocation: stationStops.items.at(-1)?.stationCode ?? firstRecord.secondLocation,
-                      activityCount: firstRecord.activityCount + 2,
-                      notes: `${firstRecord.notes} Follow-up inspection logged.`,
-                      capturedAt: firstRecord.capturedAt
-                    }),
-                  "Fare enforcement record updated."
-                );
-              }}
-              type="button"
-            >
-              Update first fare record
-            </button>
+        {selectedFare ? (
+          <div className="editor-grid">
+            <label className="field-stack">
+              <span>Inspector</span>
+              <input
+                onChange={(event) => {
+                  setFareForm((current) => ({ ...current, inspectorName: event.target.value }));
+                }}
+                type="text"
+                value={fareForm.inspectorName}
+              />
+            </label>
+            <label className="field-stack">
+              <span>First Location</span>
+              <input
+                onChange={(event) => {
+                  setFareForm((current) => ({ ...current, firstLocation: event.target.value }));
+                }}
+                type="text"
+                value={fareForm.firstLocation}
+              />
+            </label>
+            <label className="field-stack">
+              <span>Second Location</span>
+              <input
+                onChange={(event) => {
+                  setFareForm((current) => ({ ...current, secondLocation: event.target.value }));
+                }}
+                type="text"
+                value={fareForm.secondLocation}
+              />
+            </label>
+            <label className="field-stack">
+              <span>Activity Count</span>
+              <input
+                min="0"
+                onChange={(event) => {
+                  setFareForm((current) => ({
+                    ...current,
+                    activityCount: Number(event.target.value)
+                  }));
+                }}
+                type="number"
+                value={fareForm.activityCount}
+              />
+            </label>
+            <label className="field-stack editor-span">
+              <span>Notes</span>
+              <textarea
+                onChange={(event) => {
+                  setFareForm((current) => ({ ...current, notes: event.target.value }));
+                }}
+                rows={3}
+                value={fareForm.notes}
+              />
+            </label>
+            <label className="field-stack editor-span">
+              <span>Captured At</span>
+              <input
+                onChange={(event) => {
+                  setFareForm((current) => ({ ...current, capturedAt: event.target.value }));
+                }}
+                type="text"
+                value={fareForm.capturedAt}
+              />
+            </label>
+            <div className="action-row">
+              <button
+                className="action-button"
+                disabled={isSaving}
+                onClick={() => {
+                  void runAction(
+                    () => saveFare(selectedFare.id, fareForm),
+                    "Fare enforcement record updated."
+                  );
+                }}
+                type="button"
+              >
+                Save selected fare record
+              </button>
+            </div>
           </div>
         ) : null}
       </Panel>
