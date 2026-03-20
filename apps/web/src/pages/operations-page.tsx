@@ -47,6 +47,7 @@ interface OperationsPageProps {
   consistTemplates: ConsistTemplateList;
   crew: CrewAssignmentList;
   crewTemplates: CrewTemplateList;
+  currentUserPermissions: string[];
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
   fareDashboard: FareEnforcementDashboard;
@@ -130,6 +131,7 @@ export function OperationsPage({
   consistTemplates,
   crew,
   crewTemplates,
+  currentUserPermissions,
   delayEvents,
   fareEnforcement,
   fareDashboard,
@@ -170,6 +172,14 @@ export function OperationsPage({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [approvalNotes, setApprovalNotes] = useState("Ready for dispatch closeout.");
   const [initializeDate, setInitializeDate] = useState("2026-03-07");
+  const canInitializeSchedules = currentUserPermissions.includes("schedules.write");
+  const canApproveRuns = currentUserPermissions.includes("runs.approve");
+  const canEditRuns = currentUserPermissions.includes("runs.write");
+  const canEditStops = currentUserPermissions.includes("stops.write");
+  const canEditDelays = currentUserPermissions.includes("delays.write");
+  const canEditConsist = currentUserPermissions.includes("consist.write");
+  const canAssignCrew = currentUserPermissions.includes("crew.assign");
+  const canEditFare = currentUserPermissions.includes("fare.write");
   const selectedRun = runs.items.find((run) => run.id === selectedRunId) ?? runs.items[0];
   const selectedSchedule =
     schedules.items.find((schedule) => schedule.id === selectedRun?.scheduleId) ?? schedules.items[0];
@@ -475,7 +485,7 @@ export function OperationsPage({
                 </label>
                 <button
                   className="action-button"
-                  disabled={isSaving}
+                  disabled={isSaving || !canInitializeSchedules}
                   onClick={() => {
                     void runAction(
                       async () => {
@@ -549,7 +559,12 @@ export function OperationsPage({
                   </label>
                   <button
                     className="action-button"
-                    disabled={selectedRun.isApproved || isSaving || selectedRun.approvalBlockers.length > 0}
+                    disabled={
+                      selectedRun.isApproved ||
+                      isSaving ||
+                      selectedRun.approvalBlockers.length > 0 ||
+                      !canApproveRuns
+                    }
                     onClick={() => {
                       void runAction(
                         () => saveRunApproval(selectedRun.id, { isApproved: true, notes: approvalNotes }),
@@ -562,7 +577,7 @@ export function OperationsPage({
                   </button>
                   <button
                     className="action-button"
-                    disabled={isSaving || batchReadyRunIds.length === 0}
+                    disabled={isSaving || batchReadyRunIds.length === 0 || !canApproveRuns}
                     onClick={() => {
                       void runAction(
                         async () => {
@@ -587,7 +602,7 @@ export function OperationsPage({
                   </button>
                   <button
                     className="action-button"
-                    disabled={selectedRun.isApproved || isSaving}
+                    disabled={selectedRun.isApproved || isSaving || !canEditRuns}
                     onClick={() => {
                       void runAction(
                         () => resetRun(selectedRun.id),
@@ -600,7 +615,7 @@ export function OperationsPage({
                   </button>
                   <button
                     className="action-button"
-                    disabled={selectedRun.isApproved || isSaving}
+                    disabled={selectedRun.isApproved || isSaving || !canEditRuns}
                     onClick={() => {
                       void runAction(
                         () => deleteRun(selectedRun.id),
@@ -613,7 +628,7 @@ export function OperationsPage({
                   </button>
                   <button
                     className="action-button"
-                    disabled={isSaving || batchApprovedRunIds.length === 0}
+                    disabled={isSaving || batchApprovedRunIds.length === 0 || !canApproveRuns}
                     onClick={() => {
                       void runAction(
                         () =>
@@ -632,7 +647,7 @@ export function OperationsPage({
                   {selectedRun.isApproved ? (
                     <button
                       className="action-button"
-                      disabled={isSaving}
+                      disabled={isSaving || !canApproveRuns}
                       onClick={() => {
                         void runAction(
                           () => saveRunApproval(selectedRun.id, { isApproved: false, notes: approvalNotes }),
@@ -724,7 +739,7 @@ export function OperationsPage({
               <div className="action-row">
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving}
+                  disabled={selectedRun.isApproved || isSaving || !canEditStops}
                   onClick={() => {
                     void runAction(
                       () => saveStop(selectedRun.id, selectedStop.id, stopForm),
@@ -807,7 +822,7 @@ export function OperationsPage({
               <div className="action-row">
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving}
+                  disabled={selectedRun.isApproved || isSaving || !canEditDelays}
                   onClick={() => {
                     void runAction(
                       () => saveDelay(selectedRun.id, selectedDelay.id, delayForm),
@@ -820,7 +835,7 @@ export function OperationsPage({
                 </button>
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving}
+                  disabled={selectedRun.isApproved || isSaving || !canEditDelays}
                   onClick={() => {
                     void runAction(
                       () => deleteDelay(selectedRun.id, selectedDelay.id),
@@ -938,7 +953,7 @@ export function OperationsPage({
               <div className="action-row">
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving}
+                  disabled={selectedRun.isApproved || isSaving || !canEditDelays}
                   onClick={() => {
                     void runAction(
                       () => saveDelayAdditionalInfo(selectedDelay.id, delayAdditionalForm),
@@ -983,7 +998,12 @@ export function OperationsPage({
               <div className="action-row">
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving || !selectedDelayTemplateId}
+                  disabled={
+                    selectedRun.isApproved ||
+                    isSaving ||
+                    !selectedDelayTemplateId ||
+                    !canEditDelays
+                  }
                   onClick={() => {
                     void runAction(
                       () =>
@@ -1075,7 +1095,7 @@ export function OperationsPage({
               <div className="action-row">
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving}
+                  disabled={selectedRun.isApproved || isSaving || !canEditDelays}
                   onClick={() => {
                     void runAction(
                       () => createDelayBatch(selectedRun.id, newDelayBatch),
@@ -1169,7 +1189,12 @@ export function OperationsPage({
               <div className="action-row">
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving || !selectedConsistTemplateId}
+                  disabled={
+                    selectedRun.isApproved ||
+                    isSaving ||
+                    !selectedConsistTemplateId ||
+                    !canEditConsist
+                  }
                   onClick={() => {
                     void runAction(
                       () => swapConsist(selectedRun.id, selectedConsistTemplateId),
@@ -1182,7 +1207,7 @@ export function OperationsPage({
                 </button>
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving}
+                  disabled={selectedRun.isApproved || isSaving || !canEditConsist}
                   onClick={() => {
                     void runAction(
                       () => saveConsist(selectedRun.id, selectedEquipment.id, equipmentForm),
@@ -1286,7 +1311,12 @@ export function OperationsPage({
               <div className="action-row">
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving || !selectedCrewTemplateId}
+                  disabled={
+                    selectedRun.isApproved ||
+                    isSaving ||
+                    !selectedCrewTemplateId ||
+                    !canAssignCrew
+                  }
                   onClick={() => {
                     void runAction(
                       () => swapCrew(selectedRun.id, selectedCrewTemplateId),
@@ -1299,7 +1329,7 @@ export function OperationsPage({
                 </button>
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving}
+                  disabled={selectedRun.isApproved || isSaving || !canAssignCrew}
                   onClick={() => {
                     void runAction(
                       () => saveCrew(selectedRun.id, selectedCrew.id, crewForm),
@@ -1545,7 +1575,7 @@ export function OperationsPage({
             <div className="action-row">
               <button
                 className="action-button"
-                disabled={isSaving}
+                disabled={isSaving || !canEditFare}
                 onClick={() => {
                   void runAction(
                     () => createFare(newFareForm),
@@ -1727,7 +1757,7 @@ export function OperationsPage({
             <div className="action-row">
               <button
                 className="action-button"
-                disabled={isSaving}
+                disabled={isSaving || !canEditFare}
                 onClick={() => {
                   void runAction(
                     () => saveFare(selectedFare.id, fareForm),

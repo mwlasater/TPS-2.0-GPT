@@ -27,7 +27,7 @@ const env = {
   PROPERTY_CODES: "caltrain,capmetro,tre",
   USER_PROPERTY_ACCESS: "local-dev-user:caltrain|capmetro",
   USER_PROPERTY_PERMISSIONS:
-    "local-dev-user@caltrain:users.invite|users.manage|users.access.write|admin.permissions.write|reports.schedule|notifications.write|staffing.write,local-dev-user@capmetro:users.manage|admin.permissions.write"
+    "local-dev-user@caltrain:schedules.write|runs.approve|runs.write|stops.write|delays.write|consist.write|crew.assign|fare.write|users.invite|users.manage|users.access.write|admin.permissions.write|reports.schedule|notifications.write|staffing.write,local-dev-user@capmetro:schedules.write|runs.approve|runs.write|stops.write|delays.write|consist.write|crew.assign|fare.write|users.invite|users.manage|users.access.write|admin.permissions.write|reports.schedule|notifications.write|staffing.write"
 };
 
 describe("app contracts", () => {
@@ -128,6 +128,14 @@ describe("app contracts", () => {
         id: "local-dev-user",
         propertyPermissions: {
           caltrain: expect.arrayContaining([
+            "schedules.write",
+            "runs.approve",
+            "runs.write",
+            "stops.write",
+            "delays.write",
+            "consist.write",
+            "crew.assign",
+            "fare.write",
             "users.invite",
             "users.manage",
             "users.access.write",
@@ -1344,6 +1352,40 @@ describe("app contracts", () => {
     });
   });
 
+  it("rejects delay metadata updates without delay write permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:stops.write"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/delays/delay-1/additional-info",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        locationDetail: "South approach to Palo Alto",
+        responsibleParty: "Dispatch",
+        notableDelayType: "Traffic interference",
+        specialMovementId: "movement-single-track",
+        workOrderId: "WO-2001",
+        mechanicalNotes: "No equipment fault observed.",
+        passengerImpactSummary: "Crowding pushed to next two stops."
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
+  });
+
   it("creates multiple delay events for editable train runs", async () => {
     const response = await app.inject({
       method: "POST",
@@ -1424,6 +1466,37 @@ describe("app contracts", () => {
     });
   });
 
+  it("rejects delay event writes without delay write permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:stops.write"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/delays/delay-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        category: "Signal",
+        minutes: 12,
+        notes: "Dispatcher hold",
+        reportedAt: "2026-03-06T06:18:00Z"
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
+  });
+
   it("updates station stops for editable train runs", async () => {
     const response = await app.inject({
       method: "PUT",
@@ -1445,6 +1518,36 @@ describe("app contracts", () => {
       actualTime: "06:07",
       boardings: 45
     });
+  });
+
+  it("rejects station stop updates without stop write permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:delays.write"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/stops/stop-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        actualTime: "06:07",
+        boardings: 45,
+        alightings: 3
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
   });
 
   it("updates consist and crew assignments for editable train runs", async () => {
@@ -1488,6 +1591,59 @@ describe("app contracts", () => {
     });
   });
 
+  it("rejects consist and crew writes without the matching resource permissions", async () => {
+    const noConsistApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:crew.assign"
+    });
+    const noCrewApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:consist.write"
+    });
+
+    await noConsistApp.ready();
+    await noCrewApp.ready();
+
+    const consistResponse = await noConsistApp.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/consist/equip-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        position: 1,
+        status: "spare"
+      }
+    });
+
+    const crewResponse = await noCrewApp.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/crew/crew-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        role: "Engineer",
+        onDutyTime: "05:45",
+        status: "pending_relief"
+      }
+    });
+
+    expect(consistResponse.statusCode).toBe(403);
+    expect(consistResponse.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+    expect(crewResponse.statusCode).toBe(403);
+    expect(crewResponse.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await noConsistApp.close();
+    await noCrewApp.close();
+  });
+
   it("approves train runs for authorized property context", async () => {
     const response = await app.inject({
       method: "PUT",
@@ -1509,6 +1665,52 @@ describe("app contracts", () => {
       isApproved: true,
       approvalBlockers: []
     });
+  });
+
+  it("rejects schedule initialization and run approval without the matching permissions", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:runs.write"
+    });
+
+    await restrictedApp.ready();
+
+    const initializeResponse = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/initialize",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        operatingDate: "2026-03-07",
+        scheduleIds: ["schedule-caltrain-101"]
+      }
+    });
+
+    const approvalResponse = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/approval",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        isApproved: true,
+        notes: "Ready for dispatch closeout."
+      }
+    });
+
+    expect(initializeResponse.statusCode).toBe(403);
+    expect(initializeResponse.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+    expect(approvalResponse.statusCode).toBe(403);
+    expect(approvalResponse.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
   });
 
   it("reopens approved train runs for authorized property context", async () => {
@@ -1855,6 +2057,44 @@ describe("app contracts", () => {
       amtrakTransfers: 3,
       ticketsSold: 5
     });
+  });
+
+  it("rejects fare enforcement writes without fare write permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:delays.write"
+    });
+
+    await restrictedApp.ready();
+
+    const createResponse = await restrictedApp.inject({
+      method: "POST",
+      url: "/api/v1/fare-enforcement",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        runId: "caltrain-run-1",
+        inspectorName: "Morgan Lee",
+        firstLocation: "SFC",
+        secondLocation: "SJC",
+        activityCount: 8,
+        amtrakTransfers: 1,
+        amtrakTickets: 3,
+        upassCount: 2,
+        ticketsSold: 4,
+        notes: "Additional inspection pass",
+        capturedAt: "2026-03-06T07:00:00Z"
+      }
+    });
+
+    expect(createResponse.statusCode).toBe(403);
+    expect(createResponse.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
   });
 
   it("returns approval history for a train run", async () => {

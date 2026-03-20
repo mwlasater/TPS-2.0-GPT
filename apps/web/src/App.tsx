@@ -74,6 +74,7 @@ export function App() {
               consistTemplates={operationsData.consistTemplates}
               crew={operationsData.crew}
               crewTemplates={operationsData.crewTemplates}
+              currentUserPermissions={currentUserPermissions}
               delayEvents={operationsData.delayEvents}
               fareEnforcement={operationsData.fareEnforcement}
               fareDashboard={operationsData.fareDashboard}

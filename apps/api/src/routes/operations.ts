@@ -53,6 +53,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "schedules.write");
       const payload = trainRunInitializeRequestSchema.parse(request.body) as TrainRunInitializeRequest;
       return app.dataAccess.operations.initializeTrainRuns(request.property, payload);
     }
@@ -64,6 +65,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "runs.approve");
       const payload = trainRunBatchApprovalUpdateSchema.parse(
         request.body
       ) as TrainRunBatchApprovalUpdate;
@@ -81,6 +83,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "runs.approve");
       const payload = trainRunApprovalUpdateSchema.parse(request.body) as TrainRunApprovalUpdate;
       return app.dataAccess.operations.updateTrainRunApproval(
         request.property,
@@ -96,10 +99,13 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => app.dataAccess.operations.resetTrainRun(
-      request.property,
-      (request.params as { runId: string }).runId
-    )
+    async (request) => {
+      await app.requirePermission(request, "runs.write");
+      return app.dataAccess.operations.resetTrainRun(
+        request.property,
+        (request.params as { runId: string }).runId
+      );
+    }
   );
 
   app.delete(
@@ -107,10 +113,13 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => app.dataAccess.operations.deleteTrainRun(
-      request.property,
-      (request.params as { runId: string }).runId
-    )
+    async (request) => {
+      await app.requirePermission(request, "runs.write");
+      return app.dataAccess.operations.deleteTrainRun(
+        request.property,
+        (request.params as { runId: string }).runId
+      );
+    }
   );
 
   app.get(
@@ -152,6 +161,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "stops.write");
       const payload = stationStopUpdateSchema.parse(request.body) as StationStopUpdate;
       const params = request.params as { runId: string; stopId: string };
 
@@ -205,6 +215,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "delays.write");
       const payload = delayAdditionalInfoUpdateSchema.parse(
         request.body
       ) as DelayAdditionalInfoUpdate;
@@ -233,6 +244,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "delays.write");
       const payload = delayTemplateCreateRequestSchema.parse(request.body) as DelayTemplateCreateRequest;
       return app.dataAccess.operations.createDelayFromTemplate(
         request.property,
@@ -248,6 +260,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "delays.write");
       const payload = delayEventBatchCreateSchema.parse(request.body) as DelayEventBatchCreate;
       return app.dataAccess.operations.createDelayEvents(
         request.property,
@@ -263,6 +276,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "delays.write");
       const params = request.params as { runId: string; delayId: string };
       return app.dataAccess.operations.deleteDelayEvent(
         request.property,
@@ -278,6 +292,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "delays.write");
       const payload = delayEventUpdateSchema.parse(request.body) as DelayEventUpdate;
       const params = request.params as { runId: string; delayId: string };
 
@@ -315,6 +330,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "consist.write");
       const payload = resourceSwapRequestSchema.parse(request.body) as ResourceSwapRequest;
       return app.dataAccess.operations.swapConsistEquipment(
         request.property,
@@ -330,6 +346,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "consist.write");
       const payload = consistEquipmentUpdateSchema.parse(request.body) as ConsistEquipmentUpdate;
       const params = request.params as { runId: string; equipmentId: string };
 
@@ -367,6 +384,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "crew.assign");
       const payload = resourceSwapRequestSchema.parse(request.body) as ResourceSwapRequest;
       return app.dataAccess.operations.swapCrewAssignments(
         request.property,
@@ -382,6 +400,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "crew.assign");
       const payload = crewAssignmentUpdateSchema.parse(request.body) as CrewAssignmentUpdate;
       const params = request.params as { runId: string; assignmentId: string };
 
@@ -411,6 +430,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "fare.write");
       const payload = fareEnforcementCreateSchema.parse(request.body) as FareEnforcementCreate;
       return app.dataAccess.operations.createFareEnforcement(request.property, payload);
     }
@@ -438,6 +458,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "fare.write");
       const payload = fareEnforcementUpdateSchema.parse(request.body) as FareEnforcementUpdate;
       return app.dataAccess.operations.updateFareEnforcement(
         request.property,

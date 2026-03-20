@@ -41,6 +41,14 @@ export const demoSession: UserSession = {
   allowedProperties: ["caltrain", "capmetro", "tre"],
   propertyPermissions: {
     caltrain: [
+      "schedules.write",
+      "runs.approve",
+      "runs.write",
+      "stops.write",
+      "delays.write",
+      "consist.write",
+      "crew.assign",
+      "fare.write",
       "users.invite",
       "users.manage",
       "users.access.write",
@@ -50,6 +58,14 @@ export const demoSession: UserSession = {
       "staffing.write"
     ],
     capmetro: [
+      "schedules.write",
+      "runs.approve",
+      "runs.write",
+      "stops.write",
+      "delays.write",
+      "consist.write",
+      "crew.assign",
+      "fare.write",
       "users.invite",
       "users.manage",
       "users.access.write",
@@ -59,6 +75,14 @@ export const demoSession: UserSession = {
       "staffing.write"
     ],
     tre: [
+      "schedules.write",
+      "runs.approve",
+      "runs.write",
+      "stops.write",
+      "delays.write",
+      "consist.write",
+      "crew.assign",
+      "fare.write",
       "users.invite",
       "users.manage",
       "users.access.write",
@@ -1371,14 +1395,23 @@ const commuterPermissionGroups: PermissionGroupList = {
       name: "Operations Admin",
       description: "Full operational control across schedules, runs, delays, and crew.",
       members: 4,
-      permissions: ["schedules.write", "runs.approve", "delays.write", "crew.assign"]
+      permissions: [
+        "schedules.write",
+        "runs.approve",
+        "runs.write",
+        "stops.write",
+        "delays.write",
+        "consist.write",
+        "crew.assign",
+        "fare.write"
+      ]
     },
     {
       id: "dispatch",
       name: "Dispatcher",
       description: "Day-of-service editing for train runs and delays.",
       members: 7,
-      permissions: ["runs.write", "delays.write", "stops.write"]
+      permissions: ["runs.write", "delays.write", "stops.write", "consist.write"]
     }
   ]
 };
@@ -1390,7 +1423,7 @@ const streetcarPermissionGroups: PermissionGroupList = {
       name: "Streetcar Operations",
       description: "Dispatch and service adjustments for streetcar operations.",
       members: 3,
-      permissions: ["runs.write", "delays.write", "crew.assign"]
+      permissions: ["runs.write", "delays.write", "consist.write", "crew.assign"]
     },
     {
       id: "streetcar-reporting",

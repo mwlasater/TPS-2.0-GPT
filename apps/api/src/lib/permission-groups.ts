@@ -15,14 +15,23 @@ const commuterGroups: PermissionGroupList = {
       name: "Operations Admin",
       description: "Full operational control across schedules, runs, delays, and crew.",
       members: 4,
-      permissions: ["schedules.write", "runs.approve", "delays.write", "crew.assign"]
+      permissions: [
+        "schedules.write",
+        "runs.approve",
+        "runs.write",
+        "stops.write",
+        "delays.write",
+        "consist.write",
+        "crew.assign",
+        "fare.write"
+      ]
     },
     {
       id: "dispatch",
       name: "Dispatcher",
       description: "Day-of-service editing for train runs and delays.",
       members: 7,
-      permissions: ["runs.write", "delays.write", "stops.write"]
+      permissions: ["runs.write", "delays.write", "stops.write", "consist.write"]
     }
   ]
 };
@@ -34,7 +43,7 @@ const streetcarGroups: PermissionGroupList = {
       name: "Streetcar Operations",
       description: "Dispatch and service adjustments for streetcar operations.",
       members: 3,
-      permissions: ["runs.write", "delays.write", "crew.assign"]
+      permissions: ["runs.write", "delays.write", "consist.write", "crew.assign"]
     },
     {
       id: "streetcar-reporting",
