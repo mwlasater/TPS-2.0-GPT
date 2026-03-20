@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/app-shell.js";
 import { useAdminData } from "./hooks/use-admin-data.js";
+import { useAuth } from "./hooks/use-auth.js";
 import { useBaselineData } from "./hooks/use-baseline-data.js";
 import { useBootstrap } from "./hooks/use-bootstrap.js";
 import { useOperationsData } from "./hooks/use-operations-data.js";
@@ -14,7 +15,8 @@ import { OperationsPage } from "./pages/operations-page.js";
 import { SettingsPage } from "./pages/settings-page.js";
 
 export function App() {
-  const { data, isLoading, source } = useBootstrap();
+  const auth = useAuth();
+  const { data, error, isLoading, source } = useBootstrap(auth.isAuthenticated);
   const [selectedProperty, setSelectedProperty] = useState(data.defaultProperty);
   const [selectedUserId, setSelectedUserId] = useState("ops-manager");
   const activeProperty =
@@ -36,8 +38,41 @@ export function App() {
 
   const appVersion = import.meta.env.VITE_APP_VERSION ?? "0.1.0";
 
-  if (isLoading || !activeProperty) {
+  if (auth.isLoading || isLoading) {
     return <div className="loading-screen">Loading TPS 2.0...</div>;
+  }
+
+  if (!auth.isAuthenticated) {
+    return (
+      <div className="loading-screen">
+        <div className="panel">
+          <p className="eyebrow">Authentication</p>
+          <h1>Sign in to Herzog TPS 2.0</h1>
+          <p>
+            The web client is configured for <strong>{auth.mode}</strong> authentication.
+          </p>
+          {auth.error ? <p>{auth.error}</p> : null}
+          <button className="primary-action" onClick={() => void auth.signIn()} type="button">
+            Sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !activeProperty) {
+    return (
+      <div className="loading-screen">
+        <div className="panel">
+          <p className="eyebrow">Bootstrap Error</p>
+          <h1>Authenticated, but bootstrap failed</h1>
+          <p>{error ?? "bootstrap.failed"}</p>
+          <button className="primary-action" onClick={() => window.location.reload()} type="button">
+            Retry bootstrap
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -63,6 +98,10 @@ export function App() {
           <span>Data source</span>
           <strong>{source}</strong>
         </div>
+        <button className="topbar-chip topbar-action" onClick={() => auth.signOut()} type="button">
+          <span>Session</span>
+          <strong>Sign out</strong>
+        </button>
       </header>
       <Routes>
         <Route path="/" element={<DashboardPage property={activeProperty} source={source} />} />

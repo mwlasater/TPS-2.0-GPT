@@ -79,15 +79,13 @@ import type {
   UserAdminActionList
 } from "@tps/types";
 
+import { buildAuthorizedHeaders } from "./auth-client.js";
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/api/v1";
-// Replace this development token path with MSAL/PKCE token acquisition before any non-local deployment.
-const developmentToken = import.meta.env.VITE_DEV_BEARER_TOKEN ?? "local-dev-token";
 
 export async function fetchBootstrap(): Promise<AppBootstrap> {
   const response = await fetch(`${apiBaseUrl}/auth/session`, {
-    headers: {
-      Authorization: `Bearer ${developmentToken}`
-    }
+    headers: await buildAuthorizedHeaders()
   });
 
   if (!response.ok) {
@@ -99,10 +97,9 @@ export async function fetchBootstrap(): Promise<AppBootstrap> {
 
 async function fetchPropertyScoped<T>(path: string, propertyCode: PropertyCode): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
-    headers: {
-      Authorization: `Bearer ${developmentToken}`,
+    headers: await buildAuthorizedHeaders({
       "X-Property": propertyCode
-    }
+    })
   });
 
   if (!response.ok) {
@@ -120,11 +117,10 @@ async function mutatePropertyScoped<T>(
 ): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method,
-    headers: {
-      Authorization: `Bearer ${developmentToken}`,
+    headers: await buildAuthorizedHeaders({
       "Content-Type": "application/json",
       "X-Property": propertyCode
-    },
+    }),
     body: JSON.stringify(body)
   });
 
@@ -256,13 +252,12 @@ export function deletePermissionGroupDefinition(
   propertyCode: PropertyCode,
   groupId: string
 ): Promise<PermissionGroupDeleteResult> {
-  return fetch(`${apiBaseUrl}/permission-groups/${groupId}`, {
+  return buildAuthorizedHeaders({
+    "X-Property": propertyCode
+  }).then((headers) => fetch(`${apiBaseUrl}/permission-groups/${groupId}`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${developmentToken}`,
-      "X-Property": propertyCode
-    }
-  }).then(async (response) => {
+    headers
+  })).then(async (response) => {
     if (!response.ok) {
       throw new Error(`request.failed.${response.status}`);
     }
@@ -450,13 +445,12 @@ export function deleteTrainRun(
   propertyCode: PropertyCode,
   runId: string
 ): Promise<TrainRunDeleteResult> {
-  return fetch(`${apiBaseUrl}/train-runs/${runId}`, {
+  return buildAuthorizedHeaders({
+    "X-Property": propertyCode
+  }).then((headers) => fetch(`${apiBaseUrl}/train-runs/${runId}`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${developmentToken}`,
-      "X-Property": propertyCode
-    }
-  }).then(async (response) => {
+    headers
+  })).then(async (response) => {
     if (!response.ok) {
       throw new Error(`request.failed.${response.status}`);
     }
@@ -609,13 +603,12 @@ export function deleteDelayAdditionalInfo(
   propertyCode: PropertyCode,
   delayId: string
 ): Promise<DelayAdditionalInfoDeleteResult> {
-  return fetch(`${apiBaseUrl}/delays/${delayId}/additional-info`, {
+  return buildAuthorizedHeaders({
+    "X-Property": propertyCode
+  }).then((headers) => fetch(`${apiBaseUrl}/delays/${delayId}/additional-info`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${developmentToken}`,
-      "X-Property": propertyCode
-    }
-  }).then(async (response) => {
+    headers
+  })).then(async (response) => {
     if (!response.ok) {
       throw new Error(`request.failed.${response.status}`);
     }
@@ -669,13 +662,12 @@ export function deleteDelayEvent(
   runId: string,
   delayId: string
 ): Promise<DelayEventDeleteResult> {
-  return fetch(`${apiBaseUrl}/train-runs/${runId}/delays/${delayId}`, {
+  return buildAuthorizedHeaders({
+    "X-Property": propertyCode
+  }).then((headers) => fetch(`${apiBaseUrl}/train-runs/${runId}/delays/${delayId}`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${developmentToken}`,
-      "X-Property": propertyCode
-    }
-  }).then(async (response) => {
+    headers
+  })).then(async (response) => {
     if (!response.ok) {
       throw new Error(`request.failed.${response.status}`);
     }

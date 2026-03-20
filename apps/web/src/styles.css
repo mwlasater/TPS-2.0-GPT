@@ -459,6 +459,27 @@ h2 {
   letter-spacing: 0.08em;
 }
 
+.primary-action,
+.topbar-action {
+  border: 1px solid var(--herzog-gold);
+  background: linear-gradient(135deg, var(--navy-blue), #274f79);
+  color: var(--smoke);
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.primary-action {
+  margin-top: 1rem;
+  padding: 0.85rem 1.1rem;
+}
+
+.topbar-action {
+  align-items: flex-start;
+  text-align: left;
+}
+
 @media (max-width: 900px) {
   .app-shell,
   .hero-card,
