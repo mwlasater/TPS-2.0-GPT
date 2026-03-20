@@ -85,8 +85,10 @@ export function App() {
               runs={operationsData.runs}
               approvalHistory={operationsData.approvalHistory}
               scheduleApprovalHistory={operationsData.scheduleApprovalHistory}
+              eventHistory={operationsData.eventHistory}
               impactSummary={operationsData.impactSummary}
               scheduleApprovalSummary={operationsData.scheduleApprovalSummary}
+              trainRunStatus={operationsData.trainRunStatus}
               delayAdditionalInfo={operationsData.delayAdditionalInfo}
               delayCommonLocations={operationsData.delayCommonLocations}
               delayTemplates={operationsData.delayTemplates}
@@ -101,9 +103,11 @@ export function App() {
               createDelayBatch={operationsData.createDelayBatch}
               createDelayTemplate={operationsData.createDelayTemplate}
               saveDelayAdditionalInfo={operationsData.saveDelayAdditionalInfo}
+              clearDelayAdditionalInfo={operationsData.clearDelayAdditionalInfo}
               deleteDelay={operationsData.deleteDelay}
               saveBatchRunApproval={operationsData.saveBatchRunApproval}
               initializeRuns={operationsData.initializeRuns}
+              saveRunStatus={operationsData.saveRunStatus}
               resetRun={operationsData.resetRun}
               deleteRun={operationsData.deleteRun}
               createFare={operationsData.createFare}

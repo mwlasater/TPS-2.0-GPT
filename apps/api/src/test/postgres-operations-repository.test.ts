@@ -183,6 +183,7 @@ describe("PostgresOperationsRepository", () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ id: "caltrain-run-1" }] });
 
     const repository = new PostgresOperationsRepository({ query });
@@ -686,6 +687,49 @@ describe("PostgresOperationsRepository", () => {
           stationCode: "22ND"
         })
       ]
+    });
+  });
+
+  it("maps train run status rows and records status updates", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            train_run_id: "caltrain-run-1",
+            status: "delayed",
+            status_comment: "Dispatch is monitoring cascading impacts.",
+            status_updated_at: new Date("2026-03-20T17:00:00Z"),
+            status_updated_by: "Local Development User"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            train_run_id: "caltrain-run-1",
+            status: "delayed",
+            status_comment: "Dispatch is monitoring cascading impacts.",
+            status_updated_at: new Date("2026-03-20T17:00:00Z"),
+            status_updated_by: "Local Development User"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const initial = await repository.getTrainRunStatus("caltrain", "caltrain-run-1");
+    const updated = await repository.updateTrainRunStatus("caltrain", "caltrain-run-1", {
+      status: "delayed",
+      comment: "Dispatch is monitoring cascading impacts."
+    }, "Local Development User");
+
+    expect(initial).toMatchObject({
+      runId: "caltrain-run-1",
+      status: "delayed"
+    });
+    expect(updated).toMatchObject({
+      runId: "caltrain-run-1",
+      comment: "Dispatch is monitoring cascading impacts."
     });
   });
 

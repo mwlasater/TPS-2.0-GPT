@@ -226,6 +226,37 @@ export interface TrainScheduleApprovalSummary {
   blockedRuns: ScheduleApprovalBlockedRunSummary[];
 }
 
+export interface TrainRunStatusRecord {
+  runId: string;
+  status: TrainRun["status"];
+  comment: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
+export interface TrainRunStatusUpdate {
+  status: TrainRun["status"];
+  comment: string;
+}
+
+export interface TrainRunEventHistoryEntry {
+  id: string;
+  runId: string;
+  action:
+    | "status-updated"
+    | "run-reset"
+    | "run-deleted"
+    | "delay-deleted"
+    | "delay-metadata-cleared";
+  actorName: string;
+  notes: string;
+  createdAt: string;
+}
+
+export interface TrainRunEventHistoryList {
+  items: TrainRunEventHistoryEntry[];
+}
+
 export interface TrainRunInitializeRequest {
   operatingDate: string;
   scheduleIds: string[];
@@ -398,6 +429,10 @@ export interface DelayAdditionalInfoUpdate {
   workOrderId: string | null;
   mechanicalNotes: string;
   passengerImpactSummary: string;
+}
+
+export interface DelayAdditionalInfoDeleteResult {
+  delayId: string;
 }
 
 export interface DelayEventUpdate {

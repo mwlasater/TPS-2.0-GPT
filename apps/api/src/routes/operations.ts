@@ -11,7 +11,8 @@ import {
   stationStopUpdateSchema,
   trainRunInitializeRequestSchema,
   trainRunBatchApprovalUpdateSchema,
-  trainRunApprovalUpdateSchema
+  trainRunApprovalUpdateSchema,
+  trainRunStatusUpdateSchema
 } from "@tps/validation";
 import type { FastifyInstance } from "fastify";
 import type {
@@ -27,7 +28,8 @@ import type {
   StationStopUpdate,
   TrainRunInitializeRequest,
   TrainRunBatchApprovalUpdate,
-  TrainRunApprovalUpdate
+  TrainRunApprovalUpdate,
+  TrainRunStatusUpdate
 } from "@tps/types";
 
 export async function registerOperationsRoutes(app: FastifyInstance): Promise<void> {
@@ -167,6 +169,45 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
   );
 
   app.get(
+    "/train-runs/:runId/status",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.getTrainRunStatus(
+      request.property,
+      (request.params as { runId: string }).runId
+    )
+  );
+
+  app.put(
+    "/train-runs/:runId/status",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "runs.write");
+      const payload = trainRunStatusUpdateSchema.parse(request.body) as TrainRunStatusUpdate;
+      return app.dataAccess.operations.updateTrainRunStatus(
+        request.property,
+        (request.params as { runId: string }).runId,
+        payload,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.get(
+    "/train-runs/:runId/events",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listTrainRunEventHistory(
+      request.property,
+      (request.params as { runId: string }).runId
+    )
+  );
+
+  app.get(
     "/train-runs/:runId/stops",
     {
       preHandler: [app.authenticate, app.requireProperty]
@@ -245,6 +286,21 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
         request.property,
         (request.params as { delayId: string }).delayId,
         payload
+      );
+    }
+  );
+
+  app.delete(
+    "/delays/:delayId/additional-info",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "delays.write");
+      return app.dataAccess.operations.deleteDelayAdditionalInfo(
+        request.property,
+        (request.params as { delayId: string }).delayId,
+        request.user.displayName
       );
     }
   );

@@ -10,6 +10,7 @@ import type {
   CrewTemplateList,
   CrewAssignmentUpdate,
   DelayAdditionalInfo,
+  DelayAdditionalInfoDeleteResult,
   DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
   DelayCommonLocationList,
@@ -67,9 +68,12 @@ import type {
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
+  TrainRunEventHistoryList,
   TrainRunImpactSummary,
   TrainScheduleApprovalSummary,
   TrainScheduleList,
+  TrainRunStatusRecord,
+  TrainRunStatusUpdate,
   UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
   UserAdminActionList
@@ -490,6 +494,33 @@ export function fetchTrainRunImpactSummary(
   return fetchPropertyScoped<TrainRunImpactSummary>(`/train-runs/${runId}/impacts`, propertyCode);
 }
 
+export function fetchTrainRunStatus(
+  propertyCode: PropertyCode,
+  runId: string
+): Promise<TrainRunStatusRecord> {
+  return fetchPropertyScoped<TrainRunStatusRecord>(`/train-runs/${runId}/status`, propertyCode);
+}
+
+export function updateTrainRunStatus(
+  propertyCode: PropertyCode,
+  runId: string,
+  payload: TrainRunStatusUpdate
+): Promise<TrainRunStatusRecord> {
+  return mutatePropertyScoped<TrainRunStatusRecord>(
+    `/train-runs/${runId}/status`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
+export function fetchTrainRunEventHistory(
+  propertyCode: PropertyCode,
+  runId: string
+): Promise<TrainRunEventHistoryList> {
+  return fetchPropertyScoped<TrainRunEventHistoryList>(`/train-runs/${runId}/events`, propertyCode);
+}
+
 export function fetchTrainScheduleApprovalHistory(
   propertyCode: PropertyCode,
   scheduleId: string
@@ -572,6 +603,25 @@ export function updateDelayAdditionalInfo(
     "PUT",
     payload
   );
+}
+
+export function deleteDelayAdditionalInfo(
+  propertyCode: PropertyCode,
+  delayId: string
+): Promise<DelayAdditionalInfoDeleteResult> {
+  return fetch(`${apiBaseUrl}/delays/${delayId}/additional-info`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${developmentToken}`,
+      "X-Property": propertyCode
+    }
+  }).then(async (response) => {
+    if (!response.ok) {
+      throw new Error(`request.failed.${response.status}`);
+    }
+
+    return (await response.json()) as DelayAdditionalInfoDeleteResult;
+  });
 }
 
 export function createDelayEvents(

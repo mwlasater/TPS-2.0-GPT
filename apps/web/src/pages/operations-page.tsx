@@ -33,9 +33,12 @@ import type {
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
+  TrainRunEventHistoryList,
   TrainRunImpactSummary,
   TrainScheduleApprovalSummary,
   TrainRunList,
+  TrainRunStatusRecord,
+  TrainRunStatusUpdate,
   TrainScheduleList
 } from "@tps/types";
 import { useEffect, useState } from "react";
@@ -59,8 +62,10 @@ interface OperationsPageProps {
   runs: TrainRunList;
   approvalHistory: TrainRunApprovalHistoryList;
   scheduleApprovalHistory: TrainRunApprovalHistoryList;
+  eventHistory: TrainRunEventHistoryList;
   impactSummary: TrainRunImpactSummary;
   scheduleApprovalSummary: TrainScheduleApprovalSummary;
+  trainRunStatus: TrainRunStatusRecord;
   delayAdditionalInfo: Record<string, DelayAdditionalInfo>;
   delayCommonLocations: DelayCommonLocationList;
   delayTemplates: DelayTemplateList;
@@ -102,6 +107,10 @@ interface OperationsPageProps {
   initializeRuns: (
     request: TrainRunInitializeRequest
   ) => Promise<TrainRunInitializeResult | undefined>;
+  saveRunStatus: (
+    runId: string,
+    update: TrainRunStatusUpdate
+  ) => Promise<TrainRunStatusRecord | undefined>;
   resetRun: (runId: string) => Promise<TrainRun | undefined>;
   deleteRun: (runId: string) => Promise<TrainRunDeleteResult | undefined>;
   saveStop: (
@@ -122,6 +131,9 @@ interface OperationsPageProps {
     delayId: string,
     update: DelayAdditionalInfoUpdate
   ) => Promise<DelayAdditionalInfo | undefined>;
+  clearDelayAdditionalInfo: (
+    delayId: string
+  ) => Promise<{ delayId: string } | undefined>;
   deleteDelay: (
     runId: string,
     delayId: string
@@ -146,8 +158,10 @@ export function OperationsPage({
   runs,
   approvalHistory,
   scheduleApprovalHistory,
+  eventHistory,
   impactSummary,
   scheduleApprovalSummary,
+  trainRunStatus,
   delayAdditionalInfo,
   delayCommonLocations,
   delayTemplates,
@@ -165,12 +179,14 @@ export function OperationsPage({
   saveRunApproval,
   saveBatchRunApproval,
   initializeRuns,
+  saveRunStatus,
   resetRun,
   deleteRun,
   saveStop,
   createDelayBatch,
   createDelayTemplate,
   saveDelayAdditionalInfo,
+  clearDelayAdditionalInfo,
   deleteDelay,
   stationStops,
   source
@@ -178,6 +194,10 @@ export function OperationsPage({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [approvalNotes, setApprovalNotes] = useState("Ready for dispatch closeout.");
   const [initializeDate, setInitializeDate] = useState("2026-03-07");
+  const [runStatusForm, setRunStatusForm] = useState<TrainRunStatusUpdate>({
+    status: trainRunStatus.status,
+    comment: trainRunStatus.comment
+  });
   const canInitializeSchedules = currentUserPermissions.includes("schedules.write");
   const canApproveRuns = currentUserPermissions.includes("runs.approve");
   const canEditRuns = currentUserPermissions.includes("runs.write");
@@ -405,6 +425,13 @@ export function OperationsPage({
     setApprovalNotes(selectedRun?.isApproved ? "Reopened for correction." : "Ready for dispatch closeout.");
   }, [selectedRunId, selectedRun?.isApproved]);
 
+  useEffect(() => {
+    setRunStatusForm({
+      status: trainRunStatus.status,
+      comment: trainRunStatus.comment
+    });
+  }, [trainRunStatus]);
+
   const filteredFareRecords = fareEnforcement.items.filter((record) =>
     fareInspectorFilter
       ? record.inspectorName.toLowerCase().includes(fareInspectorFilter.toLowerCase())
@@ -564,6 +591,46 @@ export function OperationsPage({
                     <span>Schedule delay total</span>
                     <strong>{scheduleApprovalSummary.totalDelayMinutes} min</strong>
                   </article>
+                  <label className="field-stack editor-span">
+                    <span>Run Status</span>
+                    <select
+                      onChange={(event) => {
+                        setRunStatusForm((current) => ({
+                          ...current,
+                          status: event.target.value as TrainRunStatusUpdate["status"]
+                        }));
+                      }}
+                      value={runStatusForm.status}
+                    >
+                      <option value="scheduled">scheduled</option>
+                      <option value="in_progress">in_progress</option>
+                      <option value="delayed">delayed</option>
+                      <option value="approved">approved</option>
+                    </select>
+                  </label>
+                  <label className="field-stack editor-span">
+                    <span>Status Comment</span>
+                    <textarea
+                      onChange={(event) => {
+                        setRunStatusForm((current) => ({ ...current, comment: event.target.value }));
+                      }}
+                      rows={2}
+                      value={runStatusForm.comment}
+                    />
+                  </label>
+                  <button
+                    className="action-button"
+                    disabled={isSaving || !canEditRuns}
+                    onClick={() => {
+                      void runAction(
+                        () => saveRunStatus(selectedRun.id, runStatusForm),
+                        "Run status and comment updated."
+                      );
+                    }}
+                    type="button"
+                  >
+                    Save run status
+                  </button>
                   {selectedRun.approvalBlockers.length ? (
                     <p className="inline-feedback editor-span">{selectedRun.approvalBlockers.join(" ")}</p>
                   ) : null}
@@ -983,6 +1050,19 @@ export function OperationsPage({
                   type="button"
                 >
                   Save delay metadata
+                </button>
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving || !canEditDelays}
+                  onClick={() => {
+                    void runAction(
+                      () => clearDelayAdditionalInfo(selectedDelay.id),
+                      "Delay additional info cleared."
+                    );
+                  }}
+                  type="button"
+                >
+                  Clear delay metadata
                 </button>
               </div>
             </div>
@@ -1918,6 +1998,27 @@ export function OperationsPage({
             ))
           ) : (
             <p>No schedule approval events recorded yet.</p>
+          )}
+        </div>
+      </Panel>
+      <Panel title="Run event history" eyebrow={`${eventHistory.items.length} events`}>
+        <div className="list-stack">
+          {eventHistory.items.length ? (
+            eventHistory.items.map((entry) => (
+              <article className="list-row" key={entry.id}>
+                <div>
+                  <strong>{entry.actorName}</strong>
+                  <p>{entry.action}</p>
+                  <p>{entry.notes}</p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge tone="neutral" label={entry.action} />
+                  <span>{entry.createdAt}</span>
+                </div>
+              </article>
+            ))
+          ) : (
+            <p>No operational events recorded for this run yet.</p>
           )}
         </div>
       </Panel>

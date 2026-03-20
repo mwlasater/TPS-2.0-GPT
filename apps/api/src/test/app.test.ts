@@ -11,6 +11,8 @@ import { resetPermissionGroups } from "../lib/permission-groups.js";
 import { resetReferenceData } from "../lib/reference-data.js";
 import { resetRunDetailData } from "../lib/run-detail-data.js";
 import { resetRunResourceData } from "../lib/run-resource-data.js";
+import { resetTrainRunEventHistoryData } from "../lib/train-run-event-history-data.js";
+import { resetTrainRunStatusData } from "../lib/train-run-status-data.js";
 import { resetUserAdminData } from "../lib/user-admin-data.js";
 
 const env = {
@@ -42,6 +44,8 @@ describe("app contracts", () => {
     resetReferenceData();
     resetRunDetailData();
     resetRunResourceData();
+    resetTrainRunEventHistoryData();
+    resetTrainRunStatusData();
     resetManagedUsers();
     resetUserAdminData();
     resetUserAdminHistoryData();
@@ -1908,6 +1912,71 @@ describe("app contracts", () => {
       scheduleId: "ct-101",
       totalRuns: 1,
       blockedRuns: []
+    });
+  });
+
+  it("returns and updates train run status plus operational event history", async () => {
+    const statusResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/status",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const updateResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/status",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        status: "delayed",
+        comment: "Dispatch is monitoring cascading impacts."
+      }
+    });
+
+    const historyResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/events",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(statusResponse.statusCode).toBe(200);
+    expect(statusResponse.json()).toMatchObject({
+      runId: "caltrain-run-1",
+      status: expect.any(String)
+    });
+    expect(updateResponse.statusCode).toBe(200);
+    expect(updateResponse.json()).toMatchObject({
+      runId: "caltrain-run-1",
+      status: "delayed",
+      comment: "Dispatch is monitoring cascading impacts."
+    });
+    expect(historyResponse.statusCode).toBe(200);
+    expect(historyResponse.json().items[0]).toMatchObject({
+      action: "status-updated"
+    });
+  });
+
+  it("clears delay additional information for authorized property context", async () => {
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/delays/delay-1/additional-info",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      delayId: "delay-1"
     });
   });
 

@@ -10,6 +10,7 @@ import type {
   CrewTemplateList,
   CrewAssignmentUpdate,
   DelayAdditionalInfo,
+  DelayAdditionalInfoDeleteResult,
   DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
   DelayCommonLocation,
@@ -47,8 +48,12 @@ import type {
   TrainRunApprovalHistoryEntry,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
+  TrainRunEventHistoryEntry,
+  TrainRunEventHistoryList,
   TrainRunImpactSummary,
   TrainRunList,
+  TrainRunStatusRecord,
+  TrainRunStatusUpdate,
   TrainScheduleApprovalSummary,
   TrainSchedule,
   TrainScheduleList
@@ -238,6 +243,23 @@ interface TrainRunApprovalHistoryRow {
   created_at: string | Date;
 }
 
+interface TrainRunStatusRow {
+  train_run_id: string;
+  status: TrainRun["status"];
+  status_comment: string;
+  status_updated_at: string | Date | null;
+  status_updated_by: string | null;
+}
+
+interface TrainRunEventHistoryRow {
+  id: string;
+  train_run_id: string;
+  action: TrainRunEventHistoryEntry["action"];
+  actor_name: string;
+  notes: string;
+  created_at: string | Date;
+}
+
 function toIsoDate(value: string | Date): string {
   if (value instanceof Date) {
     return value.toISOString().slice(0, 10);
@@ -318,6 +340,30 @@ export class PostgresOperationsRepository implements OperationsRepository {
     }
 
     return this.getApprovalBlockers(row);
+  }
+
+  private async recordRunEvent(
+    propertyCode: PropertyCode,
+    runId: string,
+    action: TrainRunEventHistoryEntry["action"],
+    actorName: string,
+    notes: string
+  ): Promise<void> {
+    await this.db.query(
+      `
+        INSERT INTO shared.train_run_event_history (
+          id,
+          railroad_code,
+          train_run_id,
+          action,
+          actor_name,
+          notes,
+          created_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      `,
+      [`train-run-event-${crypto.randomUUID()}`, propertyCode, runId, action, actorName, notes]
+    );
   }
 
   async listTrainSchedules(propertyCode: PropertyCode): Promise<TrainScheduleList> {
@@ -546,6 +592,14 @@ export class PostgresOperationsRepository implements OperationsRepository {
       throw new Error("train_run.not_found");
     }
 
+    await this.recordRunEvent(
+      propertyCode,
+      runId,
+      "run-reset",
+      "Local Development User",
+      "Run reset and operational data cleared."
+    );
+
     return {
       id: row.id,
       scheduleId: row.schedule_id,
@@ -562,6 +616,14 @@ export class PostgresOperationsRepository implements OperationsRepository {
 
   async deleteTrainRun(propertyCode: PropertyCode, runId: string): Promise<TrainRunDeleteResult> {
     await this.assertRunMutable(propertyCode, runId);
+
+    await this.recordRunEvent(
+      propertyCode,
+      runId,
+      "run-deleted",
+      "Local Development User",
+      "Run deleted from the operating day."
+    );
 
     await this.db.query("DELETE FROM shared.train_run_approval_history WHERE train_run_id = $1", [runId]);
     await this.db.query("DELETE FROM shared.fare_enforcement WHERE train_run_id = $1", [runId]);
@@ -779,6 +841,122 @@ export class PostgresOperationsRepository implements OperationsRepository {
     );
 
     return deriveTrainRunImpactSummary(run, stationStops, delays, delayAdditionalInfo);
+  }
+
+  async getTrainRunStatus(
+    propertyCode: PropertyCode,
+    runId: string
+  ): Promise<TrainRunStatusRecord> {
+    const result = await this.db.query<TrainRunStatusRow>(
+      `
+        SELECT
+          id AS train_run_id,
+          status,
+          status_comment,
+          status_updated_at,
+          status_updated_by
+        FROM shared.train_run
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, runId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("train_run.not_found");
+    }
+
+    return {
+      runId: row.train_run_id,
+      status: row.status,
+      comment: row.status_comment,
+      updatedAt: row.status_updated_at ? toIsoTimestamp(row.status_updated_at) : null,
+      updatedBy: row.status_updated_by
+    };
+  }
+
+  async updateTrainRunStatus(
+    propertyCode: PropertyCode,
+    runId: string,
+    update: TrainRunStatusUpdate,
+    actorName: string
+  ): Promise<TrainRunStatusRecord> {
+    const result = await this.db.query<TrainRunStatusRow>(
+      `
+        UPDATE shared.train_run
+        SET
+          status = $3,
+          status_comment = $4,
+          status_updated_at = NOW(),
+          status_updated_by = $5
+        WHERE railroad_code = $1
+          AND id = $2
+        RETURNING
+          id AS train_run_id,
+          status,
+          status_comment,
+          status_updated_at,
+          status_updated_by
+      `,
+      [propertyCode, runId, update.status, update.comment, actorName]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("train_run.not_found");
+    }
+
+    await this.recordRunEvent(
+      propertyCode,
+      runId,
+      "status-updated",
+      actorName,
+      update.comment || `Run status updated to ${update.status}.`
+    );
+
+    return {
+      runId: row.train_run_id,
+      status: row.status,
+      comment: row.status_comment,
+      updatedAt: row.status_updated_at ? toIsoTimestamp(row.status_updated_at) : null,
+      updatedBy: row.status_updated_by
+    };
+  }
+
+  async listTrainRunEventHistory(
+    propertyCode: PropertyCode,
+    runId: string
+  ): Promise<TrainRunEventHistoryList> {
+    const result = await this.db.query<TrainRunEventHistoryRow>(
+      `
+        SELECT
+          id,
+          train_run_id,
+          action,
+          actor_name,
+          notes,
+          created_at
+        FROM shared.train_run_event_history
+        WHERE railroad_code = $1
+          AND train_run_id = $2
+        ORDER BY created_at DESC
+      `,
+      [propertyCode, runId]
+    );
+
+    return {
+      items: result.rows.map((row) => ({
+        id: row.id,
+        runId: row.train_run_id,
+        action: row.action,
+        actorName: row.actor_name,
+        notes: row.notes,
+        createdAt: toIsoTimestamp(row.created_at)
+      }))
+    };
   }
 
   async listTrainScheduleApprovalHistory(
@@ -1114,6 +1292,50 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
+  async deleteDelayAdditionalInfo(
+    propertyCode: PropertyCode,
+    delayId: string,
+    actorName: string
+  ): Promise<DelayAdditionalInfoDeleteResult> {
+    const lookup = await this.db.query<{ train_run_id: string }>(
+      `
+        SELECT de.train_run_id
+        FROM shared.delay_event de
+        JOIN shared.train_run tr ON tr.id = de.train_run_id
+        WHERE tr.railroad_code = $1
+          AND de.id = $2
+      `,
+      [propertyCode, delayId]
+    );
+
+    const runId = lookup.rows[0]?.train_run_id;
+    const result = await this.db.query(
+      `
+        DELETE FROM shared.delay_additional_info
+        WHERE delay_id = $1
+      `,
+      [delayId]
+    );
+
+    if (!result.rowCount) {
+      throw new Error("delay_additional_info.not_found");
+    }
+
+    if (runId) {
+      await this.recordRunEvent(
+        propertyCode,
+        runId,
+        "delay-metadata-cleared",
+        actorName,
+        `Delay metadata cleared for ${delayId}.`
+      );
+    }
+
+    return {
+      delayId
+    };
+  }
+
   async updateDelayAdditionalInfo(
     propertyCode: PropertyCode,
     delayId: string,
@@ -1376,6 +1598,14 @@ export class PostgresOperationsRepository implements OperationsRepository {
         WHERE id = $1
       `,
       [runId, delayMinutes]
+    );
+
+    await this.recordRunEvent(
+      propertyCode,
+      runId,
+      "delay-deleted",
+      "Local Development User",
+      `Delay ${delayId} deleted from the run.`
     );
 
     return {

@@ -10,6 +10,7 @@ import type {
   CrewTemplateList,
   CrewAssignmentUpdate,
   DelayAdditionalInfo,
+  DelayAdditionalInfoDeleteResult,
   DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
   DelayCommonLocationList,
@@ -66,8 +67,11 @@ import type {
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
+  TrainRunEventHistoryList,
   TrainScheduleApprovalSummary,
   TrainRunList,
+  TrainRunStatusRecord,
+  TrainRunStatusUpdate,
   TrainScheduleList,
   NotificationUpdate,
   AttendanceExceptionUpdate,
@@ -205,6 +209,20 @@ export interface OperationsRepository {
     propertyCode: PropertyCode,
     runId: string
   ): MaybePromise<TrainRunImpactSummary>;
+  getTrainRunStatus(
+    propertyCode: PropertyCode,
+    runId: string
+  ): MaybePromise<TrainRunStatusRecord>;
+  updateTrainRunStatus(
+    propertyCode: PropertyCode,
+    runId: string,
+    update: TrainRunStatusUpdate,
+    actorName: string
+  ): MaybePromise<TrainRunStatusRecord>;
+  listTrainRunEventHistory(
+    propertyCode: PropertyCode,
+    runId: string
+  ): MaybePromise<TrainRunEventHistoryList>;
   listTrainScheduleApprovalHistory(
     propertyCode: PropertyCode,
     scheduleId: string
@@ -248,6 +266,11 @@ export interface OperationsRepository {
     delayId: string,
     update: DelayAdditionalInfoUpdate
   ): MaybePromise<DelayAdditionalInfo>;
+  deleteDelayAdditionalInfo(
+    propertyCode: PropertyCode,
+    delayId: string,
+    actorName: string
+  ): MaybePromise<DelayAdditionalInfoDeleteResult>;
   createDelayEvents(
     propertyCode: PropertyCode,
     runId: string,

@@ -6,6 +6,7 @@ import type {
   CrewTemplateList,
   CrewAssignmentUpdate,
   DelayAdditionalInfo,
+  DelayAdditionalInfoDeleteResult,
   DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
   DelayCommonLocationList,
@@ -33,8 +34,11 @@ import type {
   TrainRunApprovalHistoryEntry,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
+  TrainRunEventHistoryList,
   TrainRunImpactSummary,
   TrainRunList,
+  TrainRunStatusRecord,
+  TrainRunStatusUpdate,
   TrainScheduleApprovalSummary,
   TrainScheduleList
 } from "@tps/types";
@@ -43,6 +47,7 @@ import { useEffect, useState } from "react";
 import {
   createDelayEvents,
   createDelayFromTemplate,
+  deleteDelayAdditionalInfo,
   deleteDelayEvent,
   deleteTrainRun,
   fetchConsistTemplates,
@@ -63,7 +68,9 @@ import {
   fetchTrainRuns,
   fetchTrainSchedules,
   fetchTrainRunApprovalHistory,
+  fetchTrainRunEventHistory,
   fetchTrainRunImpactSummary,
+  fetchTrainRunStatus,
   fetchTrainScheduleApprovalHistory,
   fetchTrainScheduleApprovalSummary,
   initializeTrainRuns,
@@ -77,7 +84,8 @@ import {
   updateFareEnforcement,
   updateStationStop,
   updateTrainRunApprovalBatch,
-  updateTrainRunApproval
+  updateTrainRunApproval,
+  updateTrainRunStatus
 } from "../lib/api.js";
 import {
   demoConsistEquipment,
@@ -327,8 +335,10 @@ interface OperationsDataState {
   selectedRunId: string | null;
   approvalHistory: TrainRunApprovalHistoryList;
   scheduleApprovalHistory: TrainRunApprovalHistoryList;
+  eventHistory: TrainRunEventHistoryList;
   impactSummary: TrainRunImpactSummary;
   scheduleApprovalSummary: TrainScheduleApprovalSummary;
+  trainRunStatus: TrainRunStatusRecord;
   delayAdditionalInfo: Record<string, DelayAdditionalInfo>;
   delayCommonLocations: DelayCommonLocationList;
   delayTemplates: DelayTemplateList;
@@ -353,6 +363,10 @@ interface OperationsDataState {
   initializeRuns: (
     request: TrainRunInitializeRequest
   ) => Promise<TrainRunInitializeResult | undefined>;
+  saveRunStatus: (
+    runId: string,
+    update: TrainRunStatusUpdate
+  ) => Promise<TrainRunStatusRecord | undefined>;
   resetRun: (runId: string) => Promise<TrainRun | undefined>;
   deleteRun: (runId: string) => Promise<TrainRunDeleteResult | undefined>;
   saveStop: (
@@ -378,6 +392,9 @@ interface OperationsDataState {
     delayId: string,
     update: DelayAdditionalInfoUpdate
   ) => Promise<DelayAdditionalInfo | undefined>;
+  clearDelayAdditionalInfo: (
+    delayId: string
+  ) => Promise<DelayAdditionalInfoDeleteResult | undefined>;
   deleteDelay: (
     runId: string,
     delayId: string
@@ -417,6 +434,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       propertyCode,
       demoTrainRuns[propertyCode].items[0]?.id ?? null
     ),
+    eventHistory: { items: [] },
     impactSummary: deriveImpactSummary(
       demoTrainRuns[propertyCode].items[0],
       demoStationStops[propertyCode],
@@ -433,6 +451,13 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         demoDelayAdditionalInfo[propertyCode]
       )
     ),
+    trainRunStatus: {
+      runId: demoTrainRuns[propertyCode].items[0]?.id ?? "",
+      status: demoTrainRuns[propertyCode].items[0]?.status ?? "scheduled",
+      comment: "",
+      updatedAt: null,
+      updatedBy: null
+    },
     delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
     delayCommonLocations: demoDelayCommonLocations[propertyCode],
     delayTemplates: demoDelayTemplates[propertyCode],
@@ -453,9 +478,11 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     saveRunApproval: async () => undefined,
     saveBatchRunApproval: async () => undefined,
     initializeRuns: async () => undefined,
+    saveRunStatus: async () => undefined,
     resetRun: async () => undefined,
     deleteRun: async () => undefined,
     saveDelayAdditionalInfo: async () => undefined,
+    clearDelayAdditionalInfo: async () => undefined,
     saveStop: async () => undefined,
     saveDelay: async () => undefined,
     createDelayBatch: async () => undefined,
@@ -485,6 +512,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         propertyCode,
         demoTrainRuns[propertyCode].items[0]?.id ?? null
       ),
+      eventHistory: { items: [] },
       impactSummary: deriveImpactSummary(
         demoTrainRuns[propertyCode].items[0],
         demoStationStops[propertyCode],
@@ -501,6 +529,13 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
           demoDelayAdditionalInfo[propertyCode]
         )
       ),
+      trainRunStatus: {
+        runId: demoTrainRuns[propertyCode].items[0]?.id ?? "",
+        status: demoTrainRuns[propertyCode].items[0]?.status ?? "scheduled",
+        comment: "",
+        updatedAt: null,
+        updatedBy: null
+      },
       delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
       delayCommonLocations: demoDelayCommonLocations[propertyCode],
       delayTemplates: demoDelayTemplates[propertyCode],
@@ -521,9 +556,11 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       saveRunApproval: state.saveRunApproval,
       saveBatchRunApproval: state.saveBatchRunApproval,
       initializeRuns: state.initializeRuns,
+      saveRunStatus: state.saveRunStatus,
       resetRun: state.resetRun,
       deleteRun: state.deleteRun,
       saveDelayAdditionalInfo: state.saveDelayAdditionalInfo,
+      clearDelayAdditionalInfo: state.clearDelayAdditionalInfo,
       saveStop: state.saveStop,
       saveDelay: state.saveDelay,
       createDelayBatch: state.createDelayBatch,
@@ -560,7 +597,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         ]) => {
         const selectedRunId = runs.items[0]?.id ?? null;
         const selectedScheduleId = runs.items.find((run) => run.id === selectedRunId)?.scheduleId;
-        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, fareSummary, fareDashboard, impactSummary, scheduleApprovalSummary] = selectedRunId
+        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, fareSummary, fareDashboard, impactSummary, scheduleApprovalSummary, trainRunStatus, eventHistory] = selectedRunId
           ? await Promise.all([
               fetchStationStops(propertyCode, selectedRunId),
               fetchDelayEvents(propertyCode, selectedRunId),
@@ -576,7 +613,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               fetchTrainRunImpactSummary(propertyCode, selectedRunId),
               selectedScheduleId
                 ? fetchTrainScheduleApprovalSummary(propertyCode, selectedScheduleId)
-                : Promise.resolve(getEmptyScheduleApprovalSummary(null))
+                : Promise.resolve(getEmptyScheduleApprovalSummary(null)),
+              fetchTrainRunStatus(propertyCode, selectedRunId),
+              fetchTrainRunEventHistory(propertyCode, selectedRunId)
             ])
           : [
               demoStationStops[propertyCode],
@@ -589,7 +628,15 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               demoFareEnforcementSummary[propertyCode],
               getFallbackFareDashboard(propertyCode, runs),
               getEmptyImpactSummary(selectedRunId),
-              getEmptyScheduleApprovalSummary(null)
+              getEmptyScheduleApprovalSummary(null),
+              {
+                runId: selectedRunId ?? "",
+                status: runs.items[0]?.status ?? "scheduled",
+                comment: "",
+                updatedAt: null,
+                updatedBy: null
+              },
+              { items: [] }
             ];
         const delayAdditionalInfo = Object.fromEntries(
           await Promise.all(
@@ -612,6 +659,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             scheduleApprovalHistory,
             impactSummary,
             scheduleApprovalSummary,
+            trainRunStatus,
+            eventHistory,
             delayAdditionalInfo,
             consist,
             consistTemplates,
@@ -630,9 +679,11 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             saveRunApproval: state.saveRunApproval,
             saveBatchRunApproval: state.saveBatchRunApproval,
             initializeRuns: state.initializeRuns,
+            saveRunStatus: state.saveRunStatus,
             resetRun: state.resetRun,
             deleteRun: state.deleteRun,
             saveDelayAdditionalInfo: state.saveDelayAdditionalInfo,
+            clearDelayAdditionalInfo: state.clearDelayAdditionalInfo,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
             createDelayBatch: state.createDelayBatch,
@@ -663,6 +714,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               propertyCode,
               demoTrainRuns[propertyCode].items[0]?.id ?? null
             ),
+            eventHistory: { items: [] },
             impactSummary: deriveImpactSummary(
               demoTrainRuns[propertyCode].items[0],
               demoStationStops[propertyCode],
@@ -679,6 +731,13 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
                 demoDelayAdditionalInfo[propertyCode]
               )
             ),
+            trainRunStatus: {
+              runId: demoTrainRuns[propertyCode].items[0]?.id ?? "",
+              status: demoTrainRuns[propertyCode].items[0]?.status ?? "scheduled",
+              comment: "",
+              updatedAt: null,
+              updatedBy: null
+            },
             delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
             delayCommonLocations: demoDelayCommonLocations[propertyCode],
             delayTemplates: demoDelayTemplates[propertyCode],
@@ -699,9 +758,11 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             saveRunApproval: state.saveRunApproval,
             saveBatchRunApproval: state.saveBatchRunApproval,
             initializeRuns: state.initializeRuns,
+            saveRunStatus: state.saveRunStatus,
             resetRun: state.resetRun,
             deleteRun: state.deleteRun,
             saveDelayAdditionalInfo: state.saveDelayAdditionalInfo,
+            clearDelayAdditionalInfo: state.clearDelayAdditionalInfo,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
             createDelayBatch: state.createDelayBatch,
@@ -731,7 +792,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
 
     try {
       const scheduleId = state.runs.items.find((run) => run.id === runId)?.scheduleId;
-      const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, impactSummary, scheduleApprovalSummary] = await Promise.all([
+      const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, impactSummary, scheduleApprovalSummary, trainRunStatus, eventHistory] = await Promise.all([
         fetchStationStops(propertyCode, runId),
         fetchDelayEvents(propertyCode, runId),
         fetchConsistEquipment(propertyCode, runId),
@@ -744,7 +805,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         fetchTrainRunImpactSummary(propertyCode, runId),
         scheduleId
           ? fetchTrainScheduleApprovalSummary(propertyCode, scheduleId)
-          : Promise.resolve(getEmptyScheduleApprovalSummary(null))
+          : Promise.resolve(getEmptyScheduleApprovalSummary(null)),
+        fetchTrainRunStatus(propertyCode, runId),
+        fetchTrainRunEventHistory(propertyCode, runId)
       ]);
       const delayAdditionalInfo = Object.fromEntries(
         await Promise.all(
@@ -765,8 +828,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         fareEnforcement,
         approvalHistory,
         scheduleApprovalHistory,
+        eventHistory,
         impactSummary,
         scheduleApprovalSummary,
+        trainRunStatus,
         delayAdditionalInfo,
         source: "api",
         isLoading: false
@@ -784,6 +849,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         fareEnforcement: demoFareEnforcement[propertyCode],
         approvalHistory: getFallbackApprovalHistory(propertyCode, runId),
         scheduleApprovalHistory: getFallbackApprovalHistory(propertyCode, runId),
+        eventHistory: { items: [] },
         impactSummary: deriveImpactSummary(
           demoTrainRuns[propertyCode].items.find((run) => run.id === runId),
           demoStationStops[propertyCode],
@@ -800,6 +866,14 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             demoDelayAdditionalInfo[propertyCode]
           )
         ),
+        trainRunStatus: {
+          runId,
+          status:
+            demoTrainRuns[propertyCode].items.find((run) => run.id === runId)?.status ?? "scheduled",
+          comment: "",
+          updatedAt: null,
+          updatedBy: null
+        },
         fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
         fareSummary: demoFareEnforcementSummary[propertyCode],
         source: "fallback",
@@ -932,6 +1006,32 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       }
 
       return result;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function saveRunStatus(runId: string, update: TrainRunStatusUpdate) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const [record, eventHistory] = await Promise.all([
+        updateTrainRunStatus(propertyCode, runId, update),
+        fetchTrainRunEventHistory(propertyCode, runId)
+      ]);
+      setState((current) => ({
+        ...current,
+        trainRunStatus: record,
+        eventHistory,
+        runs: {
+          items: current.runs.items.map((item) =>
+            item.id === runId ? { ...item, status: update.status } : item
+          )
+        },
+        isSaving: false
+      }));
+      return record;
     } catch (error) {
       setState((current) => ({ ...current, isSaving: false }));
       throw error;
@@ -1075,6 +1175,41 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         isSaving: false
       }));
       return next;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function clearDelayMetadata(delayId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const result = await deleteDelayAdditionalInfo(propertyCode, delayId);
+
+      if (state.selectedRunId) {
+        const [delayAdditionalInfo, eventHistory, impactSummary] = await Promise.all([
+          Promise.resolve(
+            Object.fromEntries(
+              Object.entries(state.delayAdditionalInfo).filter(([id]) => id !== delayId)
+            )
+          ),
+          fetchTrainRunEventHistory(propertyCode, state.selectedRunId),
+          fetchTrainRunImpactSummary(propertyCode, state.selectedRunId)
+        ]);
+
+        setState((current) => ({
+          ...current,
+          delayAdditionalInfo,
+          eventHistory,
+          impactSummary,
+          isSaving: false
+        }));
+      } else {
+        setState((current) => ({ ...current, isSaving: false }));
+      }
+
+      return result;
     } catch (error) {
       setState((current) => ({ ...current, isSaving: false }));
       throw error;
@@ -1369,11 +1504,13 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     saveRunApproval,
     saveBatchRunApproval,
     initializeRuns: initializeRunsForDate,
+    saveRunStatus,
     resetRun,
     deleteRun: removeRun,
     saveStop,
     saveDelay,
     saveDelayAdditionalInfo: saveDelayMetadata,
+    clearDelayAdditionalInfo: clearDelayMetadata,
     createDelayBatch,
     createDelayTemplate,
     deleteDelay: removeDelay,

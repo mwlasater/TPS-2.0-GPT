@@ -224,6 +224,38 @@ export const trainScheduleApprovalSummarySchema = z.object({
   blockedRuns: z.array(scheduleApprovalBlockedRunSummarySchema)
 });
 
+export const trainRunStatusRecordSchema = z.object({
+  runId: z.string(),
+  status: z.enum(["scheduled", "in_progress", "approved", "delayed"]),
+  comment: z.string(),
+  updatedAt: z.string().nullable(),
+  updatedBy: z.string().nullable()
+});
+
+export const trainRunStatusUpdateSchema = z.object({
+  status: z.enum(["scheduled", "in_progress", "approved", "delayed"]),
+  comment: z.string()
+});
+
+export const trainRunEventHistoryEntrySchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  action: z.enum([
+    "status-updated",
+    "run-reset",
+    "run-deleted",
+    "delay-deleted",
+    "delay-metadata-cleared"
+  ]),
+  actorName: z.string(),
+  notes: z.string(),
+  createdAt: z.string()
+});
+
+export const trainRunEventHistoryListSchema = z.object({
+  items: z.array(trainRunEventHistoryEntrySchema)
+});
+
 export const trainRunInitializeRequestSchema = z.object({
   operatingDate: z.string().min(1),
   scheduleIds: z.array(z.string().min(1)).min(1)
@@ -388,6 +420,10 @@ export const delayAdditionalInfoUpdateSchema = z.object({
   workOrderId: z.string().nullable(),
   mechanicalNotes: z.string(),
   passengerImpactSummary: z.string()
+});
+
+export const delayAdditionalInfoDeleteResultSchema = z.object({
+  delayId: z.string()
 });
 
 export const delayEventUpdateSchema = z.object({

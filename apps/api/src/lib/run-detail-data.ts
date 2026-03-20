@@ -1,5 +1,6 @@
 import type {
   DelayAdditionalInfo,
+  DelayAdditionalInfoDeleteResult,
   DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
   DelayCommonLocationUpdate,
@@ -388,6 +389,23 @@ export function updateDelayAdditionalInfo(
   getDelayAdditionalInfoCatalog(propertyCode)[delayId] = next;
 
   return next;
+}
+
+export function deleteDelayAdditionalInfo(
+  propertyCode: PropertyCode,
+  delayId: string
+): DelayAdditionalInfoDeleteResult {
+  const catalog = getDelayAdditionalInfoCatalog(propertyCode);
+
+  if (!catalog[delayId]) {
+    throw new Error("delay_additional_info.not_found");
+  }
+
+  delete catalog[delayId];
+
+  return {
+    delayId
+  };
 }
 
 export function createDelayEvents(

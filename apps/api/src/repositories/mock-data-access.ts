@@ -42,6 +42,7 @@ import { listReportConfig, updateReportConfig } from "../lib/report-config.js";
 import {
   createDelayFromTemplate,
   createDelayEvents,
+  deleteDelayAdditionalInfo,
   deleteDelayEvent,
   deleteRunDetailState,
   getDelayAdditionalInfo,
@@ -80,6 +81,16 @@ import {
   deriveTrainRunImpactSummary,
   deriveTrainScheduleApprovalSummary
 } from "../lib/run-impact-data.js";
+import {
+  deleteTrainRunStatus,
+  getTrainRunStatus,
+  syncTrainRunStatusFromRuns,
+  updateTrainRunStatus
+} from "../lib/train-run-status-data.js";
+import {
+  listTrainRunEventHistory,
+  recordTrainRunEventHistory
+} from "../lib/train-run-event-history-data.js";
 import {
   createManagedUserDetail,
   executeUserAdminAction,
@@ -190,29 +201,57 @@ export function createMockDataAccess(): DataAccess {
     },
     operations: {
       listTrainSchedules,
-      listTrainRuns,
-      initializeTrainRuns,
+      listTrainRuns(propertyCode) {
+        const runs = listTrainRuns(propertyCode);
+        syncTrainRunStatusFromRuns(propertyCode, runs);
+        return runs;
+      },
+      initializeTrainRuns(propertyCode, request) {
+        const result = initializeTrainRuns(propertyCode, request);
+        syncTrainRunStatusFromRuns(propertyCode, listTrainRuns(propertyCode));
+        return result;
+      },
       resetTrainRun(propertyCode, runId) {
         assertRunMutable(propertyCode, runId);
         resetRunDetailState(propertyCode, runId);
         resetRunResourceState(propertyCode, runId);
-        return resetTrainRun(propertyCode, runId);
+        const run = resetTrainRun(propertyCode, runId);
+        syncTrainRunStatusFromRuns(propertyCode, listTrainRuns(propertyCode));
+        recordTrainRunEventHistory(
+          propertyCode,
+          runId,
+          "run-reset",
+          "Local Development User",
+          "Run reset and operational data cleared."
+        );
+        return run;
       },
       deleteTrainRun(propertyCode, runId) {
         assertRunMutable(propertyCode, runId);
+        recordTrainRunEventHistory(
+          propertyCode,
+          runId,
+          "run-deleted",
+          "Local Development User",
+          "Run deleted from the operating day."
+        );
         deleteRunDetailState(propertyCode, runId);
         deleteRunResourceState(propertyCode, runId);
         deleteFareEnforcementForRun(propertyCode, runId);
         deleteTrainRunApprovalHistory(propertyCode, runId);
-        return deleteTrainRun(propertyCode, runId);
+        const result = deleteTrainRun(propertyCode, runId);
+        deleteTrainRunStatus(propertyCode, runId);
+        return result;
       },
       updateTrainRunApproval(propertyCode, runId, update, actorName) {
         const run = updateTrainRunApproval(propertyCode, runId, update);
+        syncTrainRunStatusFromRuns(propertyCode, listTrainRuns(propertyCode));
         recordTrainRunApprovalHistory(propertyCode, runId, update, actorName);
         return run;
       },
       updateTrainRunApprovalBatch(propertyCode, update, actorName) {
         const result = updateTrainRunApprovalBatch(propertyCode, update);
+        syncTrainRunStatusFromRuns(propertyCode, listTrainRuns(propertyCode));
 
         for (const run of result.updatedRuns) {
           recordTrainRunApprovalHistory(
@@ -229,6 +268,19 @@ export function createMockDataAccess(): DataAccess {
         return result;
       },
       listTrainRunApprovalHistory,
+      getTrainRunStatus,
+      updateTrainRunStatus(propertyCode, runId, update, actorName) {
+        const record = updateTrainRunStatus(propertyCode, runId, update, actorName);
+        recordTrainRunEventHistory(
+          propertyCode,
+          runId,
+          "status-updated",
+          actorName,
+          update.comment || `Run status updated to ${update.status}.`
+        );
+        return record;
+      },
+      listTrainRunEventHistory,
       getTrainRunImpactSummary(propertyCode, runId) {
         const run = getTrainRun(propertyCode, runId);
         const delays = listDelayEvents(propertyCode, runId);
@@ -288,6 +340,21 @@ export function createMockDataAccess(): DataAccess {
       updateSpecialMovement,
       getDelayAdditionalInfo,
       updateDelayAdditionalInfo,
+      deleteDelayAdditionalInfo(propertyCode, delayId, actorName) {
+        const result = deleteDelayAdditionalInfo(propertyCode, delayId);
+        const runId =
+          listTrainRuns(propertyCode).items.find((run) =>
+            listDelayEvents(propertyCode, run.id).items.some((delay) => delay.id === delayId)
+          )?.id ?? "unknown-run";
+        recordTrainRunEventHistory(
+          propertyCode,
+          runId,
+          "delay-metadata-cleared",
+          actorName,
+          `Delay metadata cleared for ${delayId}.`
+        );
+        return result;
+      },
       createDelayFromTemplate(propertyCode, runId, input) {
         assertRunMutable(propertyCode, runId);
         return createDelayFromTemplate(propertyCode, runId, input);
@@ -298,7 +365,15 @@ export function createMockDataAccess(): DataAccess {
       },
       deleteDelayEvent(propertyCode, runId, delayId) {
         assertRunMutable(propertyCode, runId);
-        return deleteDelayEvent(propertyCode, runId, delayId);
+        const result = deleteDelayEvent(propertyCode, runId, delayId);
+        recordTrainRunEventHistory(
+          propertyCode,
+          runId,
+          "delay-deleted",
+          "Local Development User",
+          `Delay ${delayId} deleted from the run.`
+        );
+        return result;
       },
       updateDelayEvent(propertyCode, runId, delayId, update) {
         assertRunMutable(propertyCode, runId);
