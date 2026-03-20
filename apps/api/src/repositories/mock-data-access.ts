@@ -73,11 +73,16 @@ import {
 import {
   createManagedUserDetail,
   executeUserAdminAction,
+  getUserAdminActionSummary,
   getManagedUserDetail,
   listUserAdminActions,
   updateManagedUserPermissionGroups,
   updateManagedUserPropertyAccess
 } from "../lib/user-admin-data.js";
+import {
+  listUserAdminHistory,
+  recordUserAdminHistory
+} from "../lib/user-admin-history-data.js";
 
 import type { DataAccess } from "./contracts.js";
 
@@ -103,11 +108,54 @@ export function createMockDataAccess(): DataAccess {
     },
     users: {
       listUsers: listManagedUsers,
-      createUser: createManagedUserDetail,
+      createUser(propertyCode, input, actorName) {
+        const detail = createManagedUserDetail(propertyCode, input);
+        recordUserAdminHistory(
+          propertyCode,
+          detail.id,
+          "invite-user",
+          actorName,
+          "Invitation sent on 2026-03-20"
+        );
+        return detail;
+      },
       getUserDetail: getManagedUserDetail,
-      executeUserAdminAction,
-      updateUserPropertyAccess: updateManagedUserPropertyAccess,
-      updateUserPermissionGroups: updateManagedUserPermissionGroups,
+      listUserAdminHistory(userId, propertyCode) {
+        return listUserAdminHistory(propertyCode, userId);
+      },
+      executeUserAdminAction(userId, propertyCode, actionId, actorName) {
+        const detail = executeUserAdminAction(userId, propertyCode, actionId);
+        recordUserAdminHistory(
+          propertyCode,
+          userId,
+          actionId,
+          actorName,
+          getUserAdminActionSummary(actionId)
+        );
+        return detail;
+      },
+      updateUserPropertyAccess(userId, propertyCode, update, actorName) {
+        const detail = updateManagedUserPropertyAccess(userId, propertyCode, update);
+        recordUserAdminHistory(
+          propertyCode,
+          userId,
+          "property-access-updated",
+          actorName,
+          `Property access updated to ${update.propertyAccess.join(", ")}`
+        );
+        return detail;
+      },
+      updateUserPermissionGroups(userId, propertyCode, update, actorName) {
+        const detail = updateManagedUserPermissionGroups(userId, propertyCode, update);
+        recordUserAdminHistory(
+          propertyCode,
+          userId,
+          "permission-groups-updated",
+          actorName,
+          `Permission groups updated to ${update.groups.join(", ")}`
+        );
+        return detail;
+      },
       listUserAdminActions(_propertyCode, actorPermissions) {
         return listUserAdminActions(actorPermissions);
       },

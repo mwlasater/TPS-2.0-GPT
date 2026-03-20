@@ -130,6 +130,7 @@ export function App() {
                 userAdminData.isSaving
               }
               managedUserActions={userAdminData.actions}
+              managedUserHistory={userAdminData.history}
               managedUserDetail={userAdminData.detail}
               notifications={platformData.notifications}
               personnel={baselineData.personnel}

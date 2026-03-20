@@ -11,6 +11,8 @@ import type {
   ManagedUserCreate,
   ManagedUserDetail,
   ManagedUserList,
+  UserAdminHistoryEntry,
+  UserAdminHistoryList,
   PersonnelRecord,
   PersonnelRecordList,
   PersonnelStatusUpdate,
@@ -29,6 +31,7 @@ import { listPersonnelRecords } from "../lib/personnel-data.js";
 import { listPermissionGroups } from "../lib/permission-groups.js";
 import {
   getManagedUserDetail,
+  getUserAdminActionSummary,
   getUserAdminActionPermission,
   listUserAdminActions
 } from "../lib/user-admin-data.js";
@@ -93,6 +96,15 @@ interface UserAdminActionRow {
   style: UserAdminAction["style"];
 }
 
+interface UserAdminHistoryRow {
+  id: string;
+  user_id: string;
+  action_name: string;
+  actor_name: string;
+  summary_text: string;
+  created_at: string | Date;
+}
+
 function toIsoTimestamp(value: string | Date | null): string {
   if (!value) {
     return "";
@@ -115,6 +127,27 @@ function toIsoDate(value: string | Date): string {
 
 export class PostgresUsersRepository implements UserRepository {
   constructor(private readonly db: Queryable) {}
+
+  private async recordUserAdminHistory(
+    userId: string,
+    action: string,
+    actorName: string,
+    summary: string
+  ): Promise<void> {
+    await this.db.query(
+      `
+        INSERT INTO shared.user_admin_history (
+          id,
+          user_id,
+          action_name,
+          actor_name,
+          summary_text
+        )
+        VALUES ($1, $2, $3, $4, $5)
+      `,
+      [randomUUID(), userId, action, actorName, summary]
+    );
+  }
 
   private async buildUserDetail(userId: string): Promise<ManagedUserDetail | null> {
     const detailResult = await this.db.query<ManagedUserDetailRow>(
@@ -211,7 +244,8 @@ export class PostgresUsersRepository implements UserRepository {
 
   async createUser(
     propertyCode: PropertyCode,
-    input: ManagedUserCreate
+    input: ManagedUserCreate,
+    actorName: string
   ): Promise<ManagedUserDetail> {
     const userId = `user-${randomUUID()}`;
 
@@ -255,6 +289,13 @@ export class PostgresUsersRepository implements UserRepository {
         );
       }
 
+      await this.recordUserAdminHistory(
+        userId,
+        "invite-user",
+        actorName,
+        "Invitation sent on 2026-03-20"
+      );
+
       await this.db.query("COMMIT");
     } catch (error) {
       await this.db.query("ROLLBACK");
@@ -282,10 +323,59 @@ export class PostgresUsersRepository implements UserRepository {
     return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
   }
 
+  async listUserAdminHistory(
+    userId: string,
+    propertyCode: PropertyCode
+  ): Promise<UserAdminHistoryList> {
+    const accessResult = await this.db.query<{ user_id: string }>(
+      `
+        SELECT user_id
+        FROM shared.user_property_access
+        WHERE user_id = $1
+          AND railroad_code = $2
+      `,
+      [userId, propertyCode]
+    );
+
+    if (!accessResult.rows[0]) {
+      return { items: [] };
+    }
+
+    const result = await this.db.query<UserAdminHistoryRow>(
+      `
+        SELECT
+          id,
+          user_id,
+          action_name,
+          actor_name,
+          summary_text,
+          created_at
+        FROM shared.user_admin_history
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+      `,
+      [userId]
+    );
+
+    return {
+      items: result.rows.map(
+        (row): UserAdminHistoryEntry => ({
+          id: row.id,
+          userId: row.user_id,
+          action: row.action_name,
+          actorName: row.actor_name,
+          summary: row.summary_text,
+          createdAt: toIsoTimestamp(row.created_at)
+        })
+      )
+    };
+  }
+
   async executeUserAdminAction(
     userId: string,
     propertyCode: PropertyCode,
-    actionId: string
+    actionId: string,
+    actorName: string
   ): Promise<ManagedUserDetail> {
     const status =
       actionId === "disable-user"
@@ -321,13 +411,16 @@ export class PostgresUsersRepository implements UserRepository {
       [userId, status, lastAction]
     );
 
+    await this.recordUserAdminHistory(userId, actionId, actorName, getUserAdminActionSummary(actionId));
+
     return (await this.getUserDetail(userId, propertyCode)) ?? getManagedUserDetail(userId, propertyCode);
   }
 
   async updateUserPropertyAccess(
     userId: string,
     propertyCode: PropertyCode,
-    update: UserPropertyAccessUpdate
+    update: UserPropertyAccessUpdate,
+    actorName: string
   ): Promise<ManagedUserDetail> {
     await this.db.query("BEGIN");
 
@@ -339,6 +432,12 @@ export class PostgresUsersRepository implements UserRepository {
           SELECT $1, UNNEST($2::TEXT[])
         `,
         [userId, update.propertyAccess]
+      );
+      await this.recordUserAdminHistory(
+        userId,
+        "property-access-updated",
+        actorName,
+        `Property access updated to ${update.propertyAccess.join(", ")}`
       );
       await this.db.query("COMMIT");
     } catch (error) {
@@ -352,7 +451,8 @@ export class PostgresUsersRepository implements UserRepository {
   async updateUserPermissionGroups(
     userId: string,
     propertyCode: PropertyCode,
-    update: UserPermissionGroupUpdate
+    update: UserPermissionGroupUpdate,
+    actorName: string
   ): Promise<ManagedUserDetail> {
     await this.db.query(
       `
@@ -377,6 +477,13 @@ export class PostgresUsersRepository implements UserRepository {
         [userId, propertyCode, update.groups]
       );
     }
+
+    await this.recordUserAdminHistory(
+      userId,
+      "permission-groups-updated",
+      actorName,
+      `Permission groups updated to ${update.groups.join(", ")}`
+    );
 
     return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
   }

@@ -31,6 +31,7 @@ import type {
   JobProfileList,
   JobProfileUpdate,
   ManagedUserCreate,
+  UserAdminHistoryList,
   ManagedUserDetail,
   ManagedUserList,
   NotificationList,
@@ -163,6 +164,13 @@ export function fetchManagedUserDetail(
   userId: string
 ): Promise<ManagedUserDetail> {
   return fetchPropertyScoped<ManagedUserDetail>(`/users/${userId}`, propertyCode);
+}
+
+export function fetchUserAdminHistory(
+  propertyCode: PropertyCode,
+  userId: string
+): Promise<UserAdminHistoryList> {
+  return fetchPropertyScoped<UserAdminHistoryList>(`/users/${userId}/history`, propertyCode);
 }
 
 export function updateManagedUserPropertyAccess(

@@ -136,6 +136,19 @@ export interface UserAdminActionList {
   items: UserAdminAction[];
 }
 
+export interface UserAdminHistoryEntry {
+  id: string;
+  userId: string;
+  action: string;
+  actorName: string;
+  summary: string;
+  createdAt: string;
+}
+
+export interface UserAdminHistoryList {
+  items: UserAdminHistoryEntry[];
+}
+
 export interface ReferenceDataset {
   delayReasons: string[];
   crewRoles: string[];

@@ -134,6 +134,19 @@ export const userAdminActionListSchema = z.object({
   items: z.array(userAdminActionSchema)
 });
 
+export const userAdminHistoryEntrySchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  action: z.string(),
+  actorName: z.string(),
+  summary: z.string(),
+  createdAt: z.string()
+});
+
+export const userAdminHistoryListSchema = z.object({
+  items: z.array(userAdminHistoryEntrySchema)
+});
+
 export const referenceDatasetSchema = z.object({
   delayReasons: z.array(z.string()),
   crewRoles: z.array(z.string()),

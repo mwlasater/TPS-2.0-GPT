@@ -1,4 +1,5 @@
 import type {
+  UserAdminHistoryList,
   ManagedUserDetail,
   ManagedUserList,
   PropertyCode,
@@ -11,14 +12,20 @@ import { useEffect, useState } from "react";
 import {
   executeUserAdminAction,
   fetchManagedUserDetail,
+  fetchUserAdminHistory,
   fetchUserAdminActions,
   updateManagedUserPermissionGroups,
   updateManagedUserPropertyAccess
 } from "../lib/api.js";
-import { demoUserAdminActions, getDemoUserDetail } from "../lib/session.js";
+import {
+  demoUserAdminActions,
+  getDemoUserAdminHistory,
+  getDemoUserDetail
+} from "../lib/session.js";
 
 interface UserAdminDataState {
   detail: ManagedUserDetail;
+  history: UserAdminHistoryList;
   actions: UserAdminActionList;
   source: "api" | "fallback";
   isLoading: boolean;
@@ -35,6 +42,7 @@ export function useUserAdminData(
 ): UserAdminDataState {
   const [state, setState] = useState<UserAdminDataState>({
     detail: getDemoUserDetail(propertyCode, userId),
+    history: getDemoUserAdminHistory(propertyCode, userId),
     actions: demoUserAdminActions,
     source: "fallback",
     isLoading: true,
@@ -52,6 +60,7 @@ export function useUserAdminData(
 
     setState({
       detail: getDemoUserDetail(propertyCode, selectedUserId),
+      history: getDemoUserAdminHistory(propertyCode, selectedUserId),
       actions: demoUserAdminActions,
       source: "fallback",
       isLoading: true,
@@ -63,12 +72,14 @@ export function useUserAdminData(
 
     void Promise.all([
       fetchManagedUserDetail(propertyCode, selectedUserId),
+      fetchUserAdminHistory(propertyCode, selectedUserId),
       fetchUserAdminActions(propertyCode, selectedUserId)
     ])
-      .then(([detail, actions]) => {
+      .then(([detail, history, actions]) => {
         if (isMounted) {
           setState({
             detail,
+            history,
             actions,
             source: "api",
             isLoading: false,
@@ -83,6 +94,7 @@ export function useUserAdminData(
         if (isMounted) {
           setState({
             detail: getDemoUserDetail(propertyCode, selectedUserId),
+            history: getDemoUserAdminHistory(propertyCode, selectedUserId),
             actions: demoUserAdminActions,
             source: "fallback",
             isLoading: false,
@@ -104,9 +116,11 @@ export function useUserAdminData(
 
     try {
       const detail = await updateManagedUserPropertyAccess(propertyCode, userId, update);
+      const history = await fetchUserAdminHistory(propertyCode, userId);
       setState((current) => ({
         ...current,
         detail,
+        history,
         source: "api",
         isSaving: false
       }));
@@ -121,9 +135,11 @@ export function useUserAdminData(
 
     try {
       const detail = await updateManagedUserPermissionGroups(propertyCode, userId, update);
+      const history = await fetchUserAdminHistory(propertyCode, userId);
       setState((current) => ({
         ...current,
         detail,
+        history,
         source: "api",
         isSaving: false
       }));
@@ -138,9 +154,11 @@ export function useUserAdminData(
 
     try {
       const detail = await executeUserAdminAction(propertyCode, userId, actionId);
+      const history = await fetchUserAdminHistory(propertyCode, userId);
       setState((current) => ({
         ...current,
         detail,
+        history,
         source: "api",
         isSaving: false
       }));

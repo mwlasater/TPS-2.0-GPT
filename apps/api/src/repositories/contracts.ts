@@ -24,6 +24,7 @@ import type {
   ManagedUserDetail,
   ManagedUserCreate,
   ManagedUserList,
+  UserAdminHistoryList,
   NotificationItem,
   NotificationList,
   PersonnelRecord,
@@ -90,23 +91,31 @@ export interface UserRepository {
   listUsers(propertyCode: PropertyCode): MaybePromise<ManagedUserList>;
   createUser(
     propertyCode: PropertyCode,
-    input: ManagedUserCreate
+    input: ManagedUserCreate,
+    actorName: string
   ): MaybePromise<ManagedUserDetail>;
   getUserDetail(userId: string, propertyCode: PropertyCode): MaybePromise<ManagedUserDetail>;
+  listUserAdminHistory(
+    userId: string,
+    propertyCode: PropertyCode
+  ): MaybePromise<UserAdminHistoryList>;
   executeUserAdminAction(
     userId: string,
     propertyCode: PropertyCode,
-    actionId: string
+    actionId: string,
+    actorName: string
   ): MaybePromise<ManagedUserDetail>;
   updateUserPropertyAccess(
     userId: string,
     propertyCode: PropertyCode,
-    update: UserPropertyAccessUpdate
+    update: UserPropertyAccessUpdate,
+    actorName: string
   ): MaybePromise<ManagedUserDetail>;
   updateUserPermissionGroups(
     userId: string,
     propertyCode: PropertyCode,
-    update: UserPermissionGroupUpdate
+    update: UserPermissionGroupUpdate,
+    actorName: string
   ): MaybePromise<ManagedUserDetail>;
   listUserAdminActions(
     propertyCode: PropertyCode,

@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { buildApp } from "../app.js";
 import { resetManagedUsers } from "../lib/managed-users.js";
 import { resetApprovalHistoryData } from "../lib/approval-history-data.js";
+import { resetUserAdminHistoryData } from "../lib/user-admin-history-data.js";
 import { resetFareEnforcementData } from "../lib/fare-enforcement-data.js";
 import { resetOperationsData } from "../lib/operations-data.js";
 import { resetPersonnelData } from "../lib/personnel-data.js";
@@ -41,6 +42,7 @@ describe("app contracts", () => {
     resetRunResourceData();
     resetManagedUsers();
     resetUserAdminData();
+    resetUserAdminHistoryData();
   }
 
   beforeAll(async () => {
@@ -586,6 +588,24 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns managed user admin history for authorized property context", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/users/ops-manager/history",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().items[0]).toMatchObject({
+      userId: "ops-manager",
+      action: "reset-password",
+      actorName: "Jordan Reyes"
+    });
+  });
+
   it("creates managed users for the current property scope", async () => {
     const response = await app.inject({
       method: "POST",
@@ -612,6 +632,58 @@ describe("app contracts", () => {
       groups: ["Reporting Admin"],
       lastAction: "Invitation sent on 2026-03-20"
     });
+  });
+
+  it("records audit history for managed user invite and admin actions", async () => {
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        displayName: "Morgan Lee",
+        email: "morgan.lee@herzog.com",
+        roleLabel: "Operations Analyst",
+        propertyAccess: ["caltrain"],
+        groups: ["Reporting Admin"]
+      }
+    });
+
+    const createdUserId = createResponse.json().id as string;
+
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/users/${createdUserId}/actions/resend-invite`,
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const historyResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/users/${createdUserId}/history`,
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(historyResponse.statusCode).toBe(200);
+    expect(historyResponse.json().items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: "invite-user",
+          actorName: "Local Development User"
+        }),
+        expect.objectContaining({
+          action: "resend-invite",
+          actorName: "Local Development User"
+        })
+      ])
+    );
   });
 
   it("executes managed user admin actions", async () => {

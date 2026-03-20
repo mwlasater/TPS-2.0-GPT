@@ -42,6 +42,7 @@ describe("PostgresUsersRepository", () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [
           {
@@ -69,7 +70,7 @@ describe("PostgresUsersRepository", () => {
       roleLabel: "Operations Analyst",
       propertyAccess: ["caltrain"],
       groups: ["Reporting Admin"]
-    });
+    }, "Local Development User");
 
     expect(user).toEqual({
       id: "user-created",
@@ -100,6 +101,53 @@ describe("PostgresUsersRepository", () => {
       expect.stringContaining("INSERT INTO shared.user_permission_group"),
       [expect.stringMatching(/^user-/), "caltrain", ["Reporting Admin"]]
     );
+    expect(query).toHaveBeenNthCalledWith(
+      5,
+      expect.stringContaining("INSERT INTO shared.user_admin_history"),
+      [
+        expect.any(String),
+        expect.stringMatching(/^user-/),
+        "invite-user",
+        "Local Development User",
+        "Invitation sent on 2026-03-20"
+      ]
+    );
+  });
+
+  it("maps user admin history rows into entries", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [{ user_id: "ops-manager" }]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "user-history-1",
+            user_id: "ops-manager",
+            action_name: "reset-password",
+            actor_name: "Jordan Reyes",
+            summary_text: "Password reset sent on 2026-03-01",
+            created_at: new Date("2026-03-01T08:15:00Z")
+          }
+        ]
+      });
+
+    const repository = new PostgresUsersRepository({ query });
+    const history = await repository.listUserAdminHistory("ops-manager", "caltrain");
+
+    expect(history).toEqual({
+      items: [
+        {
+          id: "user-history-1",
+          userId: "ops-manager",
+          action: "reset-password",
+          actorName: "Jordan Reyes",
+          summary: "Password reset sent on 2026-03-01",
+          createdAt: "2026-03-01T08:15:00.000Z"
+        }
+      ]
+    });
   });
 
   it("maps user detail rows into a managed user detail payload", async () => {
@@ -251,6 +299,7 @@ describe("PostgresUsersRepository", () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [
           {
@@ -274,7 +323,7 @@ describe("PostgresUsersRepository", () => {
     const repository = new PostgresUsersRepository({ query });
     const user = await repository.updateUserPropertyAccess("ops-manager", "caltrain", {
       propertyAccess: ["caltrain", "tre"]
-    });
+    }, "Local Development User");
 
     expect(user).toEqual({
       id: "ops-manager",
@@ -297,6 +346,7 @@ describe("PostgresUsersRepository", () => {
   it("updates user permission groups for a property and returns refreshed detail", async () => {
     const query = vi
       .fn()
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
@@ -322,7 +372,7 @@ describe("PostgresUsersRepository", () => {
     const repository = new PostgresUsersRepository({ query });
     const user = await repository.updateUserPermissionGroups("ops-manager", "caltrain", {
       groups: ["Dispatch Leadership"]
-    });
+    }, "Local Development User");
 
     expect(user).toEqual({
       id: "ops-manager",
@@ -373,6 +423,7 @@ describe("PostgresUsersRepository", () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [{ user_id: "ops-manager" }]
       })
@@ -397,7 +448,12 @@ describe("PostgresUsersRepository", () => {
       });
 
     const repository = new PostgresUsersRepository({ query });
-    const user = await repository.executeUserAdminAction("ops-manager", "caltrain", "disable-user");
+    const user = await repository.executeUserAdminAction(
+      "ops-manager",
+      "caltrain",
+      "disable-user",
+      "Local Development User"
+    );
 
     expect(user).toEqual({
       id: "ops-manager",
@@ -415,6 +471,7 @@ describe("PostgresUsersRepository", () => {
   it("executes enable-user admin actions and returns refreshed detail", async () => {
     const query = vi
       .fn()
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [{ user_id: "ops-manager" }]
@@ -440,7 +497,12 @@ describe("PostgresUsersRepository", () => {
       });
 
     const repository = new PostgresUsersRepository({ query });
-    const user = await repository.executeUserAdminAction("ops-manager", "caltrain", "enable-user");
+    const user = await repository.executeUserAdminAction(
+      "ops-manager",
+      "caltrain",
+      "enable-user",
+      "Local Development User"
+    );
 
     expect(user).toEqual({
       id: "ops-manager",

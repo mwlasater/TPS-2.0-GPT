@@ -9,6 +9,7 @@ import type {
   JobProfileUpdate,
   JobProfileList,
   ManagedUserCreate,
+  UserAdminHistoryList,
   ManagedUserDetail,
   ManagedUserList,
   NotificationUpdate,
@@ -42,6 +43,7 @@ interface SettingsPageProps {
   isSaving: boolean;
   jobProfiles: JobProfileList;
   managedUserActions: UserAdminActionList;
+  managedUserHistory: UserAdminHistoryList;
   managedUserDetail: ManagedUserDetail;
   permissionGroups: PermissionGroupList;
   personnel: PersonnelRecordList;
@@ -81,6 +83,7 @@ export function SettingsPage({
   isSaving,
   jobProfiles,
   managedUserActions,
+  managedUserHistory,
   managedUserDetail,
   personnel,
   notifications,
@@ -351,6 +354,26 @@ export function SettingsPage({
           </div>
         </Panel>
       </div>
+      <Panel title="User admin history" eyebrow={`${managedUserHistory.items.length} events`}>
+        <div className="list-stack">
+          {managedUserHistory.items.length ? (
+            managedUserHistory.items.map((entry) => (
+              <article className="list-row" key={entry.id}>
+                <div>
+                  <strong>{entry.summary}</strong>
+                  <p>{entry.actorName}</p>
+                </div>
+                <div className="list-meta">
+                  <span>{entry.action}</span>
+                  <span>{entry.createdAt}</span>
+                </div>
+              </article>
+            ))
+          ) : (
+            <p>No admin history recorded yet for the selected user.</p>
+          )}
+        </div>
+      </Panel>
       <Panel title="User admin permissions" eyebrow="Current operator">
         <div className="badge-row">
           {currentUserPermissions.length ? (

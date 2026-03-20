@@ -28,8 +28,20 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
     async (request) => {
       await app.requirePermission(request, "users.invite");
       const payload = managedUserCreateSchema.parse(request.body) as ManagedUserCreate;
-      return app.dataAccess.users.createUser(request.property, payload);
+      return app.dataAccess.users.createUser(request.property, payload, request.user.displayName);
     }
+  );
+
+  app.get(
+    "/users/:userId/history",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) =>
+      app.dataAccess.users.listUserAdminHistory(
+        (request.params as { userId: string }).userId,
+        request.property
+      )
   );
 
   app.get(
@@ -69,7 +81,8 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
       return app.dataAccess.users.executeUserAdminAction(
         (request.params as { userId: string; actionId: string }).userId,
         request.property,
-        actionId
+        actionId,
+        request.user.displayName
       );
     }
   );
@@ -85,7 +98,8 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
       return app.dataAccess.users.updateUserPropertyAccess(
         (request.params as { userId: string }).userId,
         request.property,
-        payload
+        payload,
+        request.user.displayName
       );
     }
   );
@@ -102,7 +116,8 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
       return app.dataAccess.users.updateUserPermissionGroups(
         (request.params as { userId: string }).userId,
         request.property,
-        payload
+        payload,
+        request.user.displayName
       );
     }
   );

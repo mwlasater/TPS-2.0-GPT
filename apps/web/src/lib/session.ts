@@ -30,6 +30,7 @@ import type {
   TrainScheduleList,
   UserAdminActionList,
   ManagedUserCreate,
+  UserAdminHistoryList,
   UserSession
 } from "@tps/types";
 
@@ -427,6 +428,43 @@ export const demoUserAdminActions: UserAdminActionList = {
     }
   ]
 };
+
+export function getDemoUserAdminHistory(
+  propertyCode: PropertyCode,
+  userId: string
+): UserAdminHistoryList {
+  if (propertyCode === "caltrain" && userId === "ops-manager") {
+    return {
+      items: [
+        {
+          id: "user-history-ops-manager-1",
+          userId: "ops-manager",
+          action: "reset-password",
+          actorName: "Jordan Reyes",
+          summary: "Password reset sent on 2026-03-01",
+          createdAt: "2026-03-01T08:15:00Z"
+        }
+      ]
+    };
+  }
+
+  if (propertyCode === "caltrain" && userId === "reporting-admin") {
+    return {
+      items: [
+        {
+          id: "user-history-reporting-admin-1",
+          userId: "reporting-admin",
+          action: "resend-invite",
+          actorName: "Casey Morgan",
+          summary: "Invitation resent on 2026-03-05",
+          createdAt: "2026-03-05T17:20:00Z"
+        }
+      ]
+    };
+  }
+
+  return { items: [] };
+}
 
 const commuterReferenceData: ReferenceDataset = {
   delayReasons: ["Mechanical", "Signal delay", "Late crew", "Passenger loading"],

@@ -10,6 +10,7 @@ Initial SQL persistence tooling for TPS 2.0.
 - `migrations/0011_resource_templates.sql`: reusable consist and crew template catalogs for swap workflows
 - `migrations/0012_delay_templates.sql`: reusable delay templates for template-driven delay creation
 - `migrations/0013_personnel_directory.sql`: property-scoped personnel directory records and statuses
+- `migrations/0015_user_admin_history.sql`: persisted user admin audit history for lifecycle and access changes
 - `seeds/0001_bootstrap.sql`: bootstrap property settings plus a small set of schedules and runs
 - `seeds/0002_run_resources.sql`: consist and crew records for seeded train runs
 - `seeds/0003_user_admin.sql`: managed users, property access, permission groups, and memberships
@@ -21,6 +22,7 @@ Initial SQL persistence tooling for TPS 2.0.
 - `seeds/0012_delay_templates.sql`: seeded delay templates for commuter properties
 - `seeds/0013_personnel_directory.sql`: seeded personnel directory records
 - `seeds/0014_user_enable_action.sql`: additive user admin action seed for re-enable workflows
+- `seeds/0015_user_admin_history.sql`: seeded user admin audit history entries
 
 Commands:
 

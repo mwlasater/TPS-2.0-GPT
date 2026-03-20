@@ -221,6 +221,21 @@ export function executeUserAdminAction(
   return getManagedUserDetail(userId, propertyCode);
 }
 
+export function getUserAdminActionSummary(actionId: string): string {
+  switch (actionId) {
+    case "reset-password":
+      return "Password reset sent on 2026-03-13";
+    case "resend-invite":
+      return "Invitation resent on 2026-03-13";
+    case "disable-user":
+      return "User disabled on 2026-03-13";
+    case "enable-user":
+      return "User enabled on 2026-03-20";
+    default:
+      throw new Error("user_admin_action.not_found");
+  }
+}
+
 export function resetUserAdminData(): void {
   for (const userId of Object.keys(userDetails)) {
     delete userDetails[userId];
