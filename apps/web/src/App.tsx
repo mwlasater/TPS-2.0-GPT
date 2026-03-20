@@ -149,6 +149,7 @@ export function App() {
               }}
               currentUserPermissions={currentUserPermissions}
               saveNotification={platformData.saveNotification}
+              savePermissionGroup={adminData.savePermissionGroup}
               savePersonnelStatus={baselineData.savePersonnelStatus}
               savePermissionGroups={userAdminData.savePermissionGroups}
               savePropertyAccess={userAdminData.savePropertyAccess}

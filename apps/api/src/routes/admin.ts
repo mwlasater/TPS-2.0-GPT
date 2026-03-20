@@ -4,6 +4,7 @@ import {
   delayTemplateUpdateSchema,
   jobProfileUpdateSchema,
   notificationUpdateSchema,
+  permissionGroupUpdateSchema,
   personnelStatusUpdateSchema,
   reportConfigUpdateSchema,
   specialMovementUpdateSchema
@@ -15,6 +16,7 @@ import type {
   DelayTemplateUpdate,
   JobProfileUpdate,
   NotificationUpdate,
+  PermissionGroupUpdate,
   PersonnelStatusUpdate,
   ReportConfigUpdate,
   SpecialMovementUpdate
@@ -27,6 +29,22 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => app.dataAccess.users.listPermissionGroups(request.property)
+  );
+
+  app.put(
+    "/permission-groups/:groupId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = permissionGroupUpdateSchema.parse(request.body) as PermissionGroupUpdate;
+      await app.dataAccess.users.updatePermissionGroup(
+        request.property,
+        (request.params as { groupId: string }).groupId,
+        payload
+      );
+      return { ok: true };
+    }
   );
 
   app.get(

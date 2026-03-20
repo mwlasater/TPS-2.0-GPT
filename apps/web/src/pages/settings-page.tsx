@@ -16,6 +16,7 @@ import type {
   NotificationList,
   PersonnelRecordList,
   PersonnelStatusUpdate,
+  PermissionGroupUpdate,
   PermissionGroupList,
   PowerBiEmbedList,
   PropertySettingsUpdate,
@@ -59,6 +60,7 @@ interface SettingsPageProps {
   saveAttendance: (exceptionId: string, update: AttendanceExceptionUpdate) => Promise<void>;
   saveJobProfile: (profileId: string, update: JobProfileUpdate) => Promise<void>;
   saveNotification: (notificationId: string, update: NotificationUpdate) => Promise<void>;
+  savePermissionGroup: (groupId: string, update: PermissionGroupUpdate) => Promise<void>;
   savePersonnelStatus: (personnelId: string, update: PersonnelStatusUpdate) => Promise<void>;
   savePermissionGroups: (update: UserPermissionGroupUpdate) => Promise<void>;
   savePropertyAccess: (update: UserPropertyAccessUpdate) => Promise<void>;
@@ -99,6 +101,7 @@ export function SettingsPage({
   saveAttendance,
   saveJobProfile,
   saveNotification,
+  savePermissionGroup,
   savePersonnelStatus,
   savePermissionGroups,
   savePropertyAccess,
@@ -482,10 +485,10 @@ export function SettingsPage({
         </Panel>
       </div>
       <div className="two-column-grid">
-        <Panel title="Permission groups" eyebrow={`${permissionGroups.items.length} groups`}>
-          <div className="list-stack">
-            {permissionGroups.items.map((group) => (
-              <article className="list-row" key={group.id}>
+      <Panel title="Permission groups" eyebrow={`${permissionGroups.items.length} groups`}>
+        <div className="list-stack">
+          {permissionGroups.items.map((group) => (
+            <article className="list-row" key={group.id}>
                 <div>
                   <strong>{group.name}</strong>
                   <p>{group.description}</p>
@@ -742,6 +745,23 @@ export function SettingsPage({
             </article>
           ))}
         </div>
+        {permissionGroups.items[0] ? (
+          <button
+            type="button"
+            onClick={() =>
+              void runAction(
+                () =>
+                  savePermissionGroup(permissionGroups.items[0]!.id, {
+                    description: `${permissionGroups.items[0]!.description} Includes edit-review workflow.`,
+                    permissions: [...permissionGroups.items[0]!.permissions, "reports.schedule"]
+                  }),
+                "Permission group updated."
+              )
+            }
+          >
+            Expand first permission group
+          </button>
+        ) : null}
       </Panel>
     </div>
   );

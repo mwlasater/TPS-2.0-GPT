@@ -7,6 +7,7 @@ import { resetUserAdminHistoryData } from "../lib/user-admin-history-data.js";
 import { resetFareEnforcementData } from "../lib/fare-enforcement-data.js";
 import { resetOperationsData } from "../lib/operations-data.js";
 import { resetPersonnelData } from "../lib/personnel-data.js";
+import { resetPermissionGroups } from "../lib/permission-groups.js";
 import { resetReferenceData } from "../lib/reference-data.js";
 import { resetRunDetailData } from "../lib/run-detail-data.js";
 import { resetRunResourceData } from "../lib/run-resource-data.js";
@@ -37,6 +38,7 @@ describe("app contracts", () => {
     resetFareEnforcementData();
     resetOperationsData();
     resetPersonnelData();
+    resetPermissionGroups();
     resetReferenceData();
     resetRunDetailData();
     resetRunResourceData();
@@ -246,6 +248,37 @@ describe("app contracts", () => {
     });
     expect(reportResponse.json().items[0]).toMatchObject({
       reportName: "Daily OTP"
+    });
+  });
+
+  it("updates permission groups for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/permission-groups/ops-admin",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        description: "Expanded operational admin coverage.",
+        permissions: ["schedules.write", "runs.approve", "reports.schedule"]
+      }
+    });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/permission-groups",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json().items.find((group: { id: string }) => group.id === "ops-admin")).toMatchObject({
+      description: "Expanded operational admin coverage.",
+      permissions: ["schedules.write", "runs.approve", "reports.schedule"]
     });
   });
 

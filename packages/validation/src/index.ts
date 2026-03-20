@@ -507,6 +507,11 @@ export const permissionGroupListSchema = z.object({
   items: z.array(permissionGroupSchema)
 });
 
+export const permissionGroupUpdateSchema = z.object({
+  description: z.string().min(1),
+  permissions: z.array(z.string().min(1)).min(1)
+});
+
 export const reportConfigRowSchema = z.object({
   id: z.string(),
   reportName: z.string(),

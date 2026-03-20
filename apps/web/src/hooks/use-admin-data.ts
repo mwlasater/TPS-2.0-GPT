@@ -4,6 +4,7 @@ import type {
   DelayTemplateList,
   DelayTemplateUpdate,
   PermissionGroupList,
+  PermissionGroupUpdate,
   PropertyCode,
   ReportConfigList,
   ReportConfigUpdate,
@@ -18,6 +19,7 @@ import {
   fetchAdminSpecialMovements,
   fetchPermissionGroups,
   fetchReportConfig,
+  updatePermissionGroupDefinition,
   updateAdminDelayCommonLocation,
   updateAdminDelayTemplate,
   updateAdminSpecialMovement,
@@ -40,6 +42,7 @@ interface AdminDataState {
   source: "api" | "fallback";
   isLoading: boolean;
   isSaving: boolean;
+  savePermissionGroup: (groupId: string, update: PermissionGroupUpdate) => Promise<void>;
   saveDelayCommonLocation: (locationId: string, update: DelayCommonLocationUpdate) => Promise<void>;
   saveDelayTemplate: (templateId: string, update: DelayTemplateUpdate) => Promise<void>;
   saveReportConfig: (reportId: string, update: ReportConfigUpdate) => Promise<void>;
@@ -56,6 +59,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     source: "fallback",
     isLoading: true,
     isSaving: false,
+    savePermissionGroup: async () => undefined,
     saveDelayCommonLocation: async () => undefined,
     saveDelayTemplate: async () => undefined,
     saveReportConfig: async () => undefined,
@@ -74,6 +78,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
       source: "fallback",
       isLoading: true,
       isSaving: false,
+      savePermissionGroup: state.savePermissionGroup,
       saveDelayCommonLocation: state.saveDelayCommonLocation,
       saveDelayTemplate: state.saveDelayTemplate,
       saveReportConfig: state.saveReportConfig,
@@ -98,6 +103,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             source: "api",
             isLoading: false,
             isSaving: false,
+            savePermissionGroup: state.savePermissionGroup,
             saveDelayCommonLocation: state.saveDelayCommonLocation,
             saveDelayTemplate: state.saveDelayTemplate,
             saveReportConfig: state.saveReportConfig,
@@ -116,6 +122,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             source: "fallback",
             isLoading: false,
             isSaving: false,
+            savePermissionGroup: state.savePermissionGroup,
             saveDelayCommonLocation: state.saveDelayCommonLocation,
             saveDelayTemplate: state.saveDelayTemplate,
             saveReportConfig: state.saveReportConfig,
@@ -128,6 +135,27 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
       isMounted = false;
     };
   }, [propertyCode]);
+
+  async function savePermissionGroup(groupId: string, update: PermissionGroupUpdate): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      await updatePermissionGroupDefinition(propertyCode, groupId, update);
+      setState((current) => ({
+        ...current,
+        permissionGroups: {
+          items: current.permissionGroups.items.map((item) =>
+            item.id === groupId ? { ...item, ...update } : item
+          )
+        },
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("permission_group.update_failed");
+    }
+  }
 
   async function saveReportConfig(reportId: string, update: ReportConfigUpdate): Promise<void> {
     setState((current) => ({ ...current, isSaving: true }));
@@ -219,6 +247,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
 
   return {
     ...state,
+    savePermissionGroup,
     saveDelayCommonLocation,
     saveDelayTemplate,
     saveReportConfig,

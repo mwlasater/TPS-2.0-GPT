@@ -231,6 +231,21 @@ describe("PostgresUsersRepository", () => {
     });
   });
 
+  it("updates permission group definitions", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 1 });
+
+    const repository = new PostgresUsersRepository({ query });
+    await repository.updatePermissionGroup("caltrain", "12", {
+      description: "Expanded operational admin coverage.",
+      permissions: ["schedules.write", "runs.approve", "reports.schedule"]
+    });
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE shared.permission_group"),
+      ["caltrain", "12", "Expanded operational admin coverage.", ["schedules.write", "runs.approve", "reports.schedule"]]
+    );
+  });
+
   it("maps personnel record rows", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [

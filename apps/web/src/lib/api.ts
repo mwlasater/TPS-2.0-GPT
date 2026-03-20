@@ -40,6 +40,7 @@ import type {
   PersonnelRecord,
   PersonnelRecordList,
   PersonnelStatusUpdate,
+  PermissionGroupUpdate,
   PermissionGroupList,
   PowerBiEmbedList,
   PropertyCode,
@@ -221,6 +222,19 @@ export function executeUserAdminAction(
 
 export function fetchPermissionGroups(propertyCode: PropertyCode): Promise<PermissionGroupList> {
   return fetchPropertyScoped<PermissionGroupList>("/permission-groups", propertyCode);
+}
+
+export function updatePermissionGroupDefinition(
+  propertyCode: PropertyCode,
+  groupId: string,
+  payload: PermissionGroupUpdate
+): Promise<{ ok: true }> {
+  return mutatePropertyScoped<{ ok: true }>(
+    `/permission-groups/${groupId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
 }
 
 export function fetchReportConfig(propertyCode: PropertyCode): Promise<ReportConfigList> {

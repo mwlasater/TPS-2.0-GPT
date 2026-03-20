@@ -1,4 +1,4 @@
-import type { PermissionGroupList, PropertyCode } from "@tps/types";
+import type { PermissionGroupList, PermissionGroupUpdate, PropertyCode } from "@tps/types";
 
 const commuterGroups: PermissionGroupList = {
   items: [
@@ -44,6 +44,45 @@ const streetcarProperties = new Set<PropertyCode>([
   "octastreetcar"
 ]);
 
-export function listPermissionGroups(propertyCode: PropertyCode): PermissionGroupList {
+function cloneGroupList(source: PermissionGroupList): PermissionGroupList {
+  return {
+    items: source.items.map((item) => ({
+      ...item,
+      permissions: [...item.permissions]
+    }))
+  };
+}
+
+const initialPermissionGroups: Record<"commuter" | "streetcar", PermissionGroupList> = {
+  commuter: cloneGroupList(commuterGroups),
+  streetcar: cloneGroupList(streetcarGroups)
+};
+
+function getGroupCatalog(propertyCode: PropertyCode): PermissionGroupList {
   return streetcarProperties.has(propertyCode) ? streetcarGroups : commuterGroups;
+}
+
+export function listPermissionGroups(propertyCode: PropertyCode): PermissionGroupList {
+  return cloneGroupList(getGroupCatalog(propertyCode));
+}
+
+export function updatePermissionGroup(
+  propertyCode: PropertyCode,
+  groupId: string,
+  update: PermissionGroupUpdate
+): void {
+  const catalog = getGroupCatalog(propertyCode);
+  const group = catalog.items.find((candidate) => candidate.id === groupId);
+
+  if (!group) {
+    throw new Error("permission_group.not_found");
+  }
+
+  group.description = update.description;
+  group.permissions = [...update.permissions];
+}
+
+export function resetPermissionGroups(): void {
+  commuterGroups.items = cloneGroupList(initialPermissionGroups.commuter).items;
+  streetcarGroups.items = cloneGroupList(initialPermissionGroups.streetcar).items;
 }

@@ -18,6 +18,7 @@ import type {
   PersonnelStatusUpdate,
   PermissionGroup,
   PermissionGroupList,
+  PermissionGroupUpdate,
   PropertyCode,
   UserAdminAction,
   UserPermissionGroupUpdate,
@@ -552,6 +553,28 @@ export class PostgresUsersRepository implements UserRepository {
         })
       )
     };
+  }
+
+  async updatePermissionGroup(
+    propertyCode: PropertyCode,
+    groupId: string,
+    update: PermissionGroupUpdate
+  ): Promise<void> {
+    const result = await this.db.query(
+      `
+        UPDATE shared.permission_group
+        SET
+          description = $3,
+          permissions = $4
+        WHERE railroad_code = $1
+          AND id = $2::BIGINT
+      `,
+      [propertyCode, groupId, update.description, update.permissions]
+    );
+
+    if ((result as { rowCount?: number }).rowCount === 0) {
+      throw new Error("permission_group.not_found");
+    }
   }
 
   async listPersonnelRecords(propertyCode: PropertyCode): Promise<PersonnelRecordList> {

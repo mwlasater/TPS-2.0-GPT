@@ -515,6 +515,11 @@ export interface PermissionGroupList {
   items: PermissionGroup[];
 }
 
+export interface PermissionGroupUpdate {
+  description: string;
+  permissions: string[];
+}
+
 export interface ReportConfigRow {
   id: string;
   reportName: string;
