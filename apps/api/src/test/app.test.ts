@@ -1873,6 +1873,44 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns run impacts and schedule approval summaries for authorized property context", async () => {
+    const impactResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/impacts",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const summaryResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-schedules/ct-101/approval-summary",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(impactResponse.statusCode).toBe(200);
+    expect(impactResponse.json()).toMatchObject({
+      runId: "caltrain-run-1",
+      totalDelayMinutes: expect.any(Number),
+      impactedStationCount: expect.any(Number),
+      downstreamStations: expect.arrayContaining([
+        expect.objectContaining({
+          stationCode: "STA"
+        })
+      ])
+    });
+    expect(summaryResponse.statusCode).toBe(200);
+    expect(summaryResponse.json()).toMatchObject({
+      scheduleId: "ct-101",
+      totalRuns: 1,
+      blockedRuns: []
+    });
+  });
+
   it("returns consist and crew templates for authorized property context", async () => {
     const consistResponse = await app.inject({
       method: "GET",

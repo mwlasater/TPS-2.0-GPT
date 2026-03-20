@@ -58,6 +58,7 @@ import type {
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunImpactSummary,
   TrainRunDeleteResult,
   TrainRunInitializeRequest,
   TrainRunInitializeResult,
@@ -65,6 +66,7 @@ import type {
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
+  TrainScheduleApprovalSummary,
   TrainRunList,
   TrainScheduleList,
   NotificationUpdate,
@@ -199,10 +201,18 @@ export interface OperationsRepository {
     propertyCode: PropertyCode,
     runId: string
   ): MaybePromise<TrainRunApprovalHistoryList>;
+  getTrainRunImpactSummary(
+    propertyCode: PropertyCode,
+    runId: string
+  ): MaybePromise<TrainRunImpactSummary>;
   listTrainScheduleApprovalHistory(
     propertyCode: PropertyCode,
     scheduleId: string
   ): MaybePromise<TrainRunApprovalHistoryList>;
+  getTrainScheduleApprovalSummary(
+    propertyCode: PropertyCode,
+    scheduleId: string
+  ): MaybePromise<TrainScheduleApprovalSummary>;
   listStationStops(propertyCode: PropertyCode, runId: string): MaybePromise<StationStopList>;
   updateStationStop(
     propertyCode: PropertyCode,

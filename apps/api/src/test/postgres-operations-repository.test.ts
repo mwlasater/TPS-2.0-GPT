@@ -602,6 +602,93 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("derives train run impacts from persisted stops, delays, and passenger notes", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "caltrain-run-1",
+            schedule_id: "ct-101",
+            train_number: "101",
+            operating_date: "2026-03-06",
+            status: "delayed",
+            delay_minutes: 7,
+            crew_assigned: 3,
+            is_approved: false,
+            approved_at: null,
+            stop_count: 2,
+            consist_count: 1,
+            crew_count: 2
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "stop-1",
+            station_code: "SFC",
+            stop_sequence: 1,
+            scheduled_time: "06:05",
+            actual_time: "06:07",
+            boardings: 45,
+            alightings: 3
+          },
+          {
+            id: "stop-2",
+            station_code: "22ND",
+            stop_sequence: 2,
+            scheduled_time: "06:18",
+            actual_time: null,
+            boardings: 27,
+            alightings: 5
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "delay-1",
+            category: "Signal delay",
+            minutes: 4,
+            notes: "Signal clearance held at interlocking.",
+            reported_at: new Date("2026-03-06T06:19:00Z")
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            delay_id: "delay-1",
+            location_detail: "South approach",
+            responsible_party: "Dispatch",
+            notable_delay_type: "Interlocking failure",
+            special_movement_id: null,
+            work_order_id: null,
+            mechanical_notes: "",
+            passenger_impact_summary: "Peak riders held through two downstream stops."
+          }
+        ]
+      });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const impact = await repository.getTrainRunImpactSummary("caltrain", "caltrain-run-1");
+
+    expect(impact).toMatchObject({
+      runId: "caltrain-run-1",
+      totalDelayMinutes: 4,
+      impactedStationCount: 2,
+      passengerImpactSummaries: ["Peak riders held through two downstream stops."],
+      downstreamStations: [
+        expect.objectContaining({
+          stationCode: "SFC"
+        }),
+        expect.objectContaining({
+          stationCode: "22ND"
+        })
+      ]
+    });
+  });
+
   it("maps created delay rows into delay events", async () => {
     const query = vi.fn()
       .mockResolvedValueOnce({ rows: [{ is_approved: false }] })

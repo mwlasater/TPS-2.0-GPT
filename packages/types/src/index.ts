@@ -185,6 +185,47 @@ export interface TrainRunList {
   items: TrainRun[];
 }
 
+export interface DownstreamStationImpact {
+  stationCode: string;
+  scheduledTime: string;
+  projectedTime: string;
+  projectedDelayMinutes: number;
+  boardings: number;
+  alightings: number;
+  passengerLoadDelta: number;
+}
+
+export interface TrainRunImpactSummary {
+  runId: string;
+  totalDelayMinutes: number;
+  impactedStationCount: number;
+  maxProjectedDelayMinutes: number;
+  affectedPassengers: number;
+  estimatedRecoveryTime: string | null;
+  passengerImpactSummaries: string[];
+  downstreamStations: DownstreamStationImpact[];
+}
+
+export interface ScheduleApprovalBlockedRunSummary {
+  runId: string;
+  trainNumber: string;
+  delayMinutes: number;
+  maxProjectedDelayMinutes: number;
+  blockers: string[];
+}
+
+export interface TrainScheduleApprovalSummary {
+  scheduleId: string;
+  totalRuns: number;
+  approvedCount: number;
+  readyCount: number;
+  blockedCount: number;
+  totalDelayMinutes: number;
+  readyRunIds: string[];
+  approvedRunIds: string[];
+  blockedRuns: ScheduleApprovalBlockedRunSummary[];
+}
+
 export interface TrainRunInitializeRequest {
   operatingDate: string;
   scheduleIds: string[];

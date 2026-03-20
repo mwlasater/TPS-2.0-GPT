@@ -134,11 +134,33 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
   );
 
   app.get(
+    "/train-schedules/:scheduleId/approval-summary",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.getTrainScheduleApprovalSummary(
+      request.property,
+      (request.params as { scheduleId: string }).scheduleId
+    )
+  );
+
+  app.get(
     "/train-runs/:runId/approval-history",
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => app.dataAccess.operations.listTrainRunApprovalHistory(
+      request.property,
+      (request.params as { runId: string }).runId
+    )
+  );
+
+  app.get(
+    "/train-runs/:runId/impacts",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.getTrainRunImpactSummary(
       request.property,
       (request.params as { runId: string }).runId
     )

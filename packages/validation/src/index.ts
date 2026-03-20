@@ -183,6 +183,47 @@ export const trainRunListSchema = z.object({
   items: z.array(trainRunSchema)
 });
 
+export const downstreamStationImpactSchema = z.object({
+  stationCode: z.string(),
+  scheduledTime: z.string(),
+  projectedTime: z.string(),
+  projectedDelayMinutes: z.number().int().nonnegative(),
+  boardings: z.number().int().nonnegative(),
+  alightings: z.number().int().nonnegative(),
+  passengerLoadDelta: z.number().int()
+});
+
+export const trainRunImpactSummarySchema = z.object({
+  runId: z.string(),
+  totalDelayMinutes: z.number().int().nonnegative(),
+  impactedStationCount: z.number().int().nonnegative(),
+  maxProjectedDelayMinutes: z.number().int().nonnegative(),
+  affectedPassengers: z.number().int().nonnegative(),
+  estimatedRecoveryTime: z.string().nullable(),
+  passengerImpactSummaries: z.array(z.string()),
+  downstreamStations: z.array(downstreamStationImpactSchema)
+});
+
+export const scheduleApprovalBlockedRunSummarySchema = z.object({
+  runId: z.string(),
+  trainNumber: z.string(),
+  delayMinutes: z.number().int().nonnegative(),
+  maxProjectedDelayMinutes: z.number().int().nonnegative(),
+  blockers: z.array(z.string())
+});
+
+export const trainScheduleApprovalSummarySchema = z.object({
+  scheduleId: z.string(),
+  totalRuns: z.number().int().nonnegative(),
+  approvedCount: z.number().int().nonnegative(),
+  readyCount: z.number().int().nonnegative(),
+  blockedCount: z.number().int().nonnegative(),
+  totalDelayMinutes: z.number().int().nonnegative(),
+  readyRunIds: z.array(z.string()),
+  approvedRunIds: z.array(z.string()),
+  blockedRuns: z.array(scheduleApprovalBlockedRunSummarySchema)
+});
+
 export const trainRunInitializeRequestSchema = z.object({
   operatingDate: z.string().min(1),
   scheduleIds: z.array(z.string().min(1)).min(1)

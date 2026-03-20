@@ -145,6 +145,16 @@ export function listTrainRuns(propertyCode: PropertyCode): TrainRunList {
   };
 }
 
+export function getTrainRun(propertyCode: PropertyCode, runId: string): TrainRun {
+  const run = listTrainRuns(propertyCode).items.find((candidate) => candidate.id === runId);
+
+  if (!run) {
+    throw new Error("train_run.not_found");
+  }
+
+  return run;
+}
+
 export function initializeTrainRuns(
   propertyCode: PropertyCode,
   request: TrainRunInitializeRequest

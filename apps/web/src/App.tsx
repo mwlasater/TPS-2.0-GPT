@@ -85,6 +85,8 @@ export function App() {
               runs={operationsData.runs}
               approvalHistory={operationsData.approvalHistory}
               scheduleApprovalHistory={operationsData.scheduleApprovalHistory}
+              impactSummary={operationsData.impactSummary}
+              scheduleApprovalSummary={operationsData.scheduleApprovalSummary}
               delayAdditionalInfo={operationsData.delayAdditionalInfo}
               delayCommonLocations={operationsData.delayCommonLocations}
               delayTemplates={operationsData.delayTemplates}

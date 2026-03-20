@@ -33,6 +33,8 @@ import type {
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
+  TrainRunImpactSummary,
+  TrainScheduleApprovalSummary,
   TrainRunList,
   TrainScheduleList
 } from "@tps/types";
@@ -57,6 +59,8 @@ interface OperationsPageProps {
   runs: TrainRunList;
   approvalHistory: TrainRunApprovalHistoryList;
   scheduleApprovalHistory: TrainRunApprovalHistoryList;
+  impactSummary: TrainRunImpactSummary;
+  scheduleApprovalSummary: TrainScheduleApprovalSummary;
   delayAdditionalInfo: Record<string, DelayAdditionalInfo>;
   delayCommonLocations: DelayCommonLocationList;
   delayTemplates: DelayTemplateList;
@@ -142,6 +146,8 @@ export function OperationsPage({
   runs,
   approvalHistory,
   scheduleApprovalHistory,
+  impactSummary,
+  scheduleApprovalSummary,
   delayAdditionalInfo,
   delayCommonLocations,
   delayTemplates,
@@ -544,6 +550,20 @@ export function OperationsPage({
               </div>
               {selectedRun ? (
                 <div className="editor-grid">
+                  <article className="metric-card">
+                    <span>Schedule readiness</span>
+                    <strong>
+                      {scheduleApprovalSummary.readyCount}/{scheduleApprovalSummary.totalRuns}
+                    </strong>
+                  </article>
+                  <article className="metric-card">
+                    <span>Blocked runs</span>
+                    <strong>{scheduleApprovalSummary.blockedCount}</strong>
+                  </article>
+                  <article className="metric-card">
+                    <span>Schedule delay total</span>
+                    <strong>{scheduleApprovalSummary.totalDelayMinutes} min</strong>
+                  </article>
                   {selectedRun.approvalBlockers.length ? (
                     <p className="inline-feedback editor-span">{selectedRun.approvalBlockers.join(" ")}</p>
                   ) : null}
@@ -1795,6 +1815,84 @@ export function OperationsPage({
           ) : (
             <p>No approval events recorded for this run yet.</p>
           )}
+        </div>
+      </Panel>
+      <Panel title="Operational impacts" eyebrow={`${impactSummary.impactedStationCount} downstream stop(s)`}>
+        <div className="stats-grid">
+          <article className="metric-card">
+            <span>Total delay</span>
+            <strong>{impactSummary.totalDelayMinutes} min</strong>
+          </article>
+          <article className="metric-card">
+            <span>Max projected delay</span>
+            <strong>{impactSummary.maxProjectedDelayMinutes} min</strong>
+          </article>
+          <article className="metric-card">
+            <span>Affected passengers</span>
+            <strong>{impactSummary.affectedPassengers}</strong>
+          </article>
+          <article className="metric-card">
+            <span>Recovery target</span>
+            <strong>{impactSummary.estimatedRecoveryTime ?? "None"}</strong>
+          </article>
+        </div>
+        <div className="detail-stack">
+          <div>
+            <p className="eyebrow">Passenger impacts</p>
+            <div className="list-stack">
+              {impactSummary.passengerImpactSummaries.map((summary) => (
+                <article className="list-row" key={summary}>
+                  <div>
+                    <p>{summary}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="eyebrow">Downstream stations</p>
+            <div className="list-stack">
+              {impactSummary.downstreamStations.length ? (
+                impactSummary.downstreamStations.map((station) => (
+                  <article className="list-row" key={`${station.stationCode}-${station.scheduledTime}`}>
+                    <div>
+                      <strong>{station.stationCode}</strong>
+                      <p>
+                        Scheduled {station.scheduledTime} · projected {station.projectedTime}
+                      </p>
+                    </div>
+                    <div className="list-meta">
+                      <StatusBadge tone="warning" label={`${station.projectedDelayMinutes} min`} />
+                      <span>{station.boardings + station.alightings} riders</span>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p>No downstream impacts projected for the selected run.</p>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="eyebrow">Blocked runs in this schedule</p>
+            <div className="list-stack">
+              {scheduleApprovalSummary.blockedRuns.length ? (
+                scheduleApprovalSummary.blockedRuns.map((run) => (
+                  <article className="list-row" key={run.runId}>
+                    <div>
+                      <strong>{run.trainNumber}</strong>
+                      <p>{run.blockers.join(" ")}</p>
+                    </div>
+                    <div className="list-meta">
+                      <span>{run.delayMinutes} current min</span>
+                      <span>{run.maxProjectedDelayMinutes} projected min</span>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p>No blocked runs in the selected schedule.</p>
+              )}
+            </div>
+          </div>
         </div>
       </Panel>
       <Panel title="Schedule approval history" eyebrow={`${scheduleApprovalHistory.items.length} events`}>

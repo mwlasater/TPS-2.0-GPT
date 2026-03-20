@@ -67,6 +67,8 @@ import type {
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
+  TrainRunImpactSummary,
+  TrainScheduleApprovalSummary,
   TrainScheduleList,
   UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
@@ -481,12 +483,29 @@ export function fetchTrainRunApprovalHistory(
   );
 }
 
+export function fetchTrainRunImpactSummary(
+  propertyCode: PropertyCode,
+  runId: string
+): Promise<TrainRunImpactSummary> {
+  return fetchPropertyScoped<TrainRunImpactSummary>(`/train-runs/${runId}/impacts`, propertyCode);
+}
+
 export function fetchTrainScheduleApprovalHistory(
   propertyCode: PropertyCode,
   scheduleId: string
 ): Promise<TrainRunApprovalHistoryList> {
   return fetchPropertyScoped<TrainRunApprovalHistoryList>(
     `/train-schedules/${scheduleId}/approval-history`,
+    propertyCode
+  );
+}
+
+export function fetchTrainScheduleApprovalSummary(
+  propertyCode: PropertyCode,
+  scheduleId: string
+): Promise<TrainScheduleApprovalSummary> {
+  return fetchPropertyScoped<TrainScheduleApprovalSummary>(
+    `/train-schedules/${scheduleId}/approval-summary`,
     propertyCode
   );
 }

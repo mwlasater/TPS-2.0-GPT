@@ -16,6 +16,7 @@ import { listManagedUsers } from "../lib/managed-users.js";
 import { listPersonnelRecords, updatePersonnelStatus } from "../lib/personnel-data.js";
 import {
   deleteTrainRun,
+  getTrainRun,
   initializeTrainRuns,
   listTrainRuns,
   resetTrainRun,
@@ -75,6 +76,10 @@ import {
   listTrainScheduleApprovalHistory,
   recordTrainRunApprovalHistory
 } from "../lib/approval-history-data.js";
+import {
+  deriveTrainRunImpactSummary,
+  deriveTrainScheduleApprovalSummary
+} from "../lib/run-impact-data.js";
 import {
   createManagedUserDetail,
   executeUserAdminAction,
@@ -224,11 +229,50 @@ export function createMockDataAccess(): DataAccess {
         return result;
       },
       listTrainRunApprovalHistory,
+      getTrainRunImpactSummary(propertyCode, runId) {
+        const run = getTrainRun(propertyCode, runId);
+        const delays = listDelayEvents(propertyCode, runId);
+        const delayAdditionalInfo = Object.fromEntries(
+          delays.items.map((delay) => [delay.id, getDelayAdditionalInfo(propertyCode, delay.id)])
+        );
+
+        return deriveTrainRunImpactSummary(
+          run,
+          listStationStops(propertyCode, runId),
+          delays,
+          delayAdditionalInfo
+        );
+      },
       listTrainScheduleApprovalHistory(propertyCode, scheduleId) {
         const runIds = listTrainRuns(propertyCode).items
           .filter((run) => run.scheduleId === scheduleId)
           .map((run) => run.id);
         return listTrainScheduleApprovalHistory(propertyCode, runIds);
+      },
+      getTrainScheduleApprovalSummary(propertyCode, scheduleId) {
+        const runs = listTrainRuns(propertyCode);
+        const impactsByRunId = Object.fromEntries(
+          runs.items
+            .filter((run) => run.scheduleId === scheduleId)
+            .map((run) => {
+              const delays = listDelayEvents(propertyCode, run.id);
+              const delayAdditionalInfo = Object.fromEntries(
+                delays.items.map((delay) => [delay.id, getDelayAdditionalInfo(propertyCode, delay.id)])
+              );
+
+              return [
+                run.id,
+                deriveTrainRunImpactSummary(
+                  run,
+                  listStationStops(propertyCode, run.id),
+                  delays,
+                  delayAdditionalInfo
+                )
+              ];
+            })
+        );
+
+        return deriveTrainScheduleApprovalSummary(scheduleId, runs, impactsByRunId);
       },
       listStationStops,
       updateStationStop(propertyCode, runId, stopId, update) {

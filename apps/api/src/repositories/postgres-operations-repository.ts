@@ -47,12 +47,18 @@ import type {
   TrainRunApprovalHistoryEntry,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
+  TrainRunImpactSummary,
   TrainRunList,
+  TrainScheduleApprovalSummary,
   TrainSchedule,
   TrainScheduleList
 } from "@tps/types";
 
 import { listFareEnforcement, listFareEnforcementSummary } from "../lib/fare-enforcement-data.js";
+import {
+  deriveTrainRunImpactSummary,
+  deriveTrainScheduleApprovalSummary
+} from "../lib/run-impact-data.js";
 import {
   listConsistEquipment,
   listConsistTemplates,
@@ -750,6 +756,31 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
+  async getTrainRunImpactSummary(
+    propertyCode: PropertyCode,
+    runId: string
+  ): Promise<TrainRunImpactSummary> {
+    const runs = await this.listTrainRuns(propertyCode);
+    const run = runs.items.find((candidate) => candidate.id === runId);
+
+    if (!run) {
+      throw new Error("train_run.not_found");
+    }
+
+    const stationStops = await this.listStationStops(propertyCode, runId);
+    const delays = await this.listDelayEvents(propertyCode, runId);
+    const delayAdditionalInfo = Object.fromEntries(
+      await Promise.all(
+        delays.items.map(async (delay) => [
+          delay.id,
+          await this.getDelayAdditionalInfo(propertyCode, delay.id)
+        ])
+      )
+    );
+
+    return deriveTrainRunImpactSummary(run, stationStops, delays, delayAdditionalInfo);
+  }
+
   async listTrainScheduleApprovalHistory(
     propertyCode: PropertyCode,
     scheduleId: string
@@ -784,6 +815,22 @@ export class PostgresOperationsRepository implements OperationsRepository {
         })
       )
     };
+  }
+
+  async getTrainScheduleApprovalSummary(
+    propertyCode: PropertyCode,
+    scheduleId: string
+  ): Promise<TrainScheduleApprovalSummary> {
+    const runs = await this.listTrainRuns(propertyCode);
+    const impactsByRunId = Object.fromEntries(
+      await Promise.all(
+        runs.items
+          .filter((run) => run.scheduleId === scheduleId)
+          .map(async (run) => [run.id, await this.getTrainRunImpactSummary(propertyCode, run.id)])
+      )
+    );
+
+    return deriveTrainScheduleApprovalSummary(scheduleId, runs, impactsByRunId);
   }
 
   async listStationStops(propertyCode: PropertyCode, runId: string): Promise<StationStopList> {

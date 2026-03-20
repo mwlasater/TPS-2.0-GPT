@@ -33,7 +33,9 @@ import type {
   TrainRunApprovalHistoryEntry,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
+  TrainRunImpactSummary,
   TrainRunList,
+  TrainScheduleApprovalSummary,
   TrainScheduleList
 } from "@tps/types";
 import { useEffect, useState } from "react";
@@ -61,7 +63,9 @@ import {
   fetchTrainRuns,
   fetchTrainSchedules,
   fetchTrainRunApprovalHistory,
+  fetchTrainRunImpactSummary,
   fetchTrainScheduleApprovalHistory,
+  fetchTrainScheduleApprovalSummary,
   initializeTrainRuns,
   resetTrainRun,
   swapConsistEquipment,
@@ -167,6 +171,155 @@ function summarizeFareRun(
   };
 }
 
+function parseClockToMinutes(value: string): number {
+  const [hoursRaw = "0", minutesRaw = "0"] = value.split(":");
+  const hours = Number(hoursRaw);
+  const minutes = Number(minutesRaw);
+  return hours * 60 + minutes;
+}
+
+function formatMinutesAsClock(totalMinutes: number): string {
+  const normalized = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const hours = Math.floor(normalized / 60);
+  const minutes = normalized % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function getEmptyImpactSummary(runId: string | null): TrainRunImpactSummary {
+  return {
+    runId: runId ?? "",
+    totalDelayMinutes: 0,
+    impactedStationCount: 0,
+    maxProjectedDelayMinutes: 0,
+    affectedPassengers: 0,
+    estimatedRecoveryTime: null,
+    passengerImpactSummaries: ["No downstream passenger impacts are currently projected."],
+    downstreamStations: []
+  };
+}
+
+function deriveImpactSummary(
+  run: TrainRun | undefined,
+  stationStops: StationStopList,
+  delayEvents: DelayEventList,
+  delayAdditionalInfo: Record<string, DelayAdditionalInfo>
+): TrainRunImpactSummary {
+  if (!run) {
+    return getEmptyImpactSummary(null);
+  }
+
+  const totalDelayMinutes =
+    delayEvents.items.reduce((total, delay) => total + delay.minutes, 0) || run.delayMinutes;
+  const downstreamStations = stationStops.items.map((stop, index) => {
+    const scheduledMinutes = parseClockToMinutes(stop.scheduledTime);
+    const actualDelayMinutes = stop.actualTime
+      ? Math.max(parseClockToMinutes(stop.actualTime) - scheduledMinutes, 0)
+      : 0;
+    const projectedDelayMinutes = Math.max(totalDelayMinutes - index, actualDelayMinutes, 0);
+
+    return {
+      stationCode: stop.stationCode,
+      scheduledTime: stop.scheduledTime,
+      projectedTime: formatMinutesAsClock(scheduledMinutes + projectedDelayMinutes),
+      projectedDelayMinutes,
+      boardings: stop.boardings,
+      alightings: stop.alightings,
+      passengerLoadDelta: stop.boardings - stop.alightings
+    };
+  });
+  const impactedStations = downstreamStations.filter((station) => station.projectedDelayMinutes > 0);
+  const passengerImpactSummaries = Array.from(
+    new Set(
+      Object.values(delayAdditionalInfo)
+        .map((item) => item.passengerImpactSummary.trim())
+        .filter((summary) => summary.length > 0)
+    )
+  );
+
+  if (!passengerImpactSummaries.length) {
+    const affectedPassengers = impactedStations.reduce(
+      (total, station) => total + station.boardings + station.alightings,
+      0
+    );
+    passengerImpactSummaries.push(
+      affectedPassengers > 0
+        ? `${affectedPassengers} passenger movements are exposed across ${impactedStations.length} downstream stop(s).`
+        : "No downstream passenger impacts are currently projected."
+    );
+  }
+
+  return {
+    runId: run.id,
+    totalDelayMinutes,
+    impactedStationCount: impactedStations.length,
+    maxProjectedDelayMinutes: impactedStations.reduce(
+      (max, station) => Math.max(max, station.projectedDelayMinutes),
+      0
+    ),
+    affectedPassengers: impactedStations.reduce(
+      (total, station) => total + station.boardings + station.alightings,
+      0
+    ),
+    estimatedRecoveryTime:
+      downstreamStations.find((station) => station.projectedDelayMinutes === 0)?.scheduledTime ??
+      impactedStations.at(-1)?.projectedTime ??
+      null,
+    passengerImpactSummaries,
+    downstreamStations
+  };
+}
+
+function getEmptyScheduleApprovalSummary(scheduleId: string | null): TrainScheduleApprovalSummary {
+  return {
+    scheduleId: scheduleId ?? "",
+    totalRuns: 0,
+    approvedCount: 0,
+    readyCount: 0,
+    blockedCount: 0,
+    totalDelayMinutes: 0,
+    readyRunIds: [],
+    approvedRunIds: [],
+    blockedRuns: []
+  };
+}
+
+function deriveScheduleApprovalSummary(
+  runs: TrainRunList,
+  scheduleId: string | null,
+  selectedImpactSummary: TrainRunImpactSummary
+): TrainScheduleApprovalSummary {
+  if (!scheduleId) {
+    return getEmptyScheduleApprovalSummary(null);
+  }
+
+  const scheduleRuns = runs.items.filter((run) => run.scheduleId === scheduleId);
+
+  return {
+    scheduleId,
+    totalRuns: scheduleRuns.length,
+    approvedCount: scheduleRuns.filter((run) => run.isApproved).length,
+    readyCount: scheduleRuns.filter((run) => !run.isApproved && run.approvalBlockers.length === 0).length,
+    blockedCount: scheduleRuns.filter((run) => !run.isApproved && run.approvalBlockers.length > 0).length,
+    totalDelayMinutes: scheduleRuns.reduce((total, run) => total + run.delayMinutes, 0),
+    readyRunIds: scheduleRuns
+      .filter((run) => !run.isApproved && run.approvalBlockers.length === 0)
+      .map((run) => run.id),
+    approvedRunIds: scheduleRuns.filter((run) => run.isApproved).map((run) => run.id),
+    blockedRuns: scheduleRuns
+      .filter((run) => !run.isApproved && run.approvalBlockers.length > 0)
+      .map((run) => ({
+        runId: run.id,
+        trainNumber: run.trainNumber,
+        delayMinutes: run.delayMinutes,
+        maxProjectedDelayMinutes:
+          selectedImpactSummary.runId === run.id
+            ? selectedImpactSummary.maxProjectedDelayMinutes
+            : run.delayMinutes,
+        blockers: run.approvalBlockers
+      }))
+  };
+}
+
 interface OperationsDataState {
   referenceData: ReferenceDataset;
   schedules: TrainScheduleList;
@@ -174,6 +327,8 @@ interface OperationsDataState {
   selectedRunId: string | null;
   approvalHistory: TrainRunApprovalHistoryList;
   scheduleApprovalHistory: TrainRunApprovalHistoryList;
+  impactSummary: TrainRunImpactSummary;
+  scheduleApprovalSummary: TrainScheduleApprovalSummary;
   delayAdditionalInfo: Record<string, DelayAdditionalInfo>;
   delayCommonLocations: DelayCommonLocationList;
   delayTemplates: DelayTemplateList;
@@ -262,6 +417,22 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       propertyCode,
       demoTrainRuns[propertyCode].items[0]?.id ?? null
     ),
+    impactSummary: deriveImpactSummary(
+      demoTrainRuns[propertyCode].items[0],
+      demoStationStops[propertyCode],
+      demoDelayEvents[propertyCode],
+      demoDelayAdditionalInfo[propertyCode]
+    ),
+    scheduleApprovalSummary: deriveScheduleApprovalSummary(
+      demoTrainRuns[propertyCode],
+      demoTrainRuns[propertyCode].items[0]?.scheduleId ?? null,
+      deriveImpactSummary(
+        demoTrainRuns[propertyCode].items[0],
+        demoStationStops[propertyCode],
+        demoDelayEvents[propertyCode],
+        demoDelayAdditionalInfo[propertyCode]
+      )
+    ),
     delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
     delayCommonLocations: demoDelayCommonLocations[propertyCode],
     delayTemplates: demoDelayTemplates[propertyCode],
@@ -313,6 +484,22 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       scheduleApprovalHistory: getFallbackApprovalHistory(
         propertyCode,
         demoTrainRuns[propertyCode].items[0]?.id ?? null
+      ),
+      impactSummary: deriveImpactSummary(
+        demoTrainRuns[propertyCode].items[0],
+        demoStationStops[propertyCode],
+        demoDelayEvents[propertyCode],
+        demoDelayAdditionalInfo[propertyCode]
+      ),
+      scheduleApprovalSummary: deriveScheduleApprovalSummary(
+        demoTrainRuns[propertyCode],
+        demoTrainRuns[propertyCode].items[0]?.scheduleId ?? null,
+        deriveImpactSummary(
+          demoTrainRuns[propertyCode].items[0],
+          demoStationStops[propertyCode],
+          demoDelayEvents[propertyCode],
+          demoDelayAdditionalInfo[propertyCode]
+        )
       ),
       delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
       delayCommonLocations: demoDelayCommonLocations[propertyCode],
@@ -373,7 +560,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         ]) => {
         const selectedRunId = runs.items[0]?.id ?? null;
         const selectedScheduleId = runs.items.find((run) => run.id === selectedRunId)?.scheduleId;
-        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, fareSummary, fareDashboard] = selectedRunId
+        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, fareSummary, fareDashboard, impactSummary, scheduleApprovalSummary] = selectedRunId
           ? await Promise.all([
               fetchStationStops(propertyCode, selectedRunId),
               fetchDelayEvents(propertyCode, selectedRunId),
@@ -385,7 +572,11 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
                 ? fetchTrainScheduleApprovalHistory(propertyCode, selectedScheduleId)
                 : Promise.resolve(getFallbackApprovalHistory(propertyCode, selectedRunId)),
               fetchFareEnforcementSummary(propertyCode),
-              fetchFareEnforcementDashboard(propertyCode)
+              fetchFareEnforcementDashboard(propertyCode),
+              fetchTrainRunImpactSummary(propertyCode, selectedRunId),
+              selectedScheduleId
+                ? fetchTrainScheduleApprovalSummary(propertyCode, selectedScheduleId)
+                : Promise.resolve(getEmptyScheduleApprovalSummary(null))
             ])
           : [
               demoStationStops[propertyCode],
@@ -396,7 +587,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               getFallbackApprovalHistory(propertyCode, selectedRunId),
               getFallbackApprovalHistory(propertyCode, selectedRunId),
               demoFareEnforcementSummary[propertyCode],
-              getFallbackFareDashboard(propertyCode, runs)
+              getFallbackFareDashboard(propertyCode, runs),
+              getEmptyImpactSummary(selectedRunId),
+              getEmptyScheduleApprovalSummary(null)
             ];
         const delayAdditionalInfo = Object.fromEntries(
           await Promise.all(
@@ -417,6 +610,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             selectedRunId,
             approvalHistory,
             scheduleApprovalHistory,
+            impactSummary,
+            scheduleApprovalSummary,
             delayAdditionalInfo,
             consist,
             consistTemplates,
@@ -467,6 +662,22 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             scheduleApprovalHistory: getFallbackApprovalHistory(
               propertyCode,
               demoTrainRuns[propertyCode].items[0]?.id ?? null
+            ),
+            impactSummary: deriveImpactSummary(
+              demoTrainRuns[propertyCode].items[0],
+              demoStationStops[propertyCode],
+              demoDelayEvents[propertyCode],
+              demoDelayAdditionalInfo[propertyCode]
+            ),
+            scheduleApprovalSummary: deriveScheduleApprovalSummary(
+              demoTrainRuns[propertyCode],
+              demoTrainRuns[propertyCode].items[0]?.scheduleId ?? null,
+              deriveImpactSummary(
+                demoTrainRuns[propertyCode].items[0],
+                demoStationStops[propertyCode],
+                demoDelayEvents[propertyCode],
+                demoDelayAdditionalInfo[propertyCode]
+              )
             ),
             delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
             delayCommonLocations: demoDelayCommonLocations[propertyCode],
@@ -520,7 +731,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
 
     try {
       const scheduleId = state.runs.items.find((run) => run.id === runId)?.scheduleId;
-      const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory] = await Promise.all([
+      const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, impactSummary, scheduleApprovalSummary] = await Promise.all([
         fetchStationStops(propertyCode, runId),
         fetchDelayEvents(propertyCode, runId),
         fetchConsistEquipment(propertyCode, runId),
@@ -529,7 +740,11 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         fetchTrainRunApprovalHistory(propertyCode, runId),
         scheduleId
           ? fetchTrainScheduleApprovalHistory(propertyCode, scheduleId)
-          : Promise.resolve(getFallbackApprovalHistory(propertyCode, runId))
+          : Promise.resolve(getFallbackApprovalHistory(propertyCode, runId)),
+        fetchTrainRunImpactSummary(propertyCode, runId),
+        scheduleId
+          ? fetchTrainScheduleApprovalSummary(propertyCode, scheduleId)
+          : Promise.resolve(getEmptyScheduleApprovalSummary(null))
       ]);
       const delayAdditionalInfo = Object.fromEntries(
         await Promise.all(
@@ -550,6 +765,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         fareEnforcement,
         approvalHistory,
         scheduleApprovalHistory,
+        impactSummary,
+        scheduleApprovalSummary,
         delayAdditionalInfo,
         source: "api",
         isLoading: false
@@ -567,6 +784,22 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         fareEnforcement: demoFareEnforcement[propertyCode],
         approvalHistory: getFallbackApprovalHistory(propertyCode, runId),
         scheduleApprovalHistory: getFallbackApprovalHistory(propertyCode, runId),
+        impactSummary: deriveImpactSummary(
+          demoTrainRuns[propertyCode].items.find((run) => run.id === runId),
+          demoStationStops[propertyCode],
+          demoDelayEvents[propertyCode],
+          demoDelayAdditionalInfo[propertyCode]
+        ),
+        scheduleApprovalSummary: deriveScheduleApprovalSummary(
+          demoTrainRuns[propertyCode],
+          demoTrainRuns[propertyCode].items.find((run) => run.id === runId)?.scheduleId ?? null,
+          deriveImpactSummary(
+            demoTrainRuns[propertyCode].items.find((run) => run.id === runId),
+            demoStationStops[propertyCode],
+            demoDelayEvents[propertyCode],
+            demoDelayAdditionalInfo[propertyCode]
+          )
+        ),
         fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
         fareSummary: demoFareEnforcementSummary[propertyCode],
         source: "fallback",
