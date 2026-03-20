@@ -23,6 +23,7 @@ Initial SQL persistence tooling for TPS 2.0.
 - `seeds/0013_personnel_directory.sql`: seeded personnel directory records
 - `seeds/0014_user_enable_action.sql`: additive user admin action seed for re-enable workflows
 - `seeds/0015_user_admin_history.sql`: seeded user admin audit history entries
+- `seeds/0016_local_dev_user.sql`: seeded local development operator for persisted permission resolution
 
 Commands:
 

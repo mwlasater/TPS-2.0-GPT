@@ -8,6 +8,7 @@ import { ZodError } from "zod";
 import { createErrorResponse } from "./lib/errors.js";
 import { ensurePropertyPermission } from "./lib/permissions.js";
 import { ensurePropertyAccess } from "./lib/tenant-access.js";
+import { loadPersistedUserAuthorization } from "./lib/user-session-auth.js";
 import { registerBootstrapRoutes } from "./routes/bootstrap.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerAdminRoutes } from "./routes/admin.js";
@@ -18,6 +19,7 @@ import { registerSettingsRoutes } from "./routes/settings.js";
 import { registerUserRoutes } from "./routes/users.js";
 import { createDataAccess } from "./repositories/create-data-access.js";
 import type { DataAccess } from "./repositories/contracts.js";
+import { getPostgresPool } from "./repositories/postgres-client.js";
 
 class HttpError extends Error {
   statusCode: number;
@@ -79,13 +81,22 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
       throw new HttpError(401, "auth.required");
     }
 
+    const userId = "local-dev-user";
+    const authorizationContext =
+      config.DATA_ACCESS_MODE === "postgres"
+        ? await loadPersistedUserAuthorization(getPostgresPool(config), userId)
+        : {
+            allowedProperties: (config.userPropertyAccess[userId] ?? []) as PropertyCode[],
+            propertyPermissions: (config.userPropertyPermissions[userId] ?? {}) as Partial<
+              Record<PropertyCode, string[]>
+            >
+          };
+
     const devSession = createDevelopmentSession(
       token,
       config.JWT_DEV_TOKEN,
-      (config.userPropertyAccess["local-dev-user"] ?? []) as PropertyCode[],
-      (config.userPropertyPermissions["local-dev-user"] ?? {}) as Partial<
-        Record<PropertyCode, string[]>
-      >
+      authorizationContext.allowedProperties,
+      authorizationContext.propertyPermissions
     );
 
     if (!devSession) {

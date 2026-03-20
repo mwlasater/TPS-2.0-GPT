@@ -22,7 +22,8 @@ describe("seed service", () => {
       "0012_delay_templates",
       "0013_personnel_directory",
       "0014_user_enable_action",
-      "0015_user_admin_history"
+      "0015_user_admin_history",
+      "0016_local_dev_user"
     ]);
   });
 });
