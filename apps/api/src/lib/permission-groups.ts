@@ -1,4 +1,12 @@
-import type { PermissionGroupList, PermissionGroupUpdate, PropertyCode } from "@tps/types";
+import { randomUUID } from "node:crypto";
+
+import type {
+  PermissionGroupCreate,
+  PermissionGroupDeleteResult,
+  PermissionGroupList,
+  PermissionGroupUpdate,
+  PropertyCode
+} from "@tps/types";
 
 const commuterGroups: PermissionGroupList = {
   items: [
@@ -80,6 +88,39 @@ export function updatePermissionGroup(
 
   group.description = update.description;
   group.permissions = [...update.permissions];
+}
+
+export function createPermissionGroup(
+  propertyCode: PropertyCode,
+  input: PermissionGroupCreate
+): void {
+  const catalog = getGroupCatalog(propertyCode);
+
+  catalog.items.push({
+    id: `group-${randomUUID()}`,
+    name: input.name,
+    description: input.description,
+    members: 0,
+    permissions: [...input.permissions]
+  });
+}
+
+export function deletePermissionGroup(
+  propertyCode: PropertyCode,
+  groupId: string
+): PermissionGroupDeleteResult {
+  const catalog = getGroupCatalog(propertyCode);
+  const existing = catalog.items.find((candidate) => candidate.id === groupId);
+
+  if (!existing) {
+    throw new Error("permission_group.not_found");
+  }
+
+  catalog.items = catalog.items.filter((candidate) => candidate.id !== groupId);
+
+  return {
+    deletedGroupId: groupId
+  };
 }
 
 export function resetPermissionGroups(): void {

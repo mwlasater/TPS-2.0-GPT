@@ -246,6 +246,37 @@ describe("PostgresUsersRepository", () => {
     );
   });
 
+  it("creates permission group definitions", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresUsersRepository({ query });
+    await repository.createPermissionGroup("caltrain", {
+      name: "Service Review",
+      description: "Review-focused access for service and incident oversight.",
+      permissions: ["reports.view", "reports.schedule", "delays.write"]
+    });
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO shared.permission_group"),
+      ["caltrain", "Service Review", "Review-focused access for service and incident oversight.", ["reports.view", "reports.schedule", "delays.write"]]
+    );
+  });
+
+  it("deletes permission group definitions", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 1 });
+
+    const repository = new PostgresUsersRepository({ query });
+    const result = await repository.deletePermissionGroup("caltrain", "12");
+
+    expect(result).toEqual({
+      deletedGroupId: "12"
+    });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("DELETE FROM shared.permission_group"),
+      ["caltrain", "12"]
+    );
+  });
+
   it("maps personnel record rows", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [

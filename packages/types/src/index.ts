@@ -520,6 +520,16 @@ export interface PermissionGroupUpdate {
   permissions: string[];
 }
 
+export interface PermissionGroupCreate {
+  name: string;
+  description: string;
+  permissions: string[];
+}
+
+export interface PermissionGroupDeleteResult {
+  deletedGroupId: string;
+}
+
 export interface ReportConfigRow {
   id: string;
   reportName: string;

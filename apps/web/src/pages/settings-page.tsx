@@ -16,6 +16,7 @@ import type {
   NotificationList,
   PersonnelRecordList,
   PersonnelStatusUpdate,
+  PermissionGroupCreate,
   PermissionGroupUpdate,
   PermissionGroupList,
   PowerBiEmbedList,
@@ -54,7 +55,9 @@ interface SettingsPageProps {
   referenceData: ReferenceDataset;
   reportConfig: ReportConfigList;
   createUser: (input: ManagedUserCreate) => Promise<void>;
+  createPermissionGroup: (input: PermissionGroupCreate) => Promise<void>;
   currentUserPermissions: string[];
+  deletePermissionGroup: (groupId: string) => Promise<void>;
   saveDelayCommonLocation: (locationId: string, update: DelayCommonLocationUpdate) => Promise<void>;
   saveDelayTemplate: (templateId: string, update: DelayTemplateUpdate) => Promise<void>;
   saveAttendance: (exceptionId: string, update: AttendanceExceptionUpdate) => Promise<void>;
@@ -95,7 +98,9 @@ export function SettingsPage({
   referenceData,
   reportConfig,
   createUser,
+  createPermissionGroup,
   currentUserPermissions,
+  deletePermissionGroup,
   saveDelayCommonLocation,
   saveDelayTemplate,
   saveAttendance,
@@ -762,6 +767,37 @@ export function SettingsPage({
             Expand first permission group
           </button>
         ) : null}
+        <div className="button-row">
+          <button
+            type="button"
+            onClick={() =>
+              void runAction(
+                () =>
+                  createPermissionGroup({
+                    name: "Service Review",
+                    description: "Review-focused access for service and incident oversight.",
+                    permissions: ["reports.view", "reports.schedule", "delays.write"]
+                  }),
+                "Permission group created."
+              )
+            }
+          >
+            Create staged permission group
+          </button>
+          {permissionGroups.items.at(-1) ? (
+            <button
+              type="button"
+              onClick={() =>
+                void runAction(
+                  () => deletePermissionGroup(permissionGroups.items.at(-1)!.id),
+                  "Permission group deleted."
+                )
+              }
+            >
+              Delete last permission group
+            </button>
+          ) : null}
+        </div>
       </Panel>
     </div>
   );

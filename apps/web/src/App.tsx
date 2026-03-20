@@ -147,7 +147,9 @@ export function App() {
                 const detail = await propertyData.createUser(input);
                 setSelectedUserId(detail.id);
               }}
+              createPermissionGroup={adminData.createPermissionGroup}
               currentUserPermissions={currentUserPermissions}
+              deletePermissionGroup={adminData.deletePermissionGroup}
               saveNotification={platformData.saveNotification}
               savePermissionGroup={adminData.savePermissionGroup}
               savePersonnelStatus={baselineData.savePersonnelStatus}

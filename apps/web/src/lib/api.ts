@@ -40,6 +40,8 @@ import type {
   PersonnelRecord,
   PersonnelRecordList,
   PersonnelStatusUpdate,
+  PermissionGroupCreate,
+  PermissionGroupDeleteResult,
   PermissionGroupUpdate,
   PermissionGroupList,
   PowerBiEmbedList,
@@ -235,6 +237,32 @@ export function updatePermissionGroupDefinition(
     "PUT",
     payload
   );
+}
+
+export function createPermissionGroupDefinition(
+  propertyCode: PropertyCode,
+  payload: PermissionGroupCreate
+): Promise<{ ok: true }> {
+  return mutatePropertyScoped<{ ok: true }>("/permission-groups", propertyCode, "POST", payload);
+}
+
+export function deletePermissionGroupDefinition(
+  propertyCode: PropertyCode,
+  groupId: string
+): Promise<PermissionGroupDeleteResult> {
+  return fetch(`${apiBaseUrl}/permission-groups/${groupId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${developmentToken}`,
+      "X-Property": propertyCode
+    }
+  }).then(async (response) => {
+    if (!response.ok) {
+      throw new Error(`request.failed.${response.status}`);
+    }
+
+    return (await response.json()) as PermissionGroupDeleteResult;
+  });
 }
 
 export function fetchReportConfig(propertyCode: PropertyCode): Promise<ReportConfigList> {

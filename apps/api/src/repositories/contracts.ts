@@ -31,7 +31,9 @@ import type {
   PersonnelRecordList,
   PersonnelStatusUpdate,
   PermissionGroupList,
+  PermissionGroupCreate,
   PermissionGroupUpdate,
+  PermissionGroupDeleteResult,
   PowerBiEmbedList,
   PropertyCode,
   PropertySettings,
@@ -128,6 +130,14 @@ export interface UserRepository {
     groupId: string,
     update: PermissionGroupUpdate
   ): MaybePromise<void>;
+  createPermissionGroup(
+    propertyCode: PropertyCode,
+    input: PermissionGroupCreate
+  ): MaybePromise<void>;
+  deletePermissionGroup(
+    propertyCode: PropertyCode,
+    groupId: string
+  ): MaybePromise<PermissionGroupDeleteResult>;
   listJobProfiles(propertyCode: PropertyCode): MaybePromise<JobProfileList>;
   listPersonnelRecords(propertyCode: PropertyCode): MaybePromise<PersonnelRecordList>;
   updatePersonnelStatus(

@@ -17,6 +17,8 @@ import type {
   PersonnelRecordList,
   PersonnelStatusUpdate,
   PermissionGroup,
+  PermissionGroupCreate,
+  PermissionGroupDeleteResult,
   PermissionGroupList,
   PermissionGroupUpdate,
   PropertyCode,
@@ -575,6 +577,46 @@ export class PostgresUsersRepository implements UserRepository {
     if ((result as { rowCount?: number }).rowCount === 0) {
       throw new Error("permission_group.not_found");
     }
+  }
+
+  async createPermissionGroup(
+    propertyCode: PropertyCode,
+    input: PermissionGroupCreate
+  ): Promise<void> {
+    await this.db.query(
+      `
+        INSERT INTO shared.permission_group (
+          railroad_code,
+          name,
+          description,
+          permissions
+        )
+        VALUES ($1, $2, $3, $4)
+      `,
+      [propertyCode, input.name, input.description, input.permissions]
+    );
+  }
+
+  async deletePermissionGroup(
+    propertyCode: PropertyCode,
+    groupId: string
+  ): Promise<PermissionGroupDeleteResult> {
+    const result = await this.db.query(
+      `
+        DELETE FROM shared.permission_group
+        WHERE railroad_code = $1
+          AND id = $2::BIGINT
+      `,
+      [propertyCode, groupId]
+    );
+
+    if ((result as { rowCount?: number }).rowCount === 0) {
+      throw new Error("permission_group.not_found");
+    }
+
+    return {
+      deletedGroupId: groupId
+    };
   }
 
   async listPersonnelRecords(propertyCode: PropertyCode): Promise<PersonnelRecordList> {

@@ -3,6 +3,7 @@ import type {
   DelayCommonLocationUpdate,
   DelayTemplateList,
   DelayTemplateUpdate,
+  PermissionGroupCreate,
   PermissionGroupList,
   PermissionGroupUpdate,
   PropertyCode,
@@ -14,6 +15,8 @@ import type {
 import { useEffect, useState } from "react";
 
 import {
+  createPermissionGroupDefinition,
+  deletePermissionGroupDefinition,
   fetchAdminDelayCommonLocations,
   fetchAdminDelayTemplates,
   fetchAdminSpecialMovements,
@@ -42,6 +45,8 @@ interface AdminDataState {
   source: "api" | "fallback";
   isLoading: boolean;
   isSaving: boolean;
+  createPermissionGroup: (input: PermissionGroupCreate) => Promise<void>;
+  deletePermissionGroup: (groupId: string) => Promise<void>;
   savePermissionGroup: (groupId: string, update: PermissionGroupUpdate) => Promise<void>;
   saveDelayCommonLocation: (locationId: string, update: DelayCommonLocationUpdate) => Promise<void>;
   saveDelayTemplate: (templateId: string, update: DelayTemplateUpdate) => Promise<void>;
@@ -59,6 +64,8 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     source: "fallback",
     isLoading: true,
     isSaving: false,
+    createPermissionGroup: async () => undefined,
+    deletePermissionGroup: async () => undefined,
     savePermissionGroup: async () => undefined,
     saveDelayCommonLocation: async () => undefined,
     saveDelayTemplate: async () => undefined,
@@ -78,6 +85,8 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
       source: "fallback",
       isLoading: true,
       isSaving: false,
+      createPermissionGroup: state.createPermissionGroup,
+      deletePermissionGroup: state.deletePermissionGroup,
       savePermissionGroup: state.savePermissionGroup,
       saveDelayCommonLocation: state.saveDelayCommonLocation,
       saveDelayTemplate: state.saveDelayTemplate,
@@ -103,6 +112,8 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             source: "api",
             isLoading: false,
             isSaving: false,
+            createPermissionGroup: state.createPermissionGroup,
+            deletePermissionGroup: state.deletePermissionGroup,
             savePermissionGroup: state.savePermissionGroup,
             saveDelayCommonLocation: state.saveDelayCommonLocation,
             saveDelayTemplate: state.saveDelayTemplate,
@@ -122,6 +133,8 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             source: "fallback",
             isLoading: false,
             isSaving: false,
+            createPermissionGroup: state.createPermissionGroup,
+            deletePermissionGroup: state.deletePermissionGroup,
             savePermissionGroup: state.savePermissionGroup,
             saveDelayCommonLocation: state.saveDelayCommonLocation,
             saveDelayTemplate: state.saveDelayTemplate,
@@ -154,6 +167,43 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     } catch {
       setState((current) => ({ ...current, isSaving: false }));
       throw new Error("permission_group.update_failed");
+    }
+  }
+
+  async function createPermissionGroup(input: PermissionGroupCreate): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      await createPermissionGroupDefinition(propertyCode, input);
+      const permissionGroups = await fetchPermissionGroups(propertyCode);
+      setState((current) => ({
+        ...current,
+        permissionGroups,
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("permission_group.create_failed");
+    }
+  }
+
+  async function deletePermissionGroup(groupId: string): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      await deletePermissionGroupDefinition(propertyCode, groupId);
+      setState((current) => ({
+        ...current,
+        permissionGroups: {
+          items: current.permissionGroups.items.filter((item) => item.id !== groupId)
+        },
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("permission_group.delete_failed");
     }
   }
 
@@ -247,6 +297,8 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
 
   return {
     ...state,
+    createPermissionGroup,
+    deletePermissionGroup,
     savePermissionGroup,
     saveDelayCommonLocation,
     saveDelayTemplate,

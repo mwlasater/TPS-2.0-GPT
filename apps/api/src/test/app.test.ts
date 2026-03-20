@@ -282,6 +282,52 @@ describe("app contracts", () => {
     });
   });
 
+  it("creates and deletes permission groups for authorized property context", async () => {
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/permission-groups",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        name: "Service Review",
+        description: "Review-focused access for service and incident oversight.",
+        permissions: ["reports.view", "reports.schedule", "delays.write"]
+      }
+    });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/permission-groups",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const createdGroup = listResponse.json().items.find((group: { name: string }) => group.name === "Service Review");
+
+    const deleteResponse = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/permission-groups/${createdGroup.id}`,
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(createResponse.statusCode).toBe(200);
+    expect(createdGroup).toMatchObject({
+      name: "Service Review",
+      permissions: ["reports.view", "reports.schedule", "delays.write"]
+    });
+    expect(deleteResponse.statusCode).toBe(200);
+    expect(deleteResponse.json()).toMatchObject({
+      deletedGroupId: createdGroup.id
+    });
+  });
+
   it("updates report configuration for authorized property context", async () => {
     const response = await app.inject({
       method: "PUT",

@@ -23,7 +23,12 @@ import {
   updateTrainRunApproval,
   updateTrainRunApprovalBatch
 } from "../lib/operations-data.js";
-import { listPermissionGroups, updatePermissionGroup } from "../lib/permission-groups.js";
+import {
+  createPermissionGroup,
+  deletePermissionGroup,
+  listPermissionGroups,
+  updatePermissionGroup
+} from "../lib/permission-groups.js";
 import {
   listFiles,
   listNotifications,
@@ -159,6 +164,8 @@ export function createMockDataAccess(): DataAccess {
       listUserAdminActions(_propertyCode, actorPermissions) {
         return listUserAdminActions(actorPermissions);
       },
+      createPermissionGroup,
+      deletePermissionGroup,
       listPermissionGroups,
       updatePermissionGroup,
       listJobProfiles,
