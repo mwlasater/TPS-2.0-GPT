@@ -2,6 +2,15 @@ import type {
   AttendanceException,
   AttendanceExceptionList,
   AttendanceExceptionUpdate,
+  AttendanceHistoryList,
+  AttendanceIssueList,
+  AttendanceIssueRecord,
+  AttendanceIssueUpdate,
+  AttendanceNotificationRule,
+  AttendanceNotificationRuleCreate,
+  AttendanceNotificationRuleDeleteResult,
+  AttendanceNotificationRuleList,
+  AttendanceNotificationRuleUpdate,
   AppBootstrap,
   ConsistEquipmentList,
   ConsistTemplateList,
@@ -371,6 +380,22 @@ export function fetchAttendanceExceptions(
   return fetchPropertyScoped<AttendanceExceptionList>("/attendance-exceptions", propertyCode);
 }
 
+export function fetchAttendanceIssues(propertyCode: PropertyCode): Promise<AttendanceIssueList> {
+  return fetchPropertyScoped<AttendanceIssueList>("/attendance-issues", propertyCode);
+}
+
+export function fetchAttendanceHistory(
+  propertyCode: PropertyCode,
+  employeeId: string,
+  issueType?: AttendanceIssueRecord["issueType"]
+): Promise<AttendanceHistoryList> {
+  const query = issueType ? `?issueType=${encodeURIComponent(issueType)}` : "";
+  return fetchPropertyScoped<AttendanceHistoryList>(
+    `/attendance-history/${employeeId}${query}`,
+    propertyCode
+  );
+}
+
 export function updateAttendanceException(
   propertyCode: PropertyCode,
   exceptionId: string,
@@ -382,6 +407,68 @@ export function updateAttendanceException(
     "PUT",
     payload
   );
+}
+
+export function updateAttendanceIssue(
+  propertyCode: PropertyCode,
+  issueId: string,
+  payload: AttendanceIssueUpdate
+): Promise<AttendanceIssueRecord> {
+  return mutatePropertyScoped<AttendanceIssueRecord>(
+    `/attendance-issues/${issueId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
+export function fetchAttendanceNotificationRules(
+  propertyCode: PropertyCode
+): Promise<AttendanceNotificationRuleList> {
+  return fetchPropertyScoped<AttendanceNotificationRuleList>("/attendance-notifications", propertyCode);
+}
+
+export function createAttendanceNotificationRule(
+  propertyCode: PropertyCode,
+  payload: AttendanceNotificationRuleCreate
+): Promise<AttendanceNotificationRule> {
+  return mutatePropertyScoped<AttendanceNotificationRule>(
+    "/attendance-notifications",
+    propertyCode,
+    "POST",
+    payload
+  );
+}
+
+export function updateAttendanceNotificationRule(
+  propertyCode: PropertyCode,
+  ruleId: string,
+  payload: AttendanceNotificationRuleUpdate
+): Promise<AttendanceNotificationRule> {
+  return mutatePropertyScoped<AttendanceNotificationRule>(
+    `/attendance-notifications/${ruleId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
+export function deleteAttendanceNotificationRule(
+  propertyCode: PropertyCode,
+  ruleId: string
+): Promise<AttendanceNotificationRuleDeleteResult> {
+  return buildAuthorizedHeaders({
+    "X-Property": propertyCode
+  }).then((headers) => fetch(`${apiBaseUrl}/attendance-notifications/${ruleId}`, {
+    method: "DELETE",
+    headers
+  })).then(async (response) => {
+    if (!response.ok) {
+      throw new Error(`request.failed.${response.status}`);
+    }
+
+    return (await response.json()) as AttendanceNotificationRuleDeleteResult;
+  });
 }
 
 export function fetchFiles(propertyCode: PropertyCode): Promise<FileServiceList> {

@@ -1,6 +1,12 @@
 import type {
   AttendanceExceptionUpdate,
   AttendanceExceptionList,
+  AttendanceHistoryList,
+  AttendanceIssueList,
+  AttendanceIssueUpdate,
+  AttendanceNotificationRuleCreate,
+  AttendanceNotificationRuleList,
+  AttendanceNotificationRuleUpdate,
   DelayCommonLocationList,
   DelayCommonLocationUpdate,
   DelayTemplateList,
@@ -39,6 +45,9 @@ import { StatusBadge } from "../components/status-badge.js";
 
 interface SettingsPageProps {
   attendance: AttendanceExceptionList;
+  attendanceHistory: AttendanceHistoryList;
+  attendanceIssues: AttendanceIssueList;
+  attendanceNotificationRules: AttendanceNotificationRuleList;
   delayCommonLocations: DelayCommonLocationList;
   delayTemplates: DelayTemplateList;
   files: FileServiceList;
@@ -61,6 +70,10 @@ interface SettingsPageProps {
   saveDelayCommonLocation: (locationId: string, update: DelayCommonLocationUpdate) => Promise<void>;
   saveDelayTemplate: (templateId: string, update: DelayTemplateUpdate) => Promise<void>;
   saveAttendance: (exceptionId: string, update: AttendanceExceptionUpdate) => Promise<void>;
+  saveAttendanceIssue: (issueId: string, update: AttendanceIssueUpdate) => Promise<void>;
+  createAttendanceNotificationRule: (input: AttendanceNotificationRuleCreate) => Promise<void>;
+  saveAttendanceNotificationRule: (ruleId: string, update: AttendanceNotificationRuleUpdate) => Promise<void>;
+  deleteAttendanceNotificationRule: (ruleId: string) => Promise<void>;
   saveJobProfile: (profileId: string, update: JobProfileUpdate) => Promise<void>;
   saveNotification: (notificationId: string, update: NotificationUpdate) => Promise<void>;
   savePermissionGroup: (groupId: string, update: PermissionGroupUpdate) => Promise<void>;
@@ -82,6 +95,9 @@ interface SettingsPageProps {
 
 export function SettingsPage({
   attendance,
+  attendanceHistory,
+  attendanceIssues,
+  attendanceNotificationRules,
   delayCommonLocations,
   delayTemplates,
   files,
@@ -104,6 +120,10 @@ export function SettingsPage({
   saveDelayCommonLocation,
   saveDelayTemplate,
   saveAttendance,
+  saveAttendanceIssue,
+  createAttendanceNotificationRule,
+  saveAttendanceNotificationRule,
+  deleteAttendanceNotificationRule,
   saveJobProfile,
   saveNotification,
   savePermissionGroup,
@@ -640,15 +660,16 @@ export function SettingsPage({
             </button>
           ) : null}
         </Panel>
-        <Panel title="Absence and tardiness" eyebrow={`${attendance.items.length} open records`}>
+        <Panel title="Absence and tardiness" eyebrow={`${attendanceIssues.items.length} tracked issues`}>
           <div className="list-stack">
-            {attendance.items.map((record) => (
+            {attendanceIssues.items.map((record) => (
               <article className="list-row" key={record.id}>
                 <div>
                   <strong>{record.employeeName}</strong>
                   <p>
-                    {record.exceptionType} · {record.startDate}
+                    {record.issueType} · {record.startDate}
                   </p>
+                  <p>{record.endDate ? `Ends ${record.endDate}` : "No end date recorded"}</p>
                   <p>{record.notes}</p>
                 </div>
                 <div className="list-meta">
@@ -666,24 +687,145 @@ export function SettingsPage({
               </article>
             ))}
           </div>
-          {attendance.items[0] ? (
-            <button
-              type="button"
-              disabled={!canManageStaffing}
-              onClick={() =>
-                void runAction(
-                  () =>
-                    saveAttendance(attendance.items[0]!.id, {
-                      status: "resolved",
-                      notes: "Cleared for duty."
-                    }),
-                  "Attendance record updated."
-                )
-              }
-            >
-              Resolve first attendance record
-            </button>
-          ) : null}
+          <div className="button-row">
+            {attendance.items[0] ? (
+              <button
+                type="button"
+                disabled={!canManageStaffing}
+                onClick={() =>
+                  void runAction(
+                    () =>
+                      saveAttendance(attendance.items[0]!.id, {
+                        status: "resolved",
+                        notes: "Cleared for duty."
+                      }),
+                    "Attendance compatibility record updated."
+                  )
+                }
+              >
+                Resolve first legacy attendance record
+              </button>
+            ) : null}
+            {attendanceIssues.items[0] ? (
+              <button
+                type="button"
+                disabled={!canManageStaffing}
+                onClick={() =>
+                  void runAction(
+                    () =>
+                      saveAttendanceIssue(attendanceIssues.items[0]!.id, {
+                        status: "resolved",
+                        notes: "Attendance workflow resolved by supervisor.",
+                        endDate: attendanceIssues.items[0]!.endDate ?? attendanceIssues.items[0]!.startDate
+                      }),
+                    "Attendance issue updated."
+                  )
+                }
+              >
+                Resolve first attendance issue
+              </button>
+            ) : null}
+          </div>
+          <div className="two-column-grid">
+            <div>
+              <strong>Selected employee history</strong>
+              <div className="list-stack">
+                {attendanceHistory.items.length ? (
+                  attendanceHistory.items.map((item) => (
+                    <article className="list-row" key={item.id}>
+                      <div>
+                        <strong>{item.issueType}</strong>
+                        <p>
+                          {item.startDate}
+                          {item.endDate ? ` to ${item.endDate}` : ""}
+                        </p>
+                        <p>{item.notes}</p>
+                      </div>
+                      <div className="list-meta">
+                        <StatusBadge tone={item.status === "resolved" ? "success" : item.status === "approved" ? "warning" : "neutral"} label={item.status} />
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <p>No attendance history for the selected employee.</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <strong>Notification rules</strong>
+              <div className="list-stack">
+                {attendanceNotificationRules.items.map((rule) => (
+                  <article className="list-row" key={rule.id}>
+                    <div>
+                      <strong>{rule.templateName}</strong>
+                      <p>
+                        {rule.issueType} · {rule.triggerStatus}
+                      </p>
+                      <p>{rule.recipientGroup}</p>
+                    </div>
+                    <div className="list-meta">
+                      <StatusBadge tone={rule.enabled ? "success" : "neutral"} label={rule.enabled ? "enabled" : "disabled"} />
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="button-row">
+                <button
+                  type="button"
+                  disabled={!canManageStaffing}
+                  onClick={() =>
+                    void runAction(
+                      () =>
+                        createAttendanceNotificationRule({
+                          issueType: "absence",
+                          triggerStatus: "open",
+                          recipientGroup: "Operations Leadership",
+                          templateName: "Attendance Escalation",
+                          enabled: true
+                        }),
+                      "Attendance notification rule created."
+                    )
+                  }
+                >
+                  Add attendance rule
+                </button>
+                {attendanceNotificationRules.items[0] ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={!canManageStaffing}
+                      onClick={() =>
+                        void runAction(
+                          () =>
+                            saveAttendanceNotificationRule(attendanceNotificationRules.items[0]!.id, {
+                              triggerStatus: "resolved",
+                              recipientGroup: "Operations Leadership",
+                              templateName: `${attendanceNotificationRules.items[0]!.templateName} Updated`,
+                              enabled: false
+                            }),
+                          "Attendance notification rule updated."
+                        )
+                      }
+                    >
+                      Update first rule
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canManageStaffing}
+                      onClick={() =>
+                        void runAction(
+                          () => deleteAttendanceNotificationRule(attendanceNotificationRules.items[0]!.id),
+                          "Attendance notification rule deleted."
+                        )
+                      }
+                    >
+                      Delete first rule
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
         </Panel>
       </div>
       <div className="two-column-grid">

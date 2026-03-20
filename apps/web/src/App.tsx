@@ -164,6 +164,9 @@ export function App() {
           element={
             <SettingsPage
               attendance={baselineData.attendance}
+              attendanceHistory={baselineData.attendanceHistory}
+              attendanceIssues={baselineData.attendanceIssues}
+              attendanceNotificationRules={baselineData.attendanceNotificationRules}
               delayCommonLocations={adminData.delayCommonLocations}
               delayTemplates={adminData.delayTemplates}
               files={platformData.files}
@@ -188,6 +191,10 @@ export function App() {
               saveDelayCommonLocation={adminData.saveDelayCommonLocation}
               saveDelayTemplate={adminData.saveDelayTemplate}
               saveAttendance={baselineData.saveAttendance}
+              saveAttendanceIssue={baselineData.saveAttendanceIssue}
+              createAttendanceNotificationRule={baselineData.createAttendanceNotificationRule}
+              saveAttendanceNotificationRule={baselineData.saveAttendanceNotificationRule}
+              deleteAttendanceNotificationRule={baselineData.deleteAttendanceNotificationRule}
               saveJobProfile={baselineData.saveJobProfile}
               createUser={async (input) => {
                 const detail = await propertyData.createUser(input);

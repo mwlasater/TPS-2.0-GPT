@@ -1,4 +1,7 @@
 import {
+  attendanceIssueUpdateSchema,
+  attendanceNotificationRuleCreateSchema,
+  attendanceNotificationRuleUpdateSchema,
   attendanceExceptionUpdateSchema,
   delayCommonLocationUpdateSchema,
   delayTemplateUpdateSchema,
@@ -12,6 +15,9 @@ import {
 } from "@tps/validation";
 import type { FastifyInstance } from "fastify";
 import type {
+  AttendanceIssueUpdate,
+  AttendanceNotificationRuleCreate,
+  AttendanceNotificationRuleUpdate,
   AttendanceExceptionUpdate,
   DelayCommonLocationUpdate,
   DelayTemplateUpdate,
@@ -145,6 +151,97 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         request.property,
         (request.params as { profileId: string }).profileId,
         payload
+      );
+    }
+  );
+
+  app.get(
+    "/attendance-issues",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.users.listAttendanceIssues(request.property)
+  );
+
+  app.get(
+    "/attendance-history/:employeeId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) =>
+      app.dataAccess.users.listAttendanceHistory(
+        request.property,
+        (request.params as { employeeId: string }).employeeId,
+        (request.query as { issueType?: "absence" | "tardiness" }).issueType
+      )
+  );
+
+  app.put(
+    "/attendance-issues/:issueId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "staffing.write");
+      const payload = attendanceIssueUpdateSchema.parse(request.body) as AttendanceIssueUpdate;
+      return app.dataAccess.users.updateAttendanceIssue(
+        request.property,
+        (request.params as { issueId: string }).issueId,
+        payload
+      );
+    }
+  );
+
+  app.get(
+    "/attendance-notifications",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.users.listAttendanceNotificationRules(request.property)
+  );
+
+  app.post(
+    "/attendance-notifications",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "staffing.write");
+      const payload = attendanceNotificationRuleCreateSchema.parse(
+        request.body
+      ) as AttendanceNotificationRuleCreate;
+      return app.dataAccess.users.createAttendanceNotificationRule(request.property, payload);
+    }
+  );
+
+  app.put(
+    "/attendance-notifications/:ruleId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "staffing.write");
+      const payload = attendanceNotificationRuleUpdateSchema.parse(
+        request.body
+      ) as AttendanceNotificationRuleUpdate;
+      return app.dataAccess.users.updateAttendanceNotificationRule(
+        request.property,
+        (request.params as { ruleId: string }).ruleId,
+        payload
+      );
+    }
+  );
+
+  app.delete(
+    "/attendance-notifications/:ruleId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "staffing.write");
+      return app.dataAccess.users.deleteAttendanceNotificationRule(
+        request.property,
+        (request.params as { ruleId: string }).ruleId
       );
     }
   );

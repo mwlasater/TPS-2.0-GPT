@@ -629,9 +629,11 @@ describe("PostgresUsersRepository", () => {
       rows: [
         {
           id: "att_caltrain_1",
+          employee_id: "personnel-2",
           employee_name: "Casey Morgan",
           exception_type: "absence",
           start_date: new Date("2026-03-06T00:00:00Z"),
+          end_date: null,
           status: "approved",
           notes: "Approved medical leave."
         }
@@ -645,9 +647,11 @@ describe("PostgresUsersRepository", () => {
       items: [
         {
           id: "att_caltrain_1",
+          employeeId: "personnel-2",
           employeeName: "Casey Morgan",
           exceptionType: "absence",
           startDate: "2026-03-06",
+          endDate: null,
           status: "approved",
           notes: "Approved medical leave."
         }
@@ -663,9 +667,11 @@ describe("PostgresUsersRepository", () => {
         rows: [
           {
             id: "att_caltrain_1",
+            employee_id: "personnel-2",
             employee_name: "Casey Morgan",
             exception_type: "absence",
             start_date: new Date("2026-03-06T00:00:00Z"),
+            end_date: null,
             status: "resolved",
             notes: "Cleared for duty."
           }
@@ -680,11 +686,77 @@ describe("PostgresUsersRepository", () => {
 
     expect(exception).toEqual({
       id: "att_caltrain_1",
+      employeeId: "personnel-2",
       employeeName: "Casey Morgan",
       exceptionType: "absence",
       startDate: "2026-03-06",
+      endDate: null,
       status: "resolved",
       notes: "Cleared for duty."
+    });
+  });
+
+  it("maps attendance issue history rows", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "att_caltrain_2",
+          employee_id: "personnel-2",
+          employee_name: "Taylor Brooks",
+          exception_type: "tardy",
+          start_date: new Date("2026-03-06T00:00:00Z"),
+          end_date: new Date("2026-03-06T00:00:00Z"),
+          status: "resolved",
+          notes: "Supervisor review completed."
+        }
+      ]
+    });
+
+    const repository = new PostgresUsersRepository({ query });
+    const history = await repository.listAttendanceHistory("caltrain", "personnel-2");
+
+    expect(history).toEqual({
+      employeeId: "personnel-2",
+      items: [
+        {
+          id: "att_caltrain_2",
+          employeeId: "personnel-2",
+          employeeName: "Taylor Brooks",
+          issueType: "tardiness",
+          startDate: "2026-03-06",
+          endDate: "2026-03-06",
+          status: "resolved",
+          notes: "Supervisor review completed."
+        }
+      ]
+    });
+  });
+
+  it("creates and deletes attendance notification rules", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: "attendance-rule-1" }] });
+
+    const repository = new PostgresUsersRepository({ query });
+    const created = await repository.createAttendanceNotificationRule("caltrain", {
+      issueType: "absence",
+      triggerStatus: "open",
+      recipientGroup: "Operations Leadership",
+      templateName: "Attendance Escalation",
+      enabled: true
+    });
+    const deleted = await repository.deleteAttendanceNotificationRule("caltrain", "attendance-rule-1");
+
+    expect(created).toMatchObject({
+      issueType: "absence",
+      triggerStatus: "open",
+      recipientGroup: "Operations Leadership",
+      templateName: "Attendance Escalation",
+      enabled: true
+    });
+    expect(created.id).toEqual(expect.any(String));
+    expect(deleted).toEqual({
+      deletedRuleId: "attendance-rule-1"
     });
   });
 });

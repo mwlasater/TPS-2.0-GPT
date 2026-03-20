@@ -24,7 +24,8 @@ describe("seed service", () => {
       "0014_user_enable_action",
       "0015_user_admin_history",
       "0016_local_dev_user",
-      "0017_train_run_status_history"
+      "0017_train_run_status_history",
+      "0018_attendance_workflows"
     ]);
   });
 });

@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { buildApp } from "../app.js";
 import { resetManagedUsers } from "../lib/managed-users.js";
 import { resetApprovalHistoryData } from "../lib/approval-history-data.js";
+import { resetBaselineData } from "../lib/baseline-data.js";
 import { resetUserAdminHistoryData } from "../lib/user-admin-history-data.js";
 import { resetFareEnforcementData } from "../lib/fare-enforcement-data.js";
 import { resetOperationsData } from "../lib/operations-data.js";
@@ -53,6 +54,7 @@ describe("app contracts", () => {
     resetTrainRunEventHistoryData();
     resetTrainRunStatusData();
     resetManagedUsers();
+    resetBaselineData();
     resetUserAdminData();
     resetUserAdminHistoryData();
     resetJwkCache();
@@ -575,6 +577,48 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns attendance issues, history, and notification rules for authorized property context", async () => {
+    const issuesResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/attendance-issues",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const historyResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/attendance-history/personnel-2",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const rulesResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/attendance-notifications",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(issuesResponse.statusCode).toBe(200);
+    expect(historyResponse.statusCode).toBe(200);
+    expect(rulesResponse.statusCode).toBe(200);
+    expect(issuesResponse.json().items[0]).toMatchObject({
+      issueType: "absence"
+    });
+    expect(historyResponse.json()).toMatchObject({
+      employeeId: "personnel-2"
+    });
+    expect(rulesResponse.json().items[0]).toMatchObject({
+      issueType: "absence"
+    });
+  });
+
   it("returns and updates personnel records for authorized property context", async () => {
     const listResponse = await app.inject({
       method: "GET",
@@ -673,6 +717,49 @@ describe("app contracts", () => {
     expect(response.json()).toMatchObject({
       status: "resolved",
       notes: "Cleared for duty."
+    });
+  });
+
+  it("updates attendance issues and attendance notification rules for authorized property context", async () => {
+    const issueResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/attendance-issues/att-2",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        status: "resolved",
+        notes: "Supervisor review completed.",
+        endDate: "2026-03-06"
+      }
+    });
+
+    const createRuleResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/attendance-notifications",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        issueType: "absence",
+        triggerStatus: "open",
+        recipientGroup: "Dispatch Leadership",
+        templateName: "Attendance Escalation",
+        enabled: true
+      }
+    });
+
+    expect(issueResponse.statusCode).toBe(200);
+    expect(issueResponse.json()).toMatchObject({
+      status: "resolved",
+      endDate: "2026-03-06"
+    });
+    expect(createRuleResponse.statusCode).toBe(200);
+    expect(createRuleResponse.json()).toMatchObject({
+      issueType: "absence",
+      recipientGroup: "Dispatch Leadership"
     });
   });
 

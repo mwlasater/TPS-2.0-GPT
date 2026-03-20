@@ -7,8 +7,15 @@ import {
   updateFareEnforcement
 } from "../lib/fare-enforcement-data.js";
 import {
+  createAttendanceNotificationRule,
+  deleteAttendanceNotificationRule,
   listAttendanceExceptions,
+  listAttendanceHistory,
+  listAttendanceIssues,
+  listAttendanceNotificationRules,
   listJobProfiles,
+  updateAttendanceIssue,
+  updateAttendanceNotificationRule,
   updateAttendanceException,
   updateJobProfile
 } from "../lib/baseline-data.js";
@@ -189,7 +196,14 @@ export function createMockDataAccess(): DataAccess {
       updatePersonnelStatus,
       updateJobProfile,
       listAttendanceExceptions,
-      updateAttendanceException
+      updateAttendanceException,
+      listAttendanceIssues,
+      listAttendanceHistory,
+      updateAttendanceIssue,
+      listAttendanceNotificationRules,
+      createAttendanceNotificationRule,
+      updateAttendanceNotificationRule,
+      deleteAttendanceNotificationRule
     },
     platform: {
       listReportConfig,

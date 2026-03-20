@@ -633,9 +633,11 @@ export const jobProfileListSchema = z.object({
 
 export const attendanceExceptionSchema = z.object({
   id: z.string(),
+  employeeId: z.string().optional(),
   employeeName: z.string(),
   exceptionType: z.enum(["absence", "tardy"]),
   startDate: z.string(),
+  endDate: z.string().nullable().optional(),
   status: z.enum(["open", "approved", "resolved"]),
   notes: z.string()
 });
@@ -647,6 +649,64 @@ export const attendanceExceptionUpdateSchema = z.object({
 
 export const attendanceExceptionListSchema = z.object({
   items: z.array(attendanceExceptionSchema)
+});
+
+export const attendanceIssueRecordSchema = z.object({
+  id: z.string(),
+  employeeId: z.string(),
+  employeeName: z.string(),
+  issueType: z.enum(["absence", "tardiness"]),
+  startDate: z.string(),
+  endDate: z.string().nullable(),
+  status: z.enum(["open", "approved", "resolved"]),
+  notes: z.string()
+});
+
+export const attendanceIssueUpdateSchema = z.object({
+  status: z.enum(["open", "approved", "resolved"]),
+  notes: z.string().min(1),
+  endDate: z.string().nullable()
+});
+
+export const attendanceIssueListSchema = z.object({
+  items: z.array(attendanceIssueRecordSchema)
+});
+
+export const attendanceHistoryListSchema = z.object({
+  employeeId: z.string(),
+  items: z.array(attendanceIssueRecordSchema)
+});
+
+export const attendanceNotificationRuleSchema = z.object({
+  id: z.string(),
+  issueType: z.enum(["absence", "tardiness"]),
+  triggerStatus: z.enum(["open", "approved", "resolved"]),
+  recipientGroup: z.string(),
+  templateName: z.string(),
+  enabled: z.boolean()
+});
+
+export const attendanceNotificationRuleCreateSchema = z.object({
+  issueType: z.enum(["absence", "tardiness"]),
+  triggerStatus: z.enum(["open", "approved", "resolved"]),
+  recipientGroup: z.string().min(1),
+  templateName: z.string().min(1),
+  enabled: z.boolean()
+});
+
+export const attendanceNotificationRuleUpdateSchema = z.object({
+  triggerStatus: z.enum(["open", "approved", "resolved"]),
+  recipientGroup: z.string().min(1),
+  templateName: z.string().min(1),
+  enabled: z.boolean()
+});
+
+export const attendanceNotificationRuleDeleteResultSchema = z.object({
+  deletedRuleId: z.string()
+});
+
+export const attendanceNotificationRuleListSchema = z.object({
+  items: z.array(attendanceNotificationRuleSchema)
 });
 
 export const fileServiceItemSchema = z.object({

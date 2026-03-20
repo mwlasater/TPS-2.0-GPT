@@ -22,7 +22,8 @@ describe("migration service", () => {
       "0012_delay_templates",
       "0013_personnel_directory",
       "0015_user_admin_history",
-      "0017_train_run_status_history"
+      "0017_train_run_status_history",
+      "0018_attendance_workflows"
     ]);
   });
 });

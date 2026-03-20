@@ -644,9 +644,11 @@ export interface JobProfileList {
 
 export interface AttendanceException {
   id: string;
+  employeeId?: string;
   employeeName: string;
   exceptionType: "absence" | "tardy";
   startDate: string;
+  endDate?: string | null;
   status: "open" | "approved" | "resolved";
   notes: string;
 }
@@ -658,6 +660,64 @@ export interface AttendanceExceptionUpdate {
 
 export interface AttendanceExceptionList {
   items: AttendanceException[];
+}
+
+export interface AttendanceIssueRecord {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  issueType: "absence" | "tardiness";
+  startDate: string;
+  endDate: string | null;
+  status: "open" | "approved" | "resolved";
+  notes: string;
+}
+
+export interface AttendanceIssueUpdate {
+  status: "open" | "approved" | "resolved";
+  notes: string;
+  endDate: string | null;
+}
+
+export interface AttendanceIssueList {
+  items: AttendanceIssueRecord[];
+}
+
+export interface AttendanceHistoryList {
+  employeeId: string;
+  items: AttendanceIssueRecord[];
+}
+
+export interface AttendanceNotificationRule {
+  id: string;
+  issueType: "absence" | "tardiness";
+  triggerStatus: "open" | "approved" | "resolved";
+  recipientGroup: string;
+  templateName: string;
+  enabled: boolean;
+}
+
+export interface AttendanceNotificationRuleCreate {
+  issueType: "absence" | "tardiness";
+  triggerStatus: "open" | "approved" | "resolved";
+  recipientGroup: string;
+  templateName: string;
+  enabled: boolean;
+}
+
+export interface AttendanceNotificationRuleUpdate {
+  triggerStatus: "open" | "approved" | "resolved";
+  recipientGroup: string;
+  templateName: string;
+  enabled: boolean;
+}
+
+export interface AttendanceNotificationRuleDeleteResult {
+  deletedRuleId: string;
+}
+
+export interface AttendanceNotificationRuleList {
+  items: AttendanceNotificationRule[];
 }
 
 export interface FileServiceItem {

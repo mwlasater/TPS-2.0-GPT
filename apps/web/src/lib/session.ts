@@ -1,5 +1,8 @@
 import type {
   AttendanceExceptionList,
+  AttendanceHistoryList,
+  AttendanceIssueList,
+  AttendanceNotificationRuleList,
   AppBootstrap,
   ConsistEquipmentList,
   ConsistTemplateList,
@@ -1561,17 +1564,21 @@ const commuterAttendanceExceptions: AttendanceExceptionList = {
   items: [
     {
       id: "att-1",
-      employeeName: "Casey Morgan",
+      employeeId: "personnel-2",
+      employeeName: "Taylor Brooks",
       exceptionType: "absence",
       startDate: "2026-03-06",
+      endDate: "2026-03-07",
       status: "approved",
       notes: "Approved medical leave."
     },
     {
       id: "att-2",
+      employeeId: "personnel-2",
       employeeName: "Taylor Brooks",
       exceptionType: "tardy",
       startDate: "2026-03-06",
+      endDate: null,
       status: "open",
       notes: "Reported 12 minutes late due to traffic."
     }
@@ -1582,11 +1589,97 @@ const streetcarAttendanceExceptions: AttendanceExceptionList = {
   items: [
     {
       id: "street-att-1",
+      employeeId: "personnel-3",
       employeeName: "Jordan Reyes",
       exceptionType: "tardy",
       startDate: "2026-03-06",
+      endDate: "2026-03-06",
       status: "resolved",
       notes: "Late sign-on resolved with supervisor approval."
+    }
+  ]
+};
+
+const commuterAttendanceIssues: AttendanceIssueList = {
+  items: [
+    {
+      id: "att-1",
+      employeeId: "personnel-2",
+      employeeName: "Taylor Brooks",
+      issueType: "absence",
+      startDate: "2026-03-06",
+      endDate: "2026-03-07",
+      status: "approved",
+      notes: "Approved medical leave."
+    },
+    {
+      id: "att-2",
+      employeeId: "personnel-2",
+      employeeName: "Taylor Brooks",
+      issueType: "tardiness",
+      startDate: "2026-03-06",
+      endDate: null,
+      status: "open",
+      notes: "Reported 12 minutes late due to traffic."
+    },
+    {
+      id: "att-3",
+      employeeId: "personnel-2",
+      employeeName: "Taylor Brooks",
+      issueType: "absence",
+      startDate: "2026-02-24",
+      endDate: "2026-02-24",
+      status: "resolved",
+      notes: "Prior approved absence retained for history."
+    }
+  ]
+};
+
+const streetcarAttendanceIssues: AttendanceIssueList = {
+  items: [
+    {
+      id: "street-att-1",
+      employeeId: "personnel-3",
+      employeeName: "Jordan Reyes",
+      issueType: "tardiness",
+      startDate: "2026-03-06",
+      endDate: "2026-03-06",
+      status: "resolved",
+      notes: "Late sign-on resolved with supervisor approval."
+    }
+  ]
+};
+
+const commuterAttendanceNotificationRules: AttendanceNotificationRuleList = {
+  items: [
+    {
+      id: "attendance-rule-1",
+      issueType: "absence",
+      triggerStatus: "open",
+      recipientGroup: "Operations Leadership",
+      templateName: "Absence Open Alert",
+      enabled: true
+    },
+    {
+      id: "attendance-rule-2",
+      issueType: "tardiness",
+      triggerStatus: "approved",
+      recipientGroup: "Crew Management",
+      templateName: "Tardiness Supervisor Notice",
+      enabled: true
+    }
+  ]
+};
+
+const streetcarAttendanceNotificationRules: AttendanceNotificationRuleList = {
+  items: [
+    {
+      id: "street-attendance-rule-1",
+      issueType: "tardiness",
+      triggerStatus: "open",
+      recipientGroup: "Street Operations",
+      templateName: "Streetcar Tardiness Alert",
+      enabled: true
     }
   ]
 };
@@ -1622,6 +1715,48 @@ export const demoAttendanceExceptions: Record<PropertyCode, AttendanceExceptionL
   metrolinkarrow: commuterAttendanceExceptions,
   silverline: commuterAttendanceExceptions
 };
+
+export const demoAttendanceIssues: Record<PropertyCode, AttendanceIssueList> = {
+  caltrain: commuterAttendanceIssues,
+  texrail: commuterAttendanceIssues,
+  tre: commuterAttendanceIssues,
+  trirail: commuterAttendanceIssues,
+  nmrx: commuterAttendanceIssues,
+  ctrail: commuterAttendanceIssues,
+  ace: commuterAttendanceIssues,
+  capmetro: commuterAttendanceIssues,
+  kcstreetcar: streetcarAttendanceIssues,
+  okcstreetcar: streetcarAttendanceIssues,
+  octastreetcar: streetcarAttendanceIssues,
+  metrolinkarrow: commuterAttendanceIssues,
+  silverline: commuterAttendanceIssues
+};
+
+export const demoAttendanceNotificationRules: Record<PropertyCode, AttendanceNotificationRuleList> = {
+  caltrain: commuterAttendanceNotificationRules,
+  texrail: commuterAttendanceNotificationRules,
+  tre: commuterAttendanceNotificationRules,
+  trirail: commuterAttendanceNotificationRules,
+  nmrx: commuterAttendanceNotificationRules,
+  ctrail: commuterAttendanceNotificationRules,
+  ace: commuterAttendanceNotificationRules,
+  capmetro: commuterAttendanceNotificationRules,
+  kcstreetcar: streetcarAttendanceNotificationRules,
+  okcstreetcar: streetcarAttendanceNotificationRules,
+  octastreetcar: streetcarAttendanceNotificationRules,
+  metrolinkarrow: commuterAttendanceNotificationRules,
+  silverline: commuterAttendanceNotificationRules
+};
+
+export function getDemoAttendanceHistory(
+  propertyCode: PropertyCode,
+  employeeId: string
+): AttendanceHistoryList {
+  return {
+    employeeId,
+    items: demoAttendanceIssues[propertyCode].items.filter((item) => item.employeeId === employeeId)
+  };
+}
 
 const commuterFiles: FileServiceList = {
   items: [

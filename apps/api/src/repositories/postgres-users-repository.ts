@@ -4,6 +4,15 @@ import type {
   AttendanceException,
   AttendanceExceptionList,
   AttendanceExceptionUpdate,
+  AttendanceHistoryList,
+  AttendanceIssueList,
+  AttendanceIssueRecord,
+  AttendanceIssueUpdate,
+  AttendanceNotificationRule,
+  AttendanceNotificationRuleCreate,
+  AttendanceNotificationRuleDeleteResult,
+  AttendanceNotificationRuleList,
+  AttendanceNotificationRuleUpdate,
   JobProfile,
   JobProfileList,
   JobProfileUpdate,
@@ -28,7 +37,13 @@ import type {
   UserAdminActionList
 } from "@tps/types";
 
-import { listAttendanceExceptions, listJobProfiles } from "../lib/baseline-data.js";
+import {
+  listAttendanceExceptions,
+  listAttendanceHistory,
+  listAttendanceIssues,
+  listAttendanceNotificationRules,
+  listJobProfiles,
+} from "../lib/baseline-data.js";
 import { listManagedUsers } from "../lib/managed-users.js";
 import { listPersonnelRecords } from "../lib/personnel-data.js";
 import { listPermissionGroups } from "../lib/permission-groups.js";
@@ -77,11 +92,22 @@ interface JobProfileRow {
 
 interface AttendanceExceptionRow {
   id: string;
+  employee_id: string | null;
   employee_name: string;
   exception_type: AttendanceException["exceptionType"];
   start_date: string | Date;
+  end_date: string | Date | null;
   status: AttendanceException["status"];
   notes: string;
+}
+
+interface AttendanceNotificationRuleRow {
+  id: string;
+  issue_type: AttendanceNotificationRule["issueType"];
+  trigger_status: AttendanceNotificationRule["triggerStatus"];
+  recipient_group: string;
+  template_name: string;
+  enabled: boolean;
 }
 
 interface PersonnelRecordRow {
@@ -785,9 +811,11 @@ export class PostgresUsersRepository implements UserRepository {
       `
         SELECT
           id,
+          employee_id,
           employee_name,
           exception_type,
           start_date,
+          end_date,
           status,
           notes
         FROM shared.attendance_exception
@@ -801,17 +829,19 @@ export class PostgresUsersRepository implements UserRepository {
       return listAttendanceExceptions(propertyCode);
     }
 
-    return {
+      return {
       items: result.rows.map(
         (row): AttendanceException => ({
           id: row.id,
+          ...(row.employee_id ? { employeeId: row.employee_id } : {}),
           employeeName: row.employee_name,
           exceptionType: row.exception_type,
           startDate: toIsoDate(row.start_date),
-          status: row.status,
-          notes: row.notes
-        })
-      )
+            endDate: row.end_date ? toIsoDate(row.end_date) : null,
+            status: row.status,
+            notes: row.notes
+          })
+        )
     };
   }
 
@@ -825,7 +855,8 @@ export class PostgresUsersRepository implements UserRepository {
         UPDATE shared.attendance_exception
         SET
           status = $3,
-          notes = $4
+          notes = $4,
+          end_date = NULL
         WHERE railroad_code = $1
           AND id = $2
       `,
@@ -836,9 +867,11 @@ export class PostgresUsersRepository implements UserRepository {
       `
         SELECT
           id,
+          employee_id,
           employee_name,
           exception_type,
           start_date,
+          end_date,
           status,
           notes
         FROM shared.attendance_exception
@@ -855,11 +888,307 @@ export class PostgresUsersRepository implements UserRepository {
 
     return {
       id: row.id,
+      ...(row.employee_id ? { employeeId: row.employee_id } : {}),
       employeeName: row.employee_name,
       exceptionType: row.exception_type,
       startDate: toIsoDate(row.start_date),
+      endDate: row.end_date ? toIsoDate(row.end_date) : null,
       status: row.status,
       notes: row.notes
+    };
+  }
+
+  async listAttendanceIssues(propertyCode: PropertyCode): Promise<AttendanceIssueList> {
+    const result = await this.db.query<AttendanceExceptionRow>(
+      `
+        SELECT
+          id,
+          employee_id,
+          employee_name,
+          exception_type,
+          start_date,
+          end_date,
+          status,
+          notes
+        FROM shared.attendance_exception
+        WHERE railroad_code = $1
+        ORDER BY start_date DESC, employee_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listAttendanceIssues(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): AttendanceIssueRecord => ({
+          id: row.id,
+          employeeId: row.employee_id ?? "",
+          employeeName: row.employee_name,
+          issueType: row.exception_type === "tardy" ? "tardiness" : "absence",
+          startDate: toIsoDate(row.start_date),
+          endDate: row.end_date ? toIsoDate(row.end_date) : null,
+          status: row.status,
+          notes: row.notes
+        })
+      )
+    };
+  }
+
+  async listAttendanceHistory(
+    propertyCode: PropertyCode,
+    employeeId: string,
+    issueType?: AttendanceIssueRecord["issueType"]
+  ): Promise<AttendanceHistoryList> {
+    const result = await this.db.query<AttendanceExceptionRow>(
+      `
+        SELECT
+          id,
+          employee_id,
+          employee_name,
+          exception_type,
+          start_date,
+          end_date,
+          status,
+          notes
+        FROM shared.attendance_exception
+        WHERE railroad_code = $1
+          AND employee_id = $2
+          AND ($3::TEXT IS NULL OR exception_type = $3)
+        ORDER BY start_date DESC, employee_name
+      `,
+      [propertyCode, employeeId, issueType === "tardiness" ? "tardy" : issueType ?? null]
+    );
+
+    if (!result.rows.length) {
+      return listAttendanceHistory(propertyCode, employeeId, issueType);
+    }
+
+    return {
+      employeeId,
+      items: result.rows.map(
+        (row): AttendanceIssueRecord => ({
+          id: row.id,
+          employeeId: row.employee_id ?? employeeId,
+          employeeName: row.employee_name,
+          issueType: row.exception_type === "tardy" ? "tardiness" : "absence",
+          startDate: toIsoDate(row.start_date),
+          endDate: row.end_date ? toIsoDate(row.end_date) : null,
+          status: row.status,
+          notes: row.notes
+        })
+      )
+    };
+  }
+
+  async updateAttendanceIssue(
+    propertyCode: PropertyCode,
+    issueId: string,
+    update: AttendanceIssueUpdate
+  ): Promise<AttendanceIssueRecord> {
+    await this.db.query(
+      `
+        UPDATE shared.attendance_exception
+        SET
+          status = $3,
+          notes = $4,
+          end_date = $5
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, issueId, update.status, update.notes, update.endDate]
+    );
+
+    const result = await this.db.query<AttendanceExceptionRow>(
+      `
+        SELECT
+          id,
+          employee_id,
+          employee_name,
+          exception_type,
+          start_date,
+          end_date,
+          status,
+          notes
+        FROM shared.attendance_exception
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, issueId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("attendance_issue.not_found");
+    }
+
+    return {
+      id: row.id,
+      employeeId: row.employee_id ?? "",
+      employeeName: row.employee_name,
+      issueType: row.exception_type === "tardy" ? "tardiness" : "absence",
+      startDate: toIsoDate(row.start_date),
+      endDate: row.end_date ? toIsoDate(row.end_date) : null,
+      status: row.status,
+      notes: row.notes
+    };
+  }
+
+  async listAttendanceNotificationRules(
+    propertyCode: PropertyCode
+  ): Promise<AttendanceNotificationRuleList> {
+    const result = await this.db.query<AttendanceNotificationRuleRow>(
+      `
+        SELECT
+          id,
+          issue_type,
+          trigger_status,
+          recipient_group,
+          template_name,
+          enabled
+        FROM shared.attendance_notification_rule
+        WHERE railroad_code = $1
+        ORDER BY issue_type, template_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listAttendanceNotificationRules(propertyCode);
+    }
+
+    return {
+      items: result.rows.map((row) => ({
+        id: row.id,
+        issueType: row.issue_type,
+        triggerStatus: row.trigger_status,
+        recipientGroup: row.recipient_group,
+        templateName: row.template_name,
+        enabled: row.enabled
+      }))
+    };
+  }
+
+  async createAttendanceNotificationRule(
+    propertyCode: PropertyCode,
+    input: AttendanceNotificationRuleCreate
+  ): Promise<AttendanceNotificationRule> {
+    const id = randomUUID();
+    await this.db.query(
+      `
+        INSERT INTO shared.attendance_notification_rule (
+          id,
+          railroad_code,
+          issue_type,
+          trigger_status,
+          recipient_group,
+          template_name,
+          enabled
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `,
+      [
+        id,
+        propertyCode,
+        input.issueType,
+        input.triggerStatus,
+        input.recipientGroup,
+        input.templateName,
+        input.enabled
+      ]
+    );
+
+    return {
+      id,
+      issueType: input.issueType,
+      triggerStatus: input.triggerStatus,
+      recipientGroup: input.recipientGroup,
+      templateName: input.templateName,
+      enabled: input.enabled
+    };
+  }
+
+  async updateAttendanceNotificationRule(
+    propertyCode: PropertyCode,
+    ruleId: string,
+    update: AttendanceNotificationRuleUpdate
+  ): Promise<AttendanceNotificationRule> {
+    await this.db.query(
+      `
+        UPDATE shared.attendance_notification_rule
+        SET
+          trigger_status = $3,
+          recipient_group = $4,
+          template_name = $5,
+          enabled = $6
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [
+        propertyCode,
+        ruleId,
+        update.triggerStatus,
+        update.recipientGroup,
+        update.templateName,
+        update.enabled
+      ]
+    );
+
+    const result = await this.db.query<AttendanceNotificationRuleRow>(
+      `
+        SELECT
+          id,
+          issue_type,
+          trigger_status,
+          recipient_group,
+          template_name,
+          enabled
+        FROM shared.attendance_notification_rule
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, ruleId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("attendance_notification_rule.not_found");
+    }
+
+    return {
+      id: row.id,
+      issueType: row.issue_type,
+      triggerStatus: row.trigger_status,
+      recipientGroup: row.recipient_group,
+      templateName: row.template_name,
+      enabled: row.enabled
+    };
+  }
+
+  async deleteAttendanceNotificationRule(
+    propertyCode: PropertyCode,
+    ruleId: string
+  ): Promise<AttendanceNotificationRuleDeleteResult> {
+    const result = await this.db.query<{ id: string }>(
+      `
+        DELETE FROM shared.attendance_notification_rule
+        WHERE railroad_code = $1
+          AND id = $2
+        RETURNING id
+      `,
+      [propertyCode, ruleId]
+    );
+
+    if (!result.rows[0]) {
+      throw new Error("attendance_notification_rule.not_found");
+    }
+
+    return {
+      deletedRuleId: ruleId
     };
   }
 }

@@ -75,6 +75,15 @@ import type {
   TrainScheduleList,
   NotificationUpdate,
   AttendanceExceptionUpdate,
+  AttendanceHistoryList,
+  AttendanceIssueList,
+  AttendanceIssueRecord,
+  AttendanceIssueUpdate,
+  AttendanceNotificationRule,
+  AttendanceNotificationRuleCreate,
+  AttendanceNotificationRuleDeleteResult,
+  AttendanceNotificationRuleList,
+  AttendanceNotificationRuleUpdate,
   JobProfileUpdate,
   UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
@@ -162,6 +171,33 @@ export interface UserRepository {
     exceptionId: string,
     update: AttendanceExceptionUpdate
   ): MaybePromise<AttendanceException>;
+  listAttendanceIssues(propertyCode: PropertyCode): MaybePromise<AttendanceIssueList>;
+  listAttendanceHistory(
+    propertyCode: PropertyCode,
+    employeeId: string,
+    issueType?: AttendanceIssueRecord["issueType"]
+  ): MaybePromise<AttendanceHistoryList>;
+  updateAttendanceIssue(
+    propertyCode: PropertyCode,
+    issueId: string,
+    update: AttendanceIssueUpdate
+  ): MaybePromise<AttendanceIssueRecord>;
+  listAttendanceNotificationRules(
+    propertyCode: PropertyCode
+  ): MaybePromise<AttendanceNotificationRuleList>;
+  createAttendanceNotificationRule(
+    propertyCode: PropertyCode,
+    input: AttendanceNotificationRuleCreate
+  ): MaybePromise<AttendanceNotificationRule>;
+  updateAttendanceNotificationRule(
+    propertyCode: PropertyCode,
+    ruleId: string,
+    update: AttendanceNotificationRuleUpdate
+  ): MaybePromise<AttendanceNotificationRule>;
+  deleteAttendanceNotificationRule(
+    propertyCode: PropertyCode,
+    ruleId: string
+  ): MaybePromise<AttendanceNotificationRuleDeleteResult>;
 }
 
 export interface PlatformRepository {
