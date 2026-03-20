@@ -8,6 +8,7 @@ import type {
   FileServiceList,
   JobProfileUpdate,
   JobProfileList,
+  ManagedUserCreate,
   ManagedUserDetail,
   ManagedUserList,
   NotificationUpdate,
@@ -49,6 +50,7 @@ interface SettingsPageProps {
   property: PropertySummary;
   referenceData: ReferenceDataset;
   reportConfig: ReportConfigList;
+  createUser: (input: ManagedUserCreate) => Promise<void>;
   saveDelayCommonLocation: (locationId: string, update: DelayCommonLocationUpdate) => Promise<void>;
   saveDelayTemplate: (templateId: string, update: DelayTemplateUpdate) => Promise<void>;
   saveAttendance: (exceptionId: string, update: AttendanceExceptionUpdate) => Promise<void>;
@@ -62,6 +64,8 @@ interface SettingsPageProps {
   saveSettings: (update: PropertySettingsUpdate) => Promise<void>;
   saveSpecialMovement: (movementId: string, update: SpecialMovementUpdate) => Promise<void>;
   runUserAdminAction: (actionId: string) => Promise<void>;
+  selectedUserId: string;
+  selectUser: (userId: string) => void;
   settings: PropertySettings;
   specialMovements: SpecialMovementList;
   source: "api" | "fallback";
@@ -84,6 +88,7 @@ export function SettingsPage({
   property,
   referenceData,
   reportConfig,
+  createUser,
   saveDelayCommonLocation,
   saveDelayTemplate,
   saveAttendance,
@@ -97,6 +102,8 @@ export function SettingsPage({
   saveSettings,
   saveSpecialMovement,
   runUserAdminAction,
+  selectedUserId,
+  selectUser,
   settings,
   specialMovements,
   source,
@@ -230,12 +237,33 @@ export function SettingsPage({
                     label={user.status}
                   />
                 </div>
+                <button type="button" onClick={() => selectUser(user.id)}>
+                  {selectedUserId === user.id ? "Selected" : "View user"}
+                </button>
               </article>
             ))
           ) : (
             <p>No seeded user records yet for this property.</p>
           )}
         </div>
+        <button
+          type="button"
+          onClick={() =>
+            void runAction(
+              () =>
+                createUser({
+                  displayName: "Morgan Lee",
+                  email: "morgan.lee@herzog.com",
+                  roleLabel: "Operations Analyst",
+                  propertyAccess: [property.code],
+                  groups: ["Reporting Admin"]
+                }),
+              "Managed user invited."
+            )
+          }
+        >
+          Invite staged user
+        </button>
       </Panel>
       <div className="two-column-grid">
         <Panel title="Selected user detail" eyebrow={managedUserDetail.status}>

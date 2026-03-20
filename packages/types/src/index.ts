@@ -83,6 +83,14 @@ export interface ManagedUserList {
   items: ManagedUser[];
 }
 
+export interface ManagedUserCreate {
+  displayName: string;
+  email: string;
+  roleLabel: string;
+  propertyAccess: PropertyCode[];
+  groups: string[];
+}
+
 export interface PersonnelRecord {
   id: string;
   employeeId: string;

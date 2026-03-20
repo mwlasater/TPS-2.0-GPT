@@ -29,6 +29,7 @@ import type {
   TrainRunApprovalHistoryList,
   TrainScheduleList,
   UserAdminActionList,
+  ManagedUserCreate,
   UserSession
 } from "@tps/types";
 
@@ -351,6 +352,44 @@ export const demoUserDetails: Record<PropertyCode, ManagedUserDetail> = {
   silverline: makeUserDetail("silverline", "Operations Manager", ["Operations Admin"])
 };
 
+export function getDemoUserDetail(
+  propertyCode: PropertyCode,
+  userId: string
+): ManagedUserDetail {
+  if (userId === "dispatcher-1") {
+    return {
+      id: "dispatcher-1",
+      displayName: "Taylor Brooks",
+      email: "taylor.brooks@herzog.com",
+      status: "active",
+      roleLabel: propertyCode === "tre" ? "Crew Dispatcher" : "Dispatcher",
+      lastSeen: "2026-03-06T13:45:00Z",
+      propertyAccess: [propertyCode],
+      groups: ["Dispatcher"],
+      lastAction: "Invite accepted on 2026-02-19"
+    };
+  }
+
+  return demoUserDetails[propertyCode];
+}
+
+export function createDemoManagedUserDetail(
+  propertyCode: PropertyCode,
+  input: ManagedUserCreate
+): ManagedUserDetail {
+  return {
+    id: "demo-invited-user",
+    displayName: input.displayName,
+    email: input.email,
+    status: "invited",
+    roleLabel: input.roleLabel,
+    lastSeen: "",
+    propertyAccess: input.propertyAccess,
+    groups: input.groups,
+    lastAction: "Invitation sent on 2026-03-20"
+  };
+}
+
 export const demoUserAdminActions: UserAdminActionList = {
   items: [
     {
@@ -367,6 +406,11 @@ export const demoUserAdminActions: UserAdminActionList = {
       id: "disable-user",
       label: "Disable User",
       style: "warning"
+    },
+    {
+      id: "enable-user",
+      label: "Enable User",
+      style: "primary"
     }
   ]
 };

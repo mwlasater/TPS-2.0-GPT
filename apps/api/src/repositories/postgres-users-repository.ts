@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type {
   AttendanceException,
   AttendanceExceptionList,
@@ -6,6 +8,7 @@ import type {
   JobProfileList,
   JobProfileUpdate,
   ManagedUser,
+  ManagedUserCreate,
   ManagedUserDetail,
   ManagedUserList,
   PersonnelRecord,
@@ -202,6 +205,61 @@ export class PostgresUsersRepository implements UserRepository {
     };
   }
 
+  async createUser(
+    propertyCode: PropertyCode,
+    input: ManagedUserCreate
+  ): Promise<ManagedUserDetail> {
+    const userId = `user-${randomUUID()}`;
+
+    await this.db.query("BEGIN");
+
+    try {
+      await this.db.query(
+        `
+          INSERT INTO shared.user_account (
+            id,
+            display_name,
+            email,
+            status,
+            role_label,
+            last_seen_at,
+            last_action_text
+          )
+          VALUES ($1, $2, $3, 'invited', $4, NULL, $5)
+        `,
+        [userId, input.displayName, input.email, input.roleLabel, "Invitation sent on 2026-03-20"]
+      );
+
+      await this.db.query(
+        `
+          INSERT INTO shared.user_property_access (user_id, railroad_code)
+          SELECT $1, UNNEST($2::TEXT[])
+        `,
+        [userId, input.propertyAccess]
+      );
+
+      if (input.groups.length > 0) {
+        await this.db.query(
+          `
+            INSERT INTO shared.user_permission_group (user_id, permission_group_id)
+            SELECT $1, pg.id
+            FROM shared.permission_group pg
+            WHERE pg.railroad_code = $2
+              AND pg.name = ANY($3::TEXT[])
+          `,
+          [userId, propertyCode, input.groups]
+        );
+      }
+
+      await this.db.query("COMMIT");
+    } catch (error) {
+      await this.db.query("ROLLBACK");
+      throw error;
+    }
+
+    return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
+  }
+
   async getUserDetail(userId: string, propertyCode: PropertyCode): Promise<ManagedUserDetail> {
     const accessResult = await this.db.query<{ user_id: string }>(
       `
@@ -226,7 +284,13 @@ export class PostgresUsersRepository implements UserRepository {
     actionId: string
   ): Promise<ManagedUserDetail> {
     const status =
-      actionId === "disable-user" ? "disabled" : actionId === "resend-invite" ? "invited" : null;
+      actionId === "disable-user"
+        ? "disabled"
+        : actionId === "resend-invite"
+          ? "invited"
+          : actionId === "enable-user"
+            ? "active"
+            : null;
     const lastAction =
       actionId === "reset-password"
         ? "Password reset sent on 2026-03-13"
@@ -234,6 +298,8 @@ export class PostgresUsersRepository implements UserRepository {
           ? "Invitation resent on 2026-03-13"
           : actionId === "disable-user"
             ? "User disabled on 2026-03-13"
+            : actionId === "enable-user"
+              ? "User enabled on 2026-03-20"
             : null;
 
     if (!lastAction) {

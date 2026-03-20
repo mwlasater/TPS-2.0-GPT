@@ -34,6 +34,74 @@ describe("PostgresUsersRepository", () => {
     });
   });
 
+  it("creates managed users and returns refreshed detail", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "user-created",
+            display_name: "Morgan Lee",
+            email: "morgan.lee@herzog.com",
+            status: "invited",
+            role_label: "Operations Analyst",
+            last_seen_at: null,
+            last_action_text: "Invitation sent on 2026-03-20"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ railroad_code: "caltrain" }]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ name: "Reporting Admin" }]
+      });
+
+    const repository = new PostgresUsersRepository({ query });
+    const user = await repository.createUser("caltrain", {
+      displayName: "Morgan Lee",
+      email: "morgan.lee@herzog.com",
+      roleLabel: "Operations Analyst",
+      propertyAccess: ["caltrain"],
+      groups: ["Reporting Admin"]
+    });
+
+    expect(user).toEqual({
+      id: "user-created",
+      displayName: "Morgan Lee",
+      email: "morgan.lee@herzog.com",
+      status: "invited",
+      roleLabel: "Operations Analyst",
+      lastSeen: "",
+      propertyAccess: ["caltrain"],
+      groups: ["Reporting Admin"],
+      lastAction: "Invitation sent on 2026-03-20"
+    });
+    expect(query).toHaveBeenNthCalledWith(1, "BEGIN");
+    expect(query).toHaveBeenNthCalledWith(2, expect.stringContaining("INSERT INTO shared.user_account"), [
+      expect.stringMatching(/^user-/),
+      "Morgan Lee",
+      "morgan.lee@herzog.com",
+      "Operations Analyst",
+      "Invitation sent on 2026-03-20"
+    ]);
+    expect(query).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining("INSERT INTO shared.user_property_access"),
+      [expect.stringMatching(/^user-/), ["caltrain"]]
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      4,
+      expect.stringContaining("INSERT INTO shared.user_permission_group"),
+      [expect.stringMatching(/^user-/), "caltrain", ["Reporting Admin"]]
+    );
+  });
+
   it("maps user detail rows into a managed user detail payload", async () => {
     const query = vi
       .fn()
@@ -339,6 +407,49 @@ describe("PostgresUsersRepository", () => {
       propertyAccess: ["caltrain", "capmetro"],
       groups: ["Dispatch Leadership", "Operations Admin"],
       lastAction: "User disabled on 2026-03-13"
+    });
+  });
+
+  it("executes enable-user admin actions and returns refreshed detail", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ user_id: "ops-manager" }]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "ops-manager",
+            display_name: "Jordan Reyes",
+            email: "jordan.reyes@herzog.com",
+            status: "active",
+            role_label: "Operations Manager",
+            last_seen_at: new Date("2026-03-06T14:10:00Z"),
+            last_action_text: "User enabled on 2026-03-20"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ railroad_code: "caltrain" }, { railroad_code: "capmetro" }]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ name: "Dispatch Leadership" }, { name: "Operations Admin" }]
+      });
+
+    const repository = new PostgresUsersRepository({ query });
+    const user = await repository.executeUserAdminAction("ops-manager", "caltrain", "enable-user");
+
+    expect(user).toEqual({
+      id: "ops-manager",
+      displayName: "Jordan Reyes",
+      email: "jordan.reyes@herzog.com",
+      status: "active",
+      roleLabel: "Operations Manager",
+      lastSeen: "2026-03-06T14:10:00.000Z",
+      propertyAccess: ["caltrain", "capmetro"],
+      groups: ["Dispatch Leadership", "Operations Admin"],
+      lastAction: "User enabled on 2026-03-20"
     });
   });
 

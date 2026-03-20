@@ -81,6 +81,14 @@ export const managedUserListSchema = z.object({
   items: z.array(managedUserSchema)
 });
 
+export const managedUserCreateSchema = z.object({
+  displayName: z.string().min(1),
+  email: z.string().email(),
+  roleLabel: z.string().min(1),
+  propertyAccess: z.array(z.string().min(1)).min(1),
+  groups: z.array(z.string().min(1))
+});
+
 export const personnelRecordSchema = z.object({
   id: z.string(),
   employeeId: z.string(),

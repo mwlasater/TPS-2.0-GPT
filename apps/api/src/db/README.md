@@ -20,6 +20,7 @@ Initial SQL persistence tooling for TPS 2.0.
 - `seeds/0011_resource_templates.sql`: seeded consist and crew swap templates
 - `seeds/0012_delay_templates.sql`: seeded delay templates for commuter properties
 - `seeds/0013_personnel_directory.sql`: seeded personnel directory records
+- `seeds/0014_user_enable_action.sql`: additive user admin action seed for re-enable workflows
 
 Commands:
 

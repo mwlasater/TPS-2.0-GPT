@@ -1,10 +1,14 @@
+import { randomUUID } from "node:crypto";
+
 import type {
+  ManagedUserCreate,
   ManagedUserDetail,
   PropertyCode,
   UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
   UserAdminActionList
 } from "@tps/types";
+import { createManagedUser, upsertManagedUser } from "./managed-users.js";
 
 const userDetails: Record<string, Omit<ManagedUserDetail, "propertyAccess">> = {
   "ops-manager": {
@@ -56,6 +60,11 @@ const defaultActions: UserAdminActionList = {
       id: "disable-user",
       label: "Disable User",
       style: "warning"
+    },
+    {
+      id: "enable-user",
+      label: "Enable User",
+      style: "primary"
     }
   ]
 };
@@ -65,15 +74,24 @@ const propertyAccessByUser: Partial<Record<string, PropertyCode[]>> = {
   "dispatcher-1": ["caltrain", "tre"],
   "reporting-admin": ["caltrain"]
 };
+const initialPropertyAccessByUser = JSON.parse(
+  JSON.stringify(propertyAccessByUser)
+) as typeof propertyAccessByUser;
 
 const groupsByUser: Partial<Record<string, string[]>> = {
   "ops-manager": ["Operations Admin", "Dispatch Leadership"],
   "dispatcher-1": ["Dispatcher"],
   "reporting-admin": ["Reporting Admin"]
 };
+const initialGroupsByUser = JSON.parse(JSON.stringify(groupsByUser)) as typeof groupsByUser;
 
 export function getManagedUserDetail(userId: string, propertyCode: PropertyCode): ManagedUserDetail {
-  const base = userDetails[userId] ?? userDetails["ops-manager"]!;
+  const base = userDetails[userId];
+
+  if (!base) {
+    throw new Error("managed_user.not_found");
+  }
+
   return {
     ...base,
     propertyAccess: propertyAccessByUser[userId] ?? [propertyCode],
@@ -103,12 +121,40 @@ export function listUserAdminActions(): UserAdminActionList {
   return defaultActions;
 }
 
+export function createManagedUserDetail(
+  propertyCode: PropertyCode,
+  input: ManagedUserCreate
+): ManagedUserDetail {
+  const summary = createManagedUser(input);
+  const userId = summary.id || `user-${randomUUID()}`;
+  const detail: Omit<ManagedUserDetail, "propertyAccess"> = {
+    ...summary,
+    id: userId,
+    groups: [...input.groups],
+    lastAction: "Invitation sent on 2026-03-20"
+  };
+
+  userDetails[userId] = detail;
+  propertyAccessByUser[userId] = [...input.propertyAccess];
+  groupsByUser[userId] = [...input.groups];
+  upsertManagedUser({
+    ...summary,
+    id: userId
+  });
+
+  return getManagedUserDetail(userId, propertyCode);
+}
+
 export function executeUserAdminAction(
   userId: string,
   propertyCode: PropertyCode,
   actionId: string
 ): ManagedUserDetail {
-  const detail = userDetails[userId] ?? userDetails["ops-manager"]!;
+  const detail = userDetails[userId];
+
+  if (!detail) {
+    throw new Error("managed_user.not_found");
+  }
 
   switch (actionId) {
     case "reset-password":
@@ -122,11 +168,23 @@ export function executeUserAdminAction(
       detail.status = "disabled";
       detail.lastAction = "User disabled on 2026-03-13";
       break;
+    case "enable-user":
+      detail.status = "active";
+      detail.lastAction = "User enabled on 2026-03-20";
+      break;
     default:
       throw new Error("user_admin_action.not_found");
   }
 
   userDetails[userId] = detail;
+  upsertManagedUser({
+    id: detail.id,
+    displayName: detail.displayName,
+    email: detail.email,
+    status: detail.status,
+    roleLabel: detail.roleLabel,
+    lastSeen: detail.lastSeen
+  });
   return getManagedUserDetail(userId, propertyCode);
 }
 
@@ -137,5 +195,21 @@ export function resetUserAdminData(): void {
 
   for (const [userId, detail] of Object.entries(initialUserDetails)) {
     userDetails[userId] = { ...detail, groups: [...detail.groups] };
+  }
+
+  for (const userId of Object.keys(propertyAccessByUser)) {
+    delete propertyAccessByUser[userId];
+  }
+
+  for (const [userId, propertyAccess] of Object.entries(initialPropertyAccessByUser)) {
+    propertyAccessByUser[userId] = [...(propertyAccess ?? [])];
+  }
+
+  for (const userId of Object.keys(groupsByUser)) {
+    delete groupsByUser[userId];
+  }
+
+  for (const [userId, groups] of Object.entries(initialGroupsByUser)) {
+    groupsByUser[userId] = [...(groups ?? [])];
   }
 }

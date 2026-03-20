@@ -1,5 +1,6 @@
 import type {
   ManagedUserDetail,
+  ManagedUserList,
   PropertyCode,
   UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
@@ -14,7 +15,7 @@ import {
   updateManagedUserPermissionGroups,
   updateManagedUserPropertyAccess
 } from "../lib/api.js";
-import { demoUserAdminActions, demoUserDetails } from "../lib/session.js";
+import { demoUserAdminActions, getDemoUserDetail } from "../lib/session.js";
 
 interface UserAdminDataState {
   detail: ManagedUserDetail;
@@ -29,24 +30,28 @@ interface UserAdminDataState {
 
 export function useUserAdminData(
   propertyCode: PropertyCode,
-  userId: string
+  userId: string,
+  users: ManagedUserList
 ): UserAdminDataState {
   const [state, setState] = useState<UserAdminDataState>({
-    detail: demoUserDetails[propertyCode],
+    detail: getDemoUserDetail(propertyCode, userId),
     actions: demoUserAdminActions,
     source: "fallback",
     isLoading: true,
     isSaving: false,
     runAdminAction: async () => undefined,
     savePropertyAccess: async () => undefined,
-    savePermissionGroups: async () => undefined
+      savePermissionGroups: async () => undefined
   });
 
   useEffect(() => {
     let isMounted = true;
+    const selectedUserId = users.items.some((user) => user.id === userId)
+      ? userId
+      : users.items[0]?.id ?? userId;
 
     setState({
-      detail: demoUserDetails[propertyCode],
+      detail: getDemoUserDetail(propertyCode, selectedUserId),
       actions: demoUserAdminActions,
       source: "fallback",
       isLoading: true,
@@ -57,8 +62,8 @@ export function useUserAdminData(
     });
 
     void Promise.all([
-      fetchManagedUserDetail(propertyCode, userId),
-      fetchUserAdminActions(propertyCode, userId)
+      fetchManagedUserDetail(propertyCode, selectedUserId),
+      fetchUserAdminActions(propertyCode, selectedUserId)
     ])
       .then(([detail, actions]) => {
         if (isMounted) {
@@ -77,7 +82,7 @@ export function useUserAdminData(
       .catch(() => {
         if (isMounted) {
           setState({
-            detail: demoUserDetails[propertyCode],
+            detail: getDemoUserDetail(propertyCode, selectedUserId),
             actions: demoUserAdminActions,
             source: "fallback",
             isLoading: false,
@@ -92,7 +97,7 @@ export function useUserAdminData(
     return () => {
       isMounted = false;
     };
-  }, [propertyCode, userId]);
+  }, [propertyCode, userId, users]);
 
   async function savePropertyAccess(update: UserPropertyAccessUpdate): Promise<void> {
     setState((current) => ({ ...current, isSaving: true }));

@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { buildApp } from "../app.js";
+import { resetManagedUsers } from "../lib/managed-users.js";
 import { resetApprovalHistoryData } from "../lib/approval-history-data.js";
 import { resetFareEnforcementData } from "../lib/fare-enforcement-data.js";
 import { resetOperationsData } from "../lib/operations-data.js";
@@ -36,6 +37,7 @@ describe("app contracts", () => {
     resetReferenceData();
     resetRunDetailData();
     resetRunResourceData();
+    resetManagedUsers();
     resetUserAdminData();
   }
 
@@ -568,6 +570,37 @@ describe("app contracts", () => {
     expect(actionsResponse.json().items[0]).toMatchObject({
       label: "Reset Password"
     });
+    expect(
+      actionsResponse.json().items.some((action: { id: string }) => action.id === "enable-user")
+    ).toBe(true);
+  });
+
+  it("creates managed users for the current property scope", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        displayName: "Morgan Lee",
+        email: "morgan.lee@herzog.com",
+        roleLabel: "Operations Analyst",
+        propertyAccess: ["caltrain"],
+        groups: ["Reporting Admin"]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      displayName: "Morgan Lee",
+      email: "morgan.lee@herzog.com",
+      status: "invited",
+      propertyAccess: ["caltrain"],
+      groups: ["Reporting Admin"],
+      lastAction: "Invitation sent on 2026-03-20"
+    });
   });
 
   it("executes managed user admin actions", async () => {
@@ -585,6 +618,34 @@ describe("app contracts", () => {
       id: "ops-manager",
       status: "disabled",
       lastAction: "User disabled on 2026-03-13"
+    });
+  });
+
+  it("enables disabled managed users", async () => {
+    const disableResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/ops-manager/actions/disable-user",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const enableResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/ops-manager/actions/enable-user",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(disableResponse.statusCode).toBe(200);
+    expect(enableResponse.statusCode).toBe(200);
+    expect(enableResponse.json()).toMatchObject({
+      id: "ops-manager",
+      status: "active",
+      lastAction: "User enabled on 2026-03-20"
     });
   });
 

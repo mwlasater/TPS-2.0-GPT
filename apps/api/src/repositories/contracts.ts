@@ -22,6 +22,7 @@ import type {
   JobProfile,
   JobProfileList,
   ManagedUserDetail,
+  ManagedUserCreate,
   ManagedUserList,
   NotificationItem,
   NotificationList,
@@ -87,6 +88,10 @@ export interface PropertyRepository {
 
 export interface UserRepository {
   listUsers(propertyCode: PropertyCode): MaybePromise<ManagedUserList>;
+  createUser(
+    propertyCode: PropertyCode,
+    input: ManagedUserCreate
+  ): MaybePromise<ManagedUserDetail>;
   getUserDetail(userId: string, propertyCode: PropertyCode): MaybePromise<ManagedUserDetail>;
   executeUserAdminAction(
     userId: string,

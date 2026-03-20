@@ -16,6 +16,7 @@ import { SettingsPage } from "./pages/settings-page.js";
 export function App() {
   const { data, isLoading, source } = useBootstrap();
   const [selectedProperty, setSelectedProperty] = useState(data.defaultProperty);
+  const [selectedUserId, setSelectedUserId] = useState("ops-manager");
   const activeProperty =
     data.availableProperties.find((property) => property.code === selectedProperty) ??
     data.availableProperties[0];
@@ -23,7 +24,13 @@ export function App() {
   const baselineData = useBaselineData(activeProperty?.code ?? data.defaultProperty);
   const propertyData = usePropertyData(activeProperty?.code ?? data.defaultProperty);
   const platformData = usePlatformData(activeProperty?.code ?? data.defaultProperty);
-  const userAdminData = useUserAdminData(activeProperty?.code ?? data.defaultProperty, "ops-manager");
+  const activePropertyCode = activeProperty?.code ?? data.defaultProperty;
+  const scopedUsers = propertyData.users;
+  const effectiveSelectedUserId =
+    scopedUsers.items.find((user) => user.id === selectedUserId)?.id ??
+    scopedUsers.items[0]?.id ??
+    selectedUserId;
+  const userAdminData = useUserAdminData(activePropertyCode, effectiveSelectedUserId, scopedUsers);
   const operationsData = useOperationsData(activeProperty?.code ?? data.defaultProperty);
 
   const appVersion = import.meta.env.VITE_APP_VERSION ?? "0.1.0";
@@ -37,7 +44,10 @@ export function App() {
       appVersion={appVersion}
       properties={data.availableProperties}
       selectedProperty={activeProperty.code}
-      onPropertyChange={setSelectedProperty}
+      onPropertyChange={(propertyCode) => {
+        setSelectedProperty(propertyCode);
+        setSelectedUserId("ops-manager");
+      }}
     >
       <header className="topbar">
         <div>
@@ -131,6 +141,10 @@ export function App() {
               saveDelayTemplate={adminData.saveDelayTemplate}
               saveAttendance={baselineData.saveAttendance}
               saveJobProfile={baselineData.saveJobProfile}
+              createUser={async (input) => {
+                const detail = await propertyData.createUser(input);
+                setSelectedUserId(detail.id);
+              }}
               saveNotification={platformData.saveNotification}
               savePersonnelStatus={baselineData.savePersonnelStatus}
               savePermissionGroups={userAdminData.savePermissionGroups}
@@ -143,6 +157,8 @@ export function App() {
               settings={propertyData.settings}
               specialMovements={adminData.specialMovements}
               source={propertyData.source}
+              selectedUserId={effectiveSelectedUserId}
+              selectUser={setSelectedUserId}
               users={propertyData.users}
             />
           }

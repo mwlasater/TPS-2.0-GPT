@@ -30,6 +30,7 @@ import type {
   JobProfile,
   JobProfileList,
   JobProfileUpdate,
+  ManagedUserCreate,
   ManagedUserDetail,
   ManagedUserList,
   NotificationList,
@@ -148,6 +149,13 @@ export function updateReferenceData(
 
 export function fetchManagedUsers(propertyCode: PropertyCode): Promise<ManagedUserList> {
   return fetchPropertyScoped<ManagedUserList>("/users", propertyCode);
+}
+
+export function createManagedUser(
+  propertyCode: PropertyCode,
+  payload: ManagedUserCreate
+): Promise<ManagedUserDetail> {
+  return mutatePropertyScoped<ManagedUserDetail>("/users", propertyCode, "POST", payload);
 }
 
 export function fetchManagedUserDetail(

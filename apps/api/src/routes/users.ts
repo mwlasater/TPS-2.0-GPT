@@ -1,9 +1,14 @@
 import {
+  managedUserCreateSchema,
   userPermissionGroupUpdateSchema,
   userPropertyAccessUpdateSchema
 } from "@tps/validation";
 import type { FastifyInstance } from "fastify";
-import type { UserPermissionGroupUpdate, UserPropertyAccessUpdate } from "@tps/types";
+import type {
+  ManagedUserCreate,
+  UserPermissionGroupUpdate,
+  UserPropertyAccessUpdate
+} from "@tps/types";
 
 export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
   app.get(
@@ -12,6 +17,17 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => app.dataAccess.users.listUsers(request.property)
+  );
+
+  app.post(
+    "/users",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = managedUserCreateSchema.parse(request.body) as ManagedUserCreate;
+      return app.dataAccess.users.createUser(request.property, payload);
+    }
   );
 
   app.get(

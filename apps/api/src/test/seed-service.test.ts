@@ -20,7 +20,8 @@ describe("seed service", () => {
       "0010_delay_management",
       "0011_resource_templates",
       "0012_delay_templates",
-      "0013_personnel_directory"
+      "0013_personnel_directory",
+      "0014_user_enable_action"
     ]);
   });
 });
