@@ -39,6 +39,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "admin.permissions.write");
       const payload = permissionGroupCreateSchema.parse(request.body) as PermissionGroupCreate;
       await app.dataAccess.users.createPermissionGroup(request.property, payload);
       return { ok: true };
@@ -51,6 +52,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "admin.permissions.write");
       const payload = permissionGroupUpdateSchema.parse(request.body) as PermissionGroupUpdate;
       await app.dataAccess.users.updatePermissionGroup(
         request.property,
@@ -66,11 +68,13 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) =>
-      app.dataAccess.users.deletePermissionGroup(
+    async (request) => {
+      await app.requirePermission(request, "admin.permissions.write");
+      return app.dataAccess.users.deletePermissionGroup(
         request.property,
         (request.params as { groupId: string }).groupId
-      )
+      );
+    }
   );
 
   app.get(
@@ -87,6 +91,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "reports.schedule");
       const payload = reportConfigUpdateSchema.parse(request.body) as ReportConfigUpdate;
       return app.dataAccess.platform.updateReportConfig(
         request.property,
@@ -110,6 +115,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "staffing.write");
       const payload = personnelStatusUpdateSchema.parse(request.body) as PersonnelStatusUpdate;
       return app.dataAccess.users.updatePersonnelStatus(
         request.property,
@@ -133,6 +139,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "staffing.write");
       const payload = jobProfileUpdateSchema.parse(request.body) as JobProfileUpdate;
       return app.dataAccess.users.updateJobProfile(
         request.property,
@@ -156,6 +163,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "staffing.write");
       const payload = attendanceExceptionUpdateSchema.parse(request.body) as AttendanceExceptionUpdate;
       return app.dataAccess.users.updateAttendanceException(
         request.property,
@@ -261,6 +269,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "notifications.write");
       const payload = notificationUpdateSchema.parse(request.body) as NotificationUpdate;
       return app.dataAccess.platform.updateNotification(
         request.property,

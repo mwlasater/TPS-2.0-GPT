@@ -126,6 +126,10 @@ export function SettingsPage({
   const canInviteUsers = currentUserPermissions.includes("users.invite");
   const canManageUsers = currentUserPermissions.includes("users.manage");
   const canEditUserAccess = currentUserPermissions.includes("users.access.write");
+  const canManagePermissionGroups = currentUserPermissions.includes("admin.permissions.write");
+  const canScheduleReports = currentUserPermissions.includes("reports.schedule");
+  const canManageNotifications = currentUserPermissions.includes("notifications.write");
+  const canManageStaffing = currentUserPermissions.includes("staffing.write");
 
   async function runAction(action: () => Promise<void>, success: string) {
     try {
@@ -534,6 +538,7 @@ export function SettingsPage({
           {reportConfig.items[0] ? (
             <button
               type="button"
+              disabled={!canScheduleReports}
               onClick={() =>
                 void runAction(
                   () =>
@@ -581,6 +586,7 @@ export function SettingsPage({
           {personnel.items[0] ? (
             <button
               type="button"
+              disabled={!canManageStaffing}
               onClick={() =>
                 void runAction(
                   () =>
@@ -617,6 +623,7 @@ export function SettingsPage({
           {jobProfiles.items[0] ? (
             <button
               type="button"
+              disabled={!canManageStaffing}
               onClick={() =>
                 void runAction(
                   () =>
@@ -662,6 +669,7 @@ export function SettingsPage({
           {attendance.items[0] ? (
             <button
               type="button"
+              disabled={!canManageStaffing}
               onClick={() =>
                 void runAction(
                   () =>
@@ -718,6 +726,7 @@ export function SettingsPage({
           {notifications.items[0] ? (
             <button
               type="button"
+              disabled={!canManageNotifications}
               onClick={() =>
                 void runAction(
                   () =>
@@ -753,6 +762,7 @@ export function SettingsPage({
         {permissionGroups.items[0] ? (
           <button
             type="button"
+            disabled={!canManagePermissionGroups}
             onClick={() =>
               void runAction(
                 () =>
@@ -770,6 +780,7 @@ export function SettingsPage({
         <div className="button-row">
           <button
             type="button"
+            disabled={!canManagePermissionGroups}
             onClick={() =>
               void runAction(
                 () =>
@@ -787,6 +798,7 @@ export function SettingsPage({
           {permissionGroups.items.at(-1) ? (
             <button
               type="button"
+              disabled={!canManagePermissionGroups}
               onClick={() =>
                 void runAction(
                   () => deletePermissionGroup(permissionGroups.items.at(-1)!.id),

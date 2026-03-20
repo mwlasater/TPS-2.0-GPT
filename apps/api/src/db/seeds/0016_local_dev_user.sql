@@ -28,9 +28,56 @@ VALUES
   ('local-dev-user', 'capmetro')
 ON CONFLICT (user_id, railroad_code) DO NOTHING;
 
+INSERT INTO shared.permission_group (
+  railroad_code,
+  name,
+  description,
+  permissions
+)
+VALUES
+  (
+    'caltrain',
+    'Development Admin',
+    'Full administrative access for the local development operator.',
+    ARRAY[
+      'users.invite',
+      'users.manage',
+      'users.access.write',
+      'admin.permissions.write',
+      'reports.schedule',
+      'notifications.write',
+      'staffing.write'
+    ]
+  ),
+  (
+    'capmetro',
+    'Development Admin',
+    'Full administrative access for the local development operator.',
+    ARRAY[
+      'users.invite',
+      'users.manage',
+      'users.access.write',
+      'admin.permissions.write',
+      'reports.schedule',
+      'notifications.write',
+      'staffing.write'
+    ]
+  )
+ON CONFLICT (railroad_code, name) DO UPDATE
+SET
+  description = EXCLUDED.description,
+  permissions = EXCLUDED.permissions;
+
 INSERT INTO shared.user_permission_group (user_id, permission_group_id)
 SELECT 'local-dev-user', pg.id
 FROM shared.permission_group pg
 WHERE pg.railroad_code = 'caltrain'
-  AND pg.name IN ('Operations Admin', 'Dispatch Leadership')
+  AND pg.name IN ('Operations Admin', 'Dispatch Leadership', 'Development Admin')
+ON CONFLICT (user_id, permission_group_id) DO NOTHING;
+
+INSERT INTO shared.user_permission_group (user_id, permission_group_id)
+SELECT 'local-dev-user', pg.id
+FROM shared.permission_group pg
+WHERE pg.railroad_code = 'capmetro'
+  AND pg.name = 'Development Admin'
 ON CONFLICT (user_id, permission_group_id) DO NOTHING;

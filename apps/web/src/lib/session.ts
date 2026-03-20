@@ -40,9 +40,33 @@ export const demoSession: UserSession = {
   displayName: "Local Development User",
   allowedProperties: ["caltrain", "capmetro", "tre"],
   propertyPermissions: {
-    caltrain: ["users.invite", "users.manage", "users.access.write"],
-    capmetro: ["users.invite", "users.manage", "users.access.write"],
-    tre: ["users.invite", "users.manage", "users.access.write"]
+    caltrain: [
+      "users.invite",
+      "users.manage",
+      "users.access.write",
+      "admin.permissions.write",
+      "reports.schedule",
+      "notifications.write",
+      "staffing.write"
+    ],
+    capmetro: [
+      "users.invite",
+      "users.manage",
+      "users.access.write",
+      "admin.permissions.write",
+      "reports.schedule",
+      "notifications.write",
+      "staffing.write"
+    ],
+    tre: [
+      "users.invite",
+      "users.manage",
+      "users.access.write",
+      "admin.permissions.write",
+      "reports.schedule",
+      "notifications.write",
+      "staffing.write"
+    ]
   }
 };
 

@@ -27,7 +27,7 @@ const env = {
   PROPERTY_CODES: "caltrain,capmetro,tre",
   USER_PROPERTY_ACCESS: "local-dev-user:caltrain|capmetro",
   USER_PROPERTY_PERMISSIONS:
-    "local-dev-user@caltrain:users.invite|users.manage|users.access.write,local-dev-user@capmetro:users.manage"
+    "local-dev-user@caltrain:users.invite|users.manage|users.access.write|admin.permissions.write|reports.schedule|notifications.write|staffing.write,local-dev-user@capmetro:users.manage|admin.permissions.write"
 };
 
 describe("app contracts", () => {
@@ -127,7 +127,15 @@ describe("app contracts", () => {
       user: {
         id: "local-dev-user",
         propertyPermissions: {
-          caltrain: expect.arrayContaining(["users.invite", "users.manage", "users.access.write"])
+          caltrain: expect.arrayContaining([
+            "users.invite",
+            "users.manage",
+            "users.access.write",
+            "admin.permissions.write",
+            "reports.schedule",
+            "notifications.write",
+            "staffing.write"
+          ])
         }
       },
       defaultProperty: "caltrain"
@@ -328,6 +336,36 @@ describe("app contracts", () => {
     });
   });
 
+  it("rejects permission group writes without admin permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:users.manage"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "POST",
+      url: "/api/v1/permission-groups",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        name: "Service Review",
+        description: "Review-focused access for service and incident oversight.",
+        permissions: ["reports.view", "reports.schedule", "delays.write"]
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
+  });
+
   it("updates report configuration for authorized property context", async () => {
     const response = await app.inject({
       method: "PUT",
@@ -349,6 +387,36 @@ describe("app contracts", () => {
       embedEnabled: false,
       schedule: "07:00 daily"
     });
+  });
+
+  it("rejects report configuration updates without report scheduling permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:users.manage"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/report-config/report-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        audience: "Dispatch Leadership",
+        embedEnabled: false,
+        schedule: "07:00 daily"
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
   });
 
   it("rejects invalid report configuration payloads", async () => {
