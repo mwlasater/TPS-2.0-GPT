@@ -27,7 +27,11 @@ import { listAttendanceExceptions, listJobProfiles } from "../lib/baseline-data.
 import { listManagedUsers } from "../lib/managed-users.js";
 import { listPersonnelRecords } from "../lib/personnel-data.js";
 import { listPermissionGroups } from "../lib/permission-groups.js";
-import { getManagedUserDetail, listUserAdminActions } from "../lib/user-admin-data.js";
+import {
+  getManagedUserDetail,
+  getUserAdminActionPermission,
+  listUserAdminActions
+} from "../lib/user-admin-data.js";
 
 import type { UserRepository } from "./contracts.js";
 import type { Queryable } from "./postgres-client.js";
@@ -377,7 +381,10 @@ export class PostgresUsersRepository implements UserRepository {
     return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
   }
 
-  async listUserAdminActions(): Promise<UserAdminActionList> {
+  async listUserAdminActions(
+    _propertyCode: PropertyCode,
+    actorPermissions: string[]
+  ): Promise<UserAdminActionList> {
     const result = await this.db.query<UserAdminActionRow>(
       `
         SELECT
@@ -390,14 +397,16 @@ export class PostgresUsersRepository implements UserRepository {
     );
 
     if (!result.rows.length) {
-      return listUserAdminActions();
+      return listUserAdminActions(actorPermissions);
     }
 
     return {
       items: result.rows.map((row) => ({
         id: row.id,
         label: row.label,
-        style: row.style
+        style: row.style,
+        requiredPermission: getUserAdminActionPermission(row.id),
+        isAllowed: actorPermissions.includes(getUserAdminActionPermission(row.id))
       }))
     };
   }

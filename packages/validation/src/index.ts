@@ -28,7 +28,8 @@ export const userSessionSchema = z.object({
   id: z.string(),
   email: z.string().email(),
   displayName: z.string(),
-  allowedProperties: z.array(z.string())
+  allowedProperties: z.array(z.string()),
+  propertyPermissions: z.record(z.string(), z.array(z.string()))
 });
 
 export const appBootstrapSchema = z.object({
@@ -124,7 +125,9 @@ export const userPermissionGroupUpdateSchema = z.object({
 export const userAdminActionSchema = z.object({
   id: z.string(),
   label: z.string(),
-  style: z.enum(["primary", "secondary", "warning"])
+  style: z.enum(["primary", "secondary", "warning"]),
+  requiredPermission: z.string(),
+  isAllowed: z.boolean()
 });
 
 export const userAdminActionListSchema = z.object({

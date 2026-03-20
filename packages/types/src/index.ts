@@ -24,6 +24,7 @@ export interface UserSession {
   email: string;
   displayName: string;
   allowedProperties: PropertyCode[];
+  propertyPermissions: Partial<Record<PropertyCode, string[]>>;
 }
 
 export interface PropertySummary {
@@ -127,6 +128,8 @@ export interface UserAdminAction {
   id: string;
   label: string;
   style: "primary" | "secondary" | "warning";
+  requiredPermission: string;
+  isAllowed: boolean;
 }
 
 export interface UserAdminActionList {

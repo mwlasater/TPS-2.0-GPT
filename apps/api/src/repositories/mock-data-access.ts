@@ -108,7 +108,9 @@ export function createMockDataAccess(): DataAccess {
       executeUserAdminAction,
       updateUserPropertyAccess: updateManagedUserPropertyAccess,
       updateUserPermissionGroups: updateManagedUserPermissionGroups,
-      listUserAdminActions,
+      listUserAdminActions(_propertyCode, actorPermissions) {
+        return listUserAdminActions(actorPermissions);
+      },
       listPermissionGroups,
       listJobProfiles,
       listPersonnelRecords,

@@ -51,6 +51,7 @@ interface SettingsPageProps {
   referenceData: ReferenceDataset;
   reportConfig: ReportConfigList;
   createUser: (input: ManagedUserCreate) => Promise<void>;
+  currentUserPermissions: string[];
   saveDelayCommonLocation: (locationId: string, update: DelayCommonLocationUpdate) => Promise<void>;
   saveDelayTemplate: (templateId: string, update: DelayTemplateUpdate) => Promise<void>;
   saveAttendance: (exceptionId: string, update: AttendanceExceptionUpdate) => Promise<void>;
@@ -89,6 +90,7 @@ export function SettingsPage({
   referenceData,
   reportConfig,
   createUser,
+  currentUserPermissions,
   saveDelayCommonLocation,
   saveDelayTemplate,
   saveAttendance,
@@ -110,6 +112,9 @@ export function SettingsPage({
   users
 }: SettingsPageProps) {
   const [feedback, setFeedback] = useState<string>("");
+  const canInviteUsers = currentUserPermissions.includes("users.invite");
+  const canManageUsers = currentUserPermissions.includes("users.manage");
+  const canEditUserAccess = currentUserPermissions.includes("users.access.write");
 
   async function runAction(action: () => Promise<void>, success: string) {
     try {
@@ -206,6 +211,7 @@ export function SettingsPage({
         </div>
         <button
           type="button"
+          disabled={!canInviteUsers}
           onClick={() =>
             void runAction(
               () =>
@@ -292,6 +298,7 @@ export function SettingsPage({
           <div className="button-row">
             <button
               type="button"
+              disabled={!canEditUserAccess}
               onClick={() =>
                 void runAction(
                   () => savePropertyAccess({ propertyAccess: ["caltrain", "tre"] }),
@@ -303,6 +310,7 @@ export function SettingsPage({
             </button>
             <button
               type="button"
+              disabled={!canEditUserAccess}
               onClick={() =>
                 void runAction(
                   () => savePermissionGroups({ groups: ["Dispatch Leadership"] }),
@@ -320,6 +328,7 @@ export function SettingsPage({
               <button
                 key={action.id}
                 type="button"
+                disabled={!action.isAllowed || (action.requiredPermission === "users.manage" && !canManageUsers)}
                 onClick={() =>
                   void runAction(
                     () => runUserAdminAction(action.id),
@@ -342,6 +351,17 @@ export function SettingsPage({
           </div>
         </Panel>
       </div>
+      <Panel title="User admin permissions" eyebrow="Current operator">
+        <div className="badge-row">
+          {currentUserPermissions.length ? (
+            currentUserPermissions.map((permission) => (
+              <StatusBadge key={permission} tone="success" label={permission} />
+            ))
+          ) : (
+            <StatusBadge tone="warning" label="no user-admin permissions" />
+          )}
+        </div>
+      </Panel>
       <div className="two-column-grid">
         <Panel title="Delay templates" eyebrow={`${delayTemplates.items.length} templates`}>
           <div className="list-stack">

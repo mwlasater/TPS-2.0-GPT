@@ -37,7 +37,12 @@ export const demoSession: UserSession = {
   id: "local-dev-user",
   email: "local-dev-user@herzog.com",
   displayName: "Local Development User",
-  allowedProperties: ["caltrain", "capmetro", "tre"]
+  allowedProperties: ["caltrain", "capmetro", "tre"],
+  propertyPermissions: {
+    caltrain: ["users.invite", "users.manage", "users.access.write"],
+    capmetro: ["users.invite", "users.manage", "users.access.write"],
+    tre: ["users.invite", "users.manage", "users.access.write"]
+  }
 };
 
 export const demoBootstrap: AppBootstrap = {
@@ -395,22 +400,30 @@ export const demoUserAdminActions: UserAdminActionList = {
     {
       id: "reset-password",
       label: "Reset Password",
-      style: "primary"
+      style: "primary",
+      requiredPermission: "users.manage",
+      isAllowed: true
     },
     {
       id: "resend-invite",
       label: "Resend Invite",
-      style: "secondary"
+      style: "secondary",
+      requiredPermission: "users.invite",
+      isAllowed: true
     },
     {
       id: "disable-user",
       label: "Disable User",
-      style: "warning"
+      style: "warning",
+      requiredPermission: "users.manage",
+      isAllowed: true
     },
     {
       id: "enable-user",
       label: "Enable User",
-      style: "primary"
+      style: "primary",
+      requiredPermission: "users.manage",
+      isAllowed: true
     }
   ]
 };

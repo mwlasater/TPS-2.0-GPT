@@ -354,14 +354,16 @@ describe("PostgresUsersRepository", () => {
     });
 
     const repository = new PostgresUsersRepository({ query });
-    const actions = await repository.listUserAdminActions();
+    const actions = await repository.listUserAdminActions("caltrain", ["users.manage"]);
 
     expect(actions).toEqual({
       items: [
         {
           id: "reset-password",
           label: "Reset Password",
-          style: "primary"
+          style: "primary",
+          requiredPermission: "users.manage",
+          isAllowed: true
         }
       ]
     });

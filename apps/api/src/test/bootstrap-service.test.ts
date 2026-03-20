@@ -31,9 +31,16 @@ function createConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     JWT_DEV_TOKEN: "local-dev-token",
     PROPERTY_CODES: "caltrain,capmetro,tre",
     USER_PROPERTY_ACCESS: "local-dev-user:caltrain|capmetro|tre",
+    USER_PROPERTY_PERMISSIONS:
+      "local-dev-user@caltrain:users.invite|users.manage|users.access.write",
     propertyCodes: ["caltrain", "capmetro", "tre"],
     userPropertyAccess: {
       "local-dev-user": ["caltrain", "capmetro", "tre"]
+    },
+    userPropertyPermissions: {
+      "local-dev-user": {
+        caltrain: ["users.invite", "users.manage", "users.access.write"]
+      }
     },
     ...overrides
   };

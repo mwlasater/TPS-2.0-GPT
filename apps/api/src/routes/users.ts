@@ -9,6 +9,7 @@ import type {
   UserPermissionGroupUpdate,
   UserPropertyAccessUpdate
 } from "@tps/types";
+import { getPropertyPermissions } from "../lib/permissions.js";
 
 export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
   app.get(
@@ -25,6 +26,7 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "users.invite");
       const payload = managedUserCreateSchema.parse(request.body) as ManagedUserCreate;
       return app.dataAccess.users.createUser(request.property, payload);
     }
@@ -46,7 +48,11 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async () => app.dataAccess.users.listUserAdminActions()
+    async (request) =>
+      app.dataAccess.users.listUserAdminActions(
+        request.property,
+        getPropertyPermissions(request.user, request.property)
+      )
   );
 
   app.post(
@@ -54,12 +60,18 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) =>
-      app.dataAccess.users.executeUserAdminAction(
+    async (request) => {
+      const actionId = (request.params as { userId: string; actionId: string }).actionId;
+      await app.requirePermission(
+        request,
+        actionId === "resend-invite" ? "users.invite" : "users.manage"
+      );
+      return app.dataAccess.users.executeUserAdminAction(
         (request.params as { userId: string; actionId: string }).userId,
         request.property,
-        (request.params as { userId: string; actionId: string }).actionId
-      )
+        actionId
+      );
+    }
   );
 
   app.put(
@@ -68,6 +80,7 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "users.access.write");
       const payload = userPropertyAccessUpdateSchema.parse(request.body) as UserPropertyAccessUpdate;
       return app.dataAccess.users.updateUserPropertyAccess(
         (request.params as { userId: string }).userId,
@@ -83,6 +96,7 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "users.access.write");
       const payload =
         userPermissionGroupUpdateSchema.parse(request.body) as UserPermissionGroupUpdate;
       return app.dataAccess.users.updateUserPermissionGroups(

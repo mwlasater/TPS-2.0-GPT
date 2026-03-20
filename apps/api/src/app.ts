@@ -6,6 +6,7 @@ import Fastify from "fastify";
 import { ZodError } from "zod";
 
 import { createErrorResponse } from "./lib/errors.js";
+import { ensurePropertyPermission } from "./lib/permissions.js";
 import { ensurePropertyAccess } from "./lib/tenant-access.js";
 import { registerBootstrapRoutes } from "./routes/bootstrap.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -33,6 +34,10 @@ declare module "fastify" {
     dataAccess: DataAccess;
     authenticate: (request: import("fastify").FastifyRequest) => Promise<void>;
     requireProperty: (request: import("fastify").FastifyRequest) => Promise<void>;
+    requirePermission: (
+      request: import("fastify").FastifyRequest,
+      permission: string
+    ) => Promise<void>;
   }
 
   interface FastifyRequest {
@@ -77,7 +82,10 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
     const devSession = createDevelopmentSession(
       token,
       config.JWT_DEV_TOKEN,
-      (config.userPropertyAccess["local-dev-user"] ?? []) as PropertyCode[]
+      (config.userPropertyAccess["local-dev-user"] ?? []) as PropertyCode[],
+      (config.userPropertyPermissions["local-dev-user"] ?? {}) as Partial<
+        Record<PropertyCode, string[]>
+      >
     );
 
     if (!devSession) {
@@ -100,6 +108,15 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
         throw new HttpError(400, message);
       }
 
+      throw new HttpError(403, message);
+    }
+  });
+
+  app.decorate("requirePermission", async (request, permission) => {
+    try {
+      ensurePropertyPermission(request.user, request.property, permission);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "permission.forbidden";
       throw new HttpError(403, message);
     }
   });

@@ -108,7 +108,10 @@ export interface UserRepository {
     propertyCode: PropertyCode,
     update: UserPermissionGroupUpdate
   ): MaybePromise<ManagedUserDetail>;
-  listUserAdminActions(): MaybePromise<UserAdminActionList>;
+  listUserAdminActions(
+    propertyCode: PropertyCode,
+    actorPermissions: string[]
+  ): MaybePromise<UserAdminActionList>;
   listPermissionGroups(propertyCode: PropertyCode): MaybePromise<PermissionGroupList>;
   listJobProfiles(propertyCode: PropertyCode): MaybePromise<JobProfileList>;
   listPersonnelRecords(propertyCode: PropertyCode): MaybePromise<PersonnelRecordList>;

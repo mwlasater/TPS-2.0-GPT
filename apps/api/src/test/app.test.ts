@@ -23,7 +23,9 @@ const env = {
   JWT_ISSUER: "https://login.microsoftonline.com/example/v2.0",
   JWT_DEV_TOKEN: "local-dev-token",
   PROPERTY_CODES: "caltrain,capmetro,tre",
-  USER_PROPERTY_ACCESS: "local-dev-user:caltrain|capmetro"
+  USER_PROPERTY_ACCESS: "local-dev-user:caltrain|capmetro",
+  USER_PROPERTY_PERMISSIONS:
+    "local-dev-user@caltrain:users.invite|users.manage|users.access.write,local-dev-user@capmetro:users.manage"
 };
 
 describe("app contracts", () => {
@@ -119,7 +121,10 @@ describe("app contracts", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       user: {
-        id: "local-dev-user"
+        id: "local-dev-user",
+        propertyPermissions: {
+          caltrain: expect.arrayContaining(["users.invite", "users.manage", "users.access.write"])
+        }
       },
       defaultProperty: "caltrain"
     });
@@ -573,6 +578,12 @@ describe("app contracts", () => {
     expect(
       actionsResponse.json().items.some((action: { id: string }) => action.id === "enable-user")
     ).toBe(true);
+    expect(
+      actionsResponse.json().items.find((action: { id: string }) => action.id === "reset-password")
+    ).toMatchObject({
+      requiredPermission: "users.manage",
+      isAllowed: true
+    });
   });
 
   it("creates managed users for the current property scope", async () => {
@@ -725,6 +736,91 @@ describe("app contracts", () => {
     expect(response.json()).toMatchObject({
       error: "validation.failed"
     });
+  });
+
+  it("rejects managed user creation without invite permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:users.manage"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        displayName: "Morgan Lee",
+        email: "morgan.lee@herzog.com",
+        roleLabel: "Operations Analyst",
+        propertyAccess: ["caltrain"],
+        groups: ["Reporting Admin"]
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
+  });
+
+  it("rejects managed user actions without manage permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:users.invite"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "POST",
+      url: "/api/v1/users/ops-manager/actions/disable-user",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
+  });
+
+  it("rejects user access edits without access-write permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:users.manage|users.invite"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/users/ops-manager/property-access",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        propertyAccess: ["caltrain", "capmetro"]
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
   });
 
   it("returns reference data for authorized property context", async () => {

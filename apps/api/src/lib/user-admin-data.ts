@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type {
   ManagedUserCreate,
+  UserAdminAction,
   ManagedUserDetail,
   PropertyCode,
   UserPermissionGroupUpdate,
@@ -9,6 +10,13 @@ import type {
   UserAdminActionList
 } from "@tps/types";
 import { createManagedUser, upsertManagedUser } from "./managed-users.js";
+
+const actionPermissionMap: Record<string, string> = {
+  "reset-password": "users.manage",
+  "resend-invite": "users.invite",
+  "disable-user": "users.manage",
+  "enable-user": "users.manage"
+};
 
 const userDetails: Record<string, Omit<ManagedUserDetail, "propertyAccess">> = {
   "ops-manager": {
@@ -49,22 +57,30 @@ const defaultActions: UserAdminActionList = {
     {
       id: "reset-password",
       label: "Reset Password",
-      style: "primary"
+      style: "primary",
+      requiredPermission: "users.manage",
+      isAllowed: true
     },
     {
       id: "resend-invite",
       label: "Resend Invite",
-      style: "secondary"
+      style: "secondary",
+      requiredPermission: "users.invite",
+      isAllowed: true
     },
     {
       id: "disable-user",
       label: "Disable User",
-      style: "warning"
+      style: "warning",
+      requiredPermission: "users.manage",
+      isAllowed: true
     },
     {
       id: "enable-user",
       label: "Enable User",
-      style: "primary"
+      style: "primary",
+      requiredPermission: "users.manage",
+      isAllowed: true
     }
   ]
 };
@@ -117,8 +133,25 @@ export function updateManagedUserPermissionGroups(
   return getManagedUserDetail(userId, propertyCode);
 }
 
-export function listUserAdminActions(): UserAdminActionList {
-  return defaultActions;
+export function getUserAdminActionPermission(actionId: string): string {
+  const permission = actionPermissionMap[actionId];
+
+  if (!permission) {
+    throw new Error("user_admin_action.not_found");
+  }
+
+  return permission;
+}
+
+export function listUserAdminActions(actorPermissions: string[] = []): UserAdminActionList {
+  return {
+    items: defaultActions.items.map(
+      (action): UserAdminAction => ({
+        ...action,
+        isAllowed: actorPermissions.includes(action.requiredPermission)
+      })
+    )
+  };
 }
 
 export function createManagedUserDetail(

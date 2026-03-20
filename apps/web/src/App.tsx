@@ -25,6 +25,7 @@ export function App() {
   const propertyData = usePropertyData(activeProperty?.code ?? data.defaultProperty);
   const platformData = usePlatformData(activeProperty?.code ?? data.defaultProperty);
   const activePropertyCode = activeProperty?.code ?? data.defaultProperty;
+  const currentUserPermissions = data.user.propertyPermissions[activePropertyCode] ?? [];
   const scopedUsers = propertyData.users;
   const effectiveSelectedUserId =
     scopedUsers.items.find((user) => user.id === selectedUserId)?.id ??
@@ -145,6 +146,7 @@ export function App() {
                 const detail = await propertyData.createUser(input);
                 setSelectedUserId(detail.id);
               }}
+              currentUserPermissions={currentUserPermissions}
               saveNotification={platformData.saveNotification}
               savePersonnelStatus={baselineData.savePersonnelStatus}
               savePermissionGroups={userAdminData.savePermissionGroups}

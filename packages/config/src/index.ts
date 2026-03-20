@@ -16,12 +16,14 @@ const envSchema = z.object({
   JWT_ISSUER: z.string().min(1),
   JWT_DEV_TOKEN: z.string().min(1),
   PROPERTY_CODES: z.string().min(1),
-  USER_PROPERTY_ACCESS: z.string().min(1)
+  USER_PROPERTY_ACCESS: z.string().min(1),
+  USER_PROPERTY_PERMISSIONS: z.string().default("")
 });
 
 export type AppConfig = z.infer<typeof envSchema> & {
   propertyCodes: string[];
   userPropertyAccess: Record<string, string[]>;
+  userPropertyPermissions: Record<string, Record<string, string[]>>;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
@@ -47,6 +49,25 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
         return accumulator;
       },
       {}
-    )
+    ),
+    userPropertyPermissions: parsed.USER_PROPERTY_PERMISSIONS.split(",").reduce<
+      Record<string, Record<string, string[]>>
+    >((accumulator, entry) => {
+      const [userAndProperty, permissions = ""] = entry.split(":");
+      if (!userAndProperty) {
+        return accumulator;
+      }
+      const [userId, propertyCode] = userAndProperty.split("@");
+
+      if (userId && propertyCode) {
+        accumulator[userId] ??= {};
+        accumulator[userId]![propertyCode] = permissions
+          .split("|")
+          .map((value) => value.trim())
+          .filter(Boolean);
+      }
+
+      return accumulator;
+    }, {})
   };
 }
