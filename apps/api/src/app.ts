@@ -6,6 +6,7 @@ import Fastify from "fastify";
 import { ZodError } from "zod";
 
 import { createErrorResponse } from "./lib/errors.js";
+import { getUserIdentityFromClaims, verifyJwtToken } from "./lib/jwt-auth.js";
 import { ensurePropertyPermission } from "./lib/permissions.js";
 import { ensurePropertyAccess } from "./lib/tenant-access.js";
 import { loadPersistedUserAuthorization } from "./lib/user-session-auth.js";
@@ -51,10 +52,6 @@ declare module "fastify" {
 export function buildApp(env: NodeJS.ProcessEnv = process.env) {
   const config = loadConfig(env);
 
-  if (config.NODE_ENV === "production") {
-    throw new Error("auth.production_verification_missing");
-  }
-
   const app = Fastify({
     logger:
       config.NODE_ENV === "development"
@@ -81,29 +78,63 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
       throw new HttpError(401, "auth.required");
     }
 
-    const userId = "local-dev-user";
+    let identity: Pick<UserSession, "id" | "email" | "displayName">;
+
+    try {
+      identity =
+        config.JWT_AUTH_MODE === "development"
+          ? (() => {
+              const session = createDevelopmentSession(
+                token,
+                config.JWT_DEV_TOKEN,
+                [],
+                {}
+              );
+
+              if (!session) {
+                throw new HttpError(401, "auth.invalid");
+              }
+
+              return {
+                id: session.id,
+                email: session.email,
+                displayName: session.displayName
+              };
+            })()
+          : getUserIdentityFromClaims(
+              await verifyJwtToken(token, {
+                audience: config.JWT_AUDIENCE,
+                issuer: config.JWT_ISSUER,
+                jwksUri: config.JWT_JWKS_URI,
+                clockToleranceSeconds: config.JWT_CLOCK_TOLERANCE_SECONDS
+              })
+            );
+    } catch (error) {
+      if (error instanceof HttpError) {
+        throw error;
+      }
+
+      const message = error instanceof Error ? error.message : "auth.invalid";
+      throw new HttpError(401, message.startsWith("auth.") ? message : "auth.invalid");
+    }
+
     const authorizationContext =
       config.DATA_ACCESS_MODE === "postgres"
-        ? await loadPersistedUserAuthorization(getPostgresPool(config), userId)
+        ? await loadPersistedUserAuthorization(getPostgresPool(config), identity.id)
         : {
-            allowedProperties: (config.userPropertyAccess[userId] ?? []) as PropertyCode[],
-            propertyPermissions: (config.userPropertyPermissions[userId] ?? {}) as Partial<
+            allowedProperties: (config.userPropertyAccess[identity.id] ?? []) as PropertyCode[],
+            propertyPermissions: (config.userPropertyPermissions[identity.id] ?? {}) as Partial<
               Record<PropertyCode, string[]>
             >
           };
 
-    const devSession = createDevelopmentSession(
-      token,
-      config.JWT_DEV_TOKEN,
-      authorizationContext.allowedProperties,
-      authorizationContext.propertyPermissions
-    );
-
-    if (!devSession) {
-      throw new HttpError(401, "auth.invalid");
-    }
-
-    request.user = devSession;
+    request.user = {
+      id: identity.id,
+      email: identity.email,
+      displayName: identity.displayName,
+      allowedProperties: authorizationContext.allowedProperties,
+      propertyPermissions: authorizationContext.propertyPermissions
+    };
   });
 
   app.decorate("requireProperty", async (request) => {

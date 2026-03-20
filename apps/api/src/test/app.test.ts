@@ -1,4 +1,6 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import crypto from "node:crypto";
+
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "../app.js";
 import { resetManagedUsers } from "../lib/managed-users.js";
@@ -14,6 +16,7 @@ import { resetRunResourceData } from "../lib/run-resource-data.js";
 import { resetTrainRunEventHistoryData } from "../lib/train-run-event-history-data.js";
 import { resetTrainRunStatusData } from "../lib/train-run-status-data.js";
 import { resetUserAdminData } from "../lib/user-admin-data.js";
+import { resetJwkCache } from "../lib/jwt-auth.js";
 
 const env = {
   NODE_ENV: "test",
@@ -23,8 +26,11 @@ const env = {
   API_PREFIX: "/api/v1",
   WEB_ORIGIN: "http://localhost:5173",
   DATABASE_URL: "postgres://tps:tps@localhost:5432/tps",
+  JWT_AUTH_MODE: "development",
   JWT_AUDIENCE: "tps-2.0",
   JWT_ISSUER: "https://login.microsoftonline.com/example/v2.0",
+  JWT_JWKS_URI: "",
+  JWT_CLOCK_TOLERANCE_SECONDS: "30",
   JWT_DEV_TOKEN: "local-dev-token",
   PROPERTY_CODES: "caltrain,capmetro,tre",
   USER_PROPERTY_ACCESS: "local-dev-user:caltrain|capmetro",
@@ -49,6 +55,7 @@ describe("app contracts", () => {
     resetManagedUsers();
     resetUserAdminData();
     resetUserAdminHistoryData();
+    resetJwkCache();
   }
 
   beforeAll(async () => {
@@ -83,7 +90,17 @@ describe("app contracts", () => {
         ...env,
         NODE_ENV: "production"
       })
-    ).toThrow("auth.dev_token_forbidden");
+    ).toThrow("auth.dev_mode_forbidden");
+  });
+
+  it("rejects jwks mode when the JWKS URI is missing", () => {
+    expect(() =>
+      buildApp({
+        ...env,
+        JWT_AUTH_MODE: "jwks",
+        JWT_JWKS_URI: ""
+      })
+    ).toThrow("auth.jwks_uri_required");
   });
 
   it("rejects missing property headers on protected routes", async () => {
@@ -152,6 +169,83 @@ describe("app contracts", () => {
       },
       defaultProperty: "caltrain"
     });
+  });
+
+  it("accepts jwks-backed JWTs and derives the authenticated user from claims", async () => {
+    const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
+      modulusLength: 2048
+    });
+    const publicJwk = publicKey.export({
+      format: "jwk"
+    }) as crypto.JsonWebKey;
+    const encode = (value: unknown) =>
+      Buffer.from(JSON.stringify(value)).toString("base64url");
+    const header = {
+      alg: "RS256",
+      typ: "JWT",
+      kid: "test-key"
+    };
+    const payload = {
+      aud: env.JWT_AUDIENCE,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iss: env.JWT_ISSUER,
+      name: "Entra Operator",
+      oid: "entra-user-1",
+      preferred_username: "operator@herzog.com"
+    };
+    const signingInput = `${encode(header)}.${encode(payload)}`;
+    const signature = crypto.sign("RSA-SHA256", Buffer.from(signingInput), privateKey)
+      .toString("base64url");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        keys: [
+          {
+            ...publicJwk,
+            alg: "RS256",
+            kid: "test-key",
+            use: "sig"
+          }
+        ]
+      })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const jwksApp = buildApp({
+      ...env,
+      JWT_AUTH_MODE: "jwks",
+      JWT_JWKS_URI: "https://auth.example/.well-known/jwks.json",
+      USER_PROPERTY_ACCESS: "entra-user-1:caltrain",
+      USER_PROPERTY_PERMISSIONS: "entra-user-1@caltrain:runs.write|delays.write"
+    });
+
+    await jwksApp.ready();
+
+    const response = await jwksApp.inject({
+      method: "GET",
+      url: "/api/v1/auth/session",
+      headers: {
+        authorization: `Bearer ${signingInput}.${signature}`
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      user: {
+        id: "entra-user-1",
+        email: "operator@herzog.com",
+        displayName: "Entra Operator",
+        propertyPermissions: {
+          caltrain: ["runs.write", "delays.write"]
+        }
+      },
+      defaultProperty: "caltrain"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("https://auth.example/.well-known/jwks.json");
+
+    await jwksApp.close();
+    vi.unstubAllGlobals();
   });
 
   it("returns property settings for authorized property context", async () => {

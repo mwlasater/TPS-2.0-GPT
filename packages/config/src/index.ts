@@ -12,8 +12,11 @@ const envSchema = z.object({
   DB_AUTO_BOOTSTRAP: z.coerce.boolean().default(false),
   DB_BOOTSTRAP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(12),
   DB_BOOTSTRAP_RETRY_MS: z.coerce.number().int().positive().default(1000),
+  JWT_AUTH_MODE: z.enum(["development", "jwks"]).default("development"),
   JWT_AUDIENCE: z.string().min(1),
   JWT_ISSUER: z.string().min(1),
+  JWT_JWKS_URI: z.string().default(""),
+  JWT_CLOCK_TOLERANCE_SECONDS: z.coerce.number().int().min(0).default(30),
   JWT_DEV_TOKEN: z.string().min(1),
   PROPERTY_CODES: z.string().min(1),
   USER_PROPERTY_ACCESS: z.string().min(1),
@@ -29,8 +32,16 @@ export type AppConfig = z.infer<typeof envSchema> & {
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
   const parsed = envSchema.parse(env);
 
+  if (parsed.NODE_ENV === "production" && parsed.JWT_AUTH_MODE === "development") {
+    throw new Error("auth.dev_mode_forbidden");
+  }
+
   if (parsed.NODE_ENV === "production" && parsed.JWT_DEV_TOKEN === "local-dev-token") {
     throw new Error("auth.dev_token_forbidden");
+  }
+
+  if (parsed.JWT_AUTH_MODE === "jwks" && !parsed.JWT_JWKS_URI) {
+    throw new Error("auth.jwks_uri_required");
   }
 
   return {
