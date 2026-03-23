@@ -221,7 +221,7 @@ export function updateTrainRunApproval(
   }
 
   run.isApproved = update.isApproved;
-  run.approvedAt = update.isApproved ? "2026-03-06T12:30:00Z" : null;
+  run.approvedAt = update.isApproved ? new Date().toISOString() : null;
   run.status = update.isApproved ? "approved" : "in_progress";
 
   return run;

@@ -56,6 +56,7 @@ import {
 
 import type { UserRepository } from "./contracts.js";
 import type { Queryable } from "./postgres-client.js";
+import { toIsoTimestamp } from "./time.js";
 
 interface ManagedUserRow {
   id: string;
@@ -132,18 +133,6 @@ interface UserAdminHistoryRow {
   actor_name: string;
   summary_text: string;
   created_at: string | Date;
-}
-
-function toIsoTimestamp(value: string | Date | null): string {
-  if (!value) {
-    return "";
-  }
-
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  return value;
 }
 
 function toIsoDate(value: string | Date): string {

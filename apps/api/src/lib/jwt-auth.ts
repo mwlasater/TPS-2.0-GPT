@@ -51,6 +51,7 @@ export interface JwtVerificationOptions {
 }
 
 const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_JWKS_CACHE_ENTRIES = 10;
 const jwksCache = new Map<string, CachedJwkSet>();
 
 function decodeBase64Url(value: string): Buffer {
@@ -90,6 +91,14 @@ async function loadJwkSet(
   }
 
   const jwkSet = await fetchJwkSet(jwksUri);
+  if (!jwksCache.has(jwksUri) && jwksCache.size >= MAX_JWKS_CACHE_ENTRIES) {
+    const oldestEntry = jwksCache.keys().next().value;
+
+    if (oldestEntry) {
+      jwksCache.delete(oldestEntry);
+    }
+  }
+
   jwksCache.set(jwksUri, {
     expiresAt: now() + DEFAULT_CACHE_TTL_MS,
     jwkSet
@@ -178,6 +187,8 @@ export async function verifyJwtToken(
   const encodedSignature = segments[2]!;
   const header = parseJwtSegment<JwtHeader>(encodedHeader, "auth.jwt_header_invalid");
 
+  // The current deployment targets RS256 issuers. Keep the limitation explicit
+  // until an EC verification path is intentionally added and tested.
   if (header.alg !== "RS256") {
     throw new Error("auth.jwt_algorithm_unsupported");
   }

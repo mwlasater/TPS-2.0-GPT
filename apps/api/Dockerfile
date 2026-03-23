@@ -19,6 +19,8 @@ COPY --from=builder /app/package-lock.json ./package-lock.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
+# Workspace packages are still resolved from source at runtime in this image,
+# so these source copies remain intentional until those packages are packaged.
 COPY --from=builder /app/packages/auth/package.json ./packages/auth/package.json
 COPY --from=builder /app/packages/auth/src ./packages/auth/src
 COPY --from=builder /app/packages/config/package.json ./packages/config/package.json

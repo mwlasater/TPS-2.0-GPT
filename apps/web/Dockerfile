@@ -8,9 +8,6 @@ RUN npm ci
 COPY . .
 RUN npm run build --workspace @tps/web
 
-FROM node:24-alpine
-WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=builder /app/apps/web/dist ./apps/web/dist
-RUN npm install -g serve
-CMD ["serve", "-s", "apps/web/dist", "-l", "4173"]
+FROM nginx:1.27-alpine
+COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/apps/web/dist /usr/share/nginx/html

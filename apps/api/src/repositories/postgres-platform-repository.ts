@@ -47,6 +47,7 @@ import {
 
 import type { PlatformRepository } from "./contracts.js";
 import type { Queryable } from "./postgres-client.js";
+import { toIsoTimestamp } from "./time.js";
 
 interface ReportConfigDbRow {
   id: number;
@@ -136,14 +137,6 @@ interface LiveReportExecutionDbRow {
   filters_summary: string;
   notes: string;
   linked_delivery_id: string | null;
-}
-
-function toIsoTimestamp(value: string | Date): string {
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  return value;
 }
 
 export class PostgresPlatformRepository implements PlatformRepository {

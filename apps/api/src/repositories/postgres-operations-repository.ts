@@ -97,6 +97,7 @@ import {
 
 import type { OperationsRepository } from "./contracts.js";
 import type { Queryable } from "./postgres-client.js";
+import { toIsoTimestamp } from "./time.js";
 
 interface TrainScheduleRow {
   id: string;
@@ -307,14 +308,6 @@ interface TrainRunEventHistoryRow {
 function toIsoDate(value: string | Date): string {
   if (value instanceof Date) {
     return value.toISOString().slice(0, 10);
-  }
-
-  return value;
-}
-
-function toIsoTimestamp(value: string | Date): string {
-  if (value instanceof Date) {
-    return value.toISOString();
   }
 
   return value;
