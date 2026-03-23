@@ -70,6 +70,9 @@ import type {
   ReportConfigList,
   ReportConfigRow,
   ReportConfigUpdate,
+  ReportDeliveryRecord,
+  ReportDeliveryRecordList,
+  ReportDeliveryRequest,
   ReportPreference,
   ReportPreferenceList,
   ReportPreferenceUpdate,
@@ -318,6 +321,17 @@ export function createPassengerReportImport(
     "POST",
     payload
   );
+}
+
+export function fetchReportDeliveries(propertyCode: PropertyCode): Promise<ReportDeliveryRecordList> {
+  return fetchPropertyScoped<ReportDeliveryRecordList>("/reports/deliveries", propertyCode);
+}
+
+export function createReportDelivery(
+  propertyCode: PropertyCode,
+  payload: ReportDeliveryRequest
+): Promise<ReportDeliveryRecord> {
+  return mutatePropertyScoped<ReportDeliveryRecord>("/reports/deliveries", propertyCode, "POST", payload);
 }
 
 export function updateReportPreference(

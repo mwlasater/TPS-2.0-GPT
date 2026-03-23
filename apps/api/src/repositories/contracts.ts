@@ -51,6 +51,9 @@ import type {
   ReportConfigRow,
   ReportConfigList,
   ReportConfigUpdate,
+  ReportDeliveryRecord,
+  ReportDeliveryRecordList,
+  ReportDeliveryRequest,
   ReportPreference,
   ReportPreferenceList,
   ReportPreferenceUpdate,
@@ -249,6 +252,12 @@ export interface PlatformRepository {
     input: PassengerReportImportCreate,
     actorName: string
   ): MaybePromise<void>;
+  listReportDeliveries(propertyCode: PropertyCode): MaybePromise<ReportDeliveryRecordList>;
+  createReportDelivery(
+    propertyCode: PropertyCode,
+    input: ReportDeliveryRequest,
+    actorName: string
+  ): MaybePromise<ReportDeliveryRecord>;
   listFiles(propertyCode: PropertyCode): MaybePromise<FileServiceList>;
   listNotifications(propertyCode: PropertyCode): MaybePromise<NotificationList>;
   updateNotification(

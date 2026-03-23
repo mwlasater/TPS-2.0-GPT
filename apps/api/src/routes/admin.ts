@@ -10,6 +10,7 @@ import {
   passengerReportImportCreateSchema,
   permissionGroupCreateSchema,
   permissionGroupUpdateSchema,
+  reportDeliveryRequestSchema,
   reportPreferenceUpdateSchema,
   personnelStatusUpdateSchema,
   reportConfigUpdateSchema,
@@ -32,6 +33,7 @@ import type {
   PermissionGroupUpdate,
   PersonnelStatusUpdate,
   ReportConfigUpdate,
+  ReportDeliveryRequest,
   ReportPreferenceUpdate,
   ScheduledReportEmailJobCreate,
   ScheduledReportEmailJobUpdate,
@@ -153,6 +155,30 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => app.dataAccess.platform.listPassengerReportImports(request.property)
+  );
+
+  app.get(
+    "/reports/deliveries",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listReportDeliveries(request.property)
+  );
+
+  app.post(
+    "/reports/deliveries",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = reportDeliveryRequestSchema.parse(request.body) as ReportDeliveryRequest;
+      return app.dataAccess.platform.createReportDelivery(
+        request.property,
+        payload,
+        request.user.displayName
+      );
+    }
   );
 
   app.post(

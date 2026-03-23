@@ -246,8 +246,10 @@ export interface TrainRunEventHistoryEntry {
     | "status-updated"
     | "run-reset"
     | "run-deleted"
+    | "delay-created"
     | "delay-deleted"
-    | "delay-metadata-cleared";
+    | "delay-metadata-cleared"
+    | "delay-work-order-created";
   actorName: string;
   notes: string;
   createdAt: string;
@@ -710,6 +712,30 @@ export interface PassengerReportImportCreate {
   rowCount: number;
   status: "processed" | "warning";
   notes: string;
+}
+
+export interface ReportDeliveryRequest {
+  reportName: string;
+  format: "pdf" | "xlsx";
+  deliveryMode: "download" | "email";
+  recipient: string;
+  notes: string;
+}
+
+export interface ReportDeliveryRecord {
+  id: string;
+  reportName: string;
+  format: "pdf" | "xlsx";
+  deliveryMode: "download" | "email";
+  recipient: string;
+  status: "queued" | "generated" | "sent";
+  requestedAt: string;
+  requestedBy: string;
+  notes: string;
+}
+
+export interface ReportDeliveryRecordList {
+  items: ReportDeliveryRecord[];
 }
 
 export interface JobProfile {

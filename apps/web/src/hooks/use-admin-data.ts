@@ -11,6 +11,8 @@ import type {
   PermissionGroupUpdate,
   PropertyCode,
   ReportConfigList,
+  ReportDeliveryRecordList,
+  ReportDeliveryRequest,
   ReportPreferenceList,
   ReportPreferenceUpdate,
   ReportConfigUpdate,
@@ -25,6 +27,7 @@ import { useEffect, useState } from "react";
 import {
   createPermissionGroupDefinition,
   createPassengerReportImport,
+  createReportDelivery,
   createScheduledReportEmailJob,
   deletePermissionGroupDefinition,
   deleteScheduledReportEmailJob,
@@ -33,6 +36,7 @@ import {
   fetchAdminSpecialMovements,
   fetchLiveReports,
   fetchPassengerReportImports,
+  fetchReportDeliveries,
   fetchPermissionGroups,
   fetchReportConfig,
   fetchReportPreferences,
@@ -52,6 +56,7 @@ import {
   demoPassengerReportImports,
   demoPermissionGroups,
   demoReportConfig,
+  demoReportDeliveries,
   demoReportPreferences,
   demoScheduledReportEmailJobs,
   demoSpecialMovements
@@ -64,6 +69,7 @@ interface AdminDataState {
   passengerReportImports: PassengerReportImportList;
   permissionGroups: PermissionGroupList;
   reportConfig: ReportConfigList;
+  reportDeliveries: ReportDeliveryRecordList;
   reportPreferences: ReportPreferenceList;
   scheduledReportEmails: ScheduledReportEmailJobList;
   specialMovements: SpecialMovementList;
@@ -72,6 +78,7 @@ interface AdminDataState {
   isSaving: boolean;
   createPermissionGroup: (input: PermissionGroupCreate) => Promise<void>;
   createPassengerImport: (input: PassengerReportImportCreate) => Promise<void>;
+  createReportDelivery: (input: ReportDeliveryRequest) => Promise<void>;
   deletePermissionGroup: (groupId: string) => Promise<void>;
   savePermissionGroup: (groupId: string, update: PermissionGroupUpdate) => Promise<void>;
   saveDelayCommonLocation: (locationId: string, update: DelayCommonLocationUpdate) => Promise<void>;
@@ -92,6 +99,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     passengerReportImports: demoPassengerReportImports[propertyCode],
     permissionGroups: demoPermissionGroups[propertyCode],
     reportConfig: demoReportConfig[propertyCode],
+    reportDeliveries: demoReportDeliveries[propertyCode],
     reportPreferences: demoReportPreferences[propertyCode],
     scheduledReportEmails: demoScheduledReportEmailJobs[propertyCode],
     specialMovements: demoSpecialMovements[propertyCode],
@@ -100,6 +108,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     isSaving: false,
     createPermissionGroup: async () => undefined,
     createPassengerImport: async () => undefined,
+    createReportDelivery: async () => undefined,
     deletePermissionGroup: async () => undefined,
     savePermissionGroup: async () => undefined,
     saveDelayCommonLocation: async () => undefined,
@@ -122,6 +131,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
       passengerReportImports: demoPassengerReportImports[propertyCode],
       permissionGroups: demoPermissionGroups[propertyCode],
       reportConfig: demoReportConfig[propertyCode],
+      reportDeliveries: demoReportDeliveries[propertyCode],
       reportPreferences: demoReportPreferences[propertyCode],
       scheduledReportEmails: demoScheduledReportEmailJobs[propertyCode],
       specialMovements: demoSpecialMovements[propertyCode],
@@ -130,6 +140,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
       isSaving: false,
       createPermissionGroup: state.createPermissionGroup,
       createPassengerImport: state.createPassengerImport,
+      createReportDelivery: state.createReportDelivery,
       deletePermissionGroup: state.deletePermissionGroup,
       savePermissionGroup: state.savePermissionGroup,
       saveDelayCommonLocation: state.saveDelayCommonLocation,
@@ -150,6 +161,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
       fetchPassengerReportImports(propertyCode),
       fetchPermissionGroups(propertyCode),
       fetchReportConfig(propertyCode),
+      fetchReportDeliveries(propertyCode),
       fetchReportPreferences(propertyCode),
       fetchScheduledReportEmailJobs(propertyCode)
     ])
@@ -161,6 +173,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
         passengerReportImports,
         permissionGroups,
         reportConfig,
+        reportDeliveries,
         reportPreferences,
         scheduledReportEmails
       ]) => {
@@ -172,6 +185,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             passengerReportImports,
             permissionGroups,
             reportConfig,
+            reportDeliveries,
             reportPreferences,
             scheduledReportEmails,
             specialMovements,
@@ -180,6 +194,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             isSaving: false,
             createPermissionGroup: state.createPermissionGroup,
             createPassengerImport: state.createPassengerImport,
+            createReportDelivery: state.createReportDelivery,
             deletePermissionGroup: state.deletePermissionGroup,
             savePermissionGroup: state.savePermissionGroup,
             saveDelayCommonLocation: state.saveDelayCommonLocation,
@@ -202,6 +217,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             passengerReportImports: demoPassengerReportImports[propertyCode],
             permissionGroups: demoPermissionGroups[propertyCode],
             reportConfig: demoReportConfig[propertyCode],
+            reportDeliveries: demoReportDeliveries[propertyCode],
             reportPreferences: demoReportPreferences[propertyCode],
             scheduledReportEmails: demoScheduledReportEmailJobs[propertyCode],
             specialMovements: demoSpecialMovements[propertyCode],
@@ -210,6 +226,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             isSaving: false,
             createPermissionGroup: state.createPermissionGroup,
             createPassengerImport: state.createPassengerImport,
+            createReportDelivery: state.createReportDelivery,
             deletePermissionGroup: state.deletePermissionGroup,
             savePermissionGroup: state.savePermissionGroup,
             saveDelayCommonLocation: state.saveDelayCommonLocation,
@@ -302,6 +319,25 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     } catch {
       setState((current) => ({ ...current, isSaving: false }));
       throw new Error("passenger_report_import.create_failed");
+    }
+  }
+
+  async function queueReportDelivery(input: ReportDeliveryRequest): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const created = await createReportDelivery(propertyCode, input);
+      setState((current) => ({
+        ...current,
+        reportDeliveries: {
+          items: [created, ...current.reportDeliveries.items]
+        },
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("report_delivery.create_failed");
     }
   }
 
@@ -485,6 +521,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     ...state,
     createPermissionGroup,
     createPassengerImport,
+    createReportDelivery: queueReportDelivery,
     deletePermissionGroup,
     savePermissionGroup,
     saveDelayCommonLocation,

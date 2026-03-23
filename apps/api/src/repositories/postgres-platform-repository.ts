@@ -16,6 +16,9 @@ import type {
   ReportConfigList,
   ReportConfigRow,
   ReportConfigUpdate,
+  ReportDeliveryRecord,
+  ReportDeliveryRecordList,
+  ReportDeliveryRequest,
   ReportPreference,
   ReportPreferenceList,
   ReportPreferenceUpdate,
@@ -30,6 +33,7 @@ import { listFiles, listNotifications, listPowerBiEmbeds } from "../lib/platform
 import {
   listLiveReports,
   listPassengerReportImports,
+  listReportDeliveries,
   listReportConfig,
   listReportPreferences,
   listScheduledReportEmailJobs
@@ -96,6 +100,18 @@ interface PassengerReportImportDbRow {
   operating_date: string;
   row_count: number;
   status: "processed" | "warning";
+  notes: string;
+}
+
+interface ReportDeliveryDbRow {
+  id: string;
+  report_name: string;
+  delivery_format: ReportDeliveryRecord["format"];
+  delivery_mode: ReportDeliveryRecord["deliveryMode"];
+  recipient: string;
+  status: ReportDeliveryRecord["status"];
+  requested_at: string | Date;
+  requested_by: string;
   notes: string;
 }
 
@@ -527,6 +543,95 @@ export class PostgresPlatformRepository implements PlatformRepository {
         input.notes
       ]
     );
+  }
+
+  async listReportDeliveries(propertyCode: PropertyCode): Promise<ReportDeliveryRecordList> {
+    const result = await this.db.query<ReportDeliveryDbRow>(
+      `
+        SELECT
+          id,
+          report_name,
+          delivery_format,
+          delivery_mode,
+          recipient,
+          status,
+          requested_at,
+          requested_by,
+          notes
+        FROM shared.report_delivery_request
+        WHERE railroad_code = $1
+        ORDER BY requested_at DESC, report_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listReportDeliveries(propertyCode);
+    }
+
+    return {
+      items: result.rows.map((row) => ({
+        id: row.id,
+        reportName: row.report_name,
+        format: row.delivery_format,
+        deliveryMode: row.delivery_mode,
+        recipient: row.recipient,
+        status: row.status,
+        requestedAt: toIsoTimestamp(row.requested_at),
+        requestedBy: row.requested_by,
+        notes: row.notes
+      }))
+    };
+  }
+
+  async createReportDelivery(
+    propertyCode: PropertyCode,
+    input: ReportDeliveryRequest,
+    actorName: string
+  ): Promise<ReportDeliveryRecord> {
+    const id = crypto.randomUUID();
+    const status = input.deliveryMode === "email" ? "sent" : "generated";
+
+    await this.db.query(
+      `
+        INSERT INTO shared.report_delivery_request (
+          id,
+          railroad_code,
+          report_name,
+          delivery_format,
+          delivery_mode,
+          recipient,
+          status,
+          requested_at,
+          requested_by,
+          notes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9)
+      `,
+      [
+        id,
+        propertyCode,
+        input.reportName,
+        input.format,
+        input.deliveryMode,
+        input.recipient,
+        status,
+        actorName,
+        input.notes
+      ]
+    );
+
+    return {
+      id,
+      reportName: input.reportName,
+      format: input.format,
+      deliveryMode: input.deliveryMode,
+      recipient: input.recipient,
+      status,
+      requestedAt: new Date().toISOString(),
+      requestedBy: actorName,
+      notes: input.notes
+    };
   }
 
   async listFiles(propertyCode: PropertyCode): Promise<FileServiceList> {

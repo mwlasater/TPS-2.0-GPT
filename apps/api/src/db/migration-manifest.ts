@@ -22,5 +22,6 @@ export const migrationManifest: MigrationManifestEntry[] = [
   { id: "0017_train_run_status_history", domain: "operations", tables: ["shared.train_run_status", "shared.train_run_event_history"] },
   { id: "0018_attendance_workflows", domain: "admin", tables: ["shared.attendance_issue", "shared.attendance_notification_rule"] },
   { id: "0019_reporting_workflows", domain: "reporting", tables: ["shared.report_preference", "shared.scheduled_report_email_job"] },
-  { id: "0020_reporting_delay_extensions", domain: "migration", tables: ["shared.passenger_report_import", "shared.notable_delay_type", "shared.delay_work_order"] }
+  { id: "0020_reporting_delay_extensions", domain: "migration", tables: ["shared.passenger_report_import", "shared.notable_delay_type", "shared.delay_work_order"] },
+  { id: "0021_report_delivery_history", domain: "reporting", tables: ["shared.report_delivery_request"] }
 ];

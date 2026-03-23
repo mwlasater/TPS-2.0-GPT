@@ -27,7 +27,8 @@ describe("seed service", () => {
       "0017_train_run_status_history",
       "0018_attendance_workflows",
       "0019_reporting_workflows",
-      "0020_reporting_delay_extensions"
+      "0020_reporting_delay_extensions",
+      "0021_report_delivery_history"
     ]);
   });
 });

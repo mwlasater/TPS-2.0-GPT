@@ -31,6 +31,7 @@ import type {
   PropertySettings,
   ReferenceDataset,
   ReportConfigList,
+  ReportDeliveryRecordList,
   ReportPreferenceList,
   ScheduledReportEmailJobList,
   SpecialMovementList,
@@ -1826,6 +1827,54 @@ export const demoPassengerReportImports: Record<PropertyCode, PassengerReportImp
   octastreetcar: streetcarPassengerReportImports,
   metrolinkarrow: commuterPassengerReportImports,
   silverline: commuterPassengerReportImports
+};
+
+const commuterReportDeliveries: ReportDeliveryRecordList = {
+  items: [
+    {
+      id: "report-delivery-1",
+      reportName: "Daily OTP",
+      format: "pdf",
+      deliveryMode: "email",
+      recipient: "operations.leadership@herzog.com",
+      status: "sent",
+      requestedAt: "2026-03-06T06:16:00Z",
+      requestedBy: "Taylor Brooks",
+      notes: "Morning leadership packet."
+    }
+  ]
+};
+
+const streetcarReportDeliveries: ReportDeliveryRecordList = {
+  items: [
+    {
+      id: "street-report-delivery-1",
+      reportName: "Streetcar Service Summary",
+      format: "pdf",
+      deliveryMode: "download",
+      recipient: "Street Supervisors",
+      status: "generated",
+      requestedAt: "2026-03-06T07:05:00Z",
+      requestedBy: "Jordan Reyes",
+      notes: "Supervisor handoff packet."
+    }
+  ]
+};
+
+export const demoReportDeliveries: Record<PropertyCode, ReportDeliveryRecordList> = {
+  caltrain: commuterReportDeliveries,
+  texrail: commuterReportDeliveries,
+  tre: commuterReportDeliveries,
+  trirail: commuterReportDeliveries,
+  nmrx: commuterReportDeliveries,
+  ctrail: commuterReportDeliveries,
+  ace: commuterReportDeliveries,
+  capmetro: commuterReportDeliveries,
+  kcstreetcar: streetcarReportDeliveries,
+  okcstreetcar: streetcarReportDeliveries,
+  octastreetcar: streetcarReportDeliveries,
+  metrolinkarrow: commuterReportDeliveries,
+  silverline: commuterReportDeliveries
 };
 
 const commuterJobProfiles: JobProfileList = {

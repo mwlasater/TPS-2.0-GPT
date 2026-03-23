@@ -830,6 +830,7 @@ describe("PostgresOperationsRepository", () => {
       })
       .mockResolvedValueOnce({ rows: [{ delay_minutes: 11 }] })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [
           {

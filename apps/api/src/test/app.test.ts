@@ -621,6 +621,45 @@ describe("app contracts", () => {
     });
   });
 
+  it("creates and lists report delivery requests for authorized property context", async () => {
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/reports/deliveries",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        reportName: "Delay Detail",
+        format: "xlsx",
+        deliveryMode: "email",
+        recipient: "dispatch.leadership@herzog.com",
+        notes: "On-demand review packet."
+      }
+    });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/reports/deliveries",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(createResponse.statusCode).toBe(200);
+    expect(createResponse.json()).toMatchObject({
+      reportName: "Delay Detail",
+      deliveryMode: "email",
+      status: "sent"
+    });
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json().items[0]).toMatchObject({
+      reportName: expect.any(String),
+      deliveryMode: expect.any(String)
+    });
+  });
+
   it("returns job profiles and attendance exceptions for authorized property context", async () => {
     const profilesResponse = await app.inject({
       method: "GET",
@@ -2232,6 +2271,54 @@ describe("app contracts", () => {
     expect(response.json()).toMatchObject({
       delayId: "delay-1"
     });
+  });
+
+  it("records delay creation and work-order creation in run event history", async () => {
+    const createDelayResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/train-runs/caltrain-run-1/delays/template",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        templateId: "delay-template-signal",
+        reportedAt: "2026-03-06T06:28:00Z"
+      }
+    });
+
+    const createdDelayId = createDelayResponse.json().id as string;
+
+    const workOrderResponse = await app.inject({
+      method: "POST",
+      url: `/api/v1/delays/${createdDelayId}/work-order`,
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        notableDelayType: "Interlocking failure",
+        assetId: "SIG-204",
+        repairType: "Signal diagnostics",
+        priority: "high"
+      }
+    });
+
+    const historyResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/events",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(createDelayResponse.statusCode).toBe(200);
+    expect(workOrderResponse.statusCode).toBe(200);
+    expect(historyResponse.statusCode).toBe(200);
+    expect(historyResponse.json().items.map((item: { action: string }) => item.action)).toEqual(
+      expect.arrayContaining(["delay-created", "delay-work-order-created"])
+    );
   });
 
   it("returns consist and crew templates for authorized property context", async () => {

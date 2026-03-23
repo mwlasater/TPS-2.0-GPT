@@ -194,6 +194,7 @@ export function App() {
               property={activeProperty}
               referenceData={propertyData.referenceData}
               reportConfig={adminData.reportConfig}
+              reportDeliveries={adminData.reportDeliveries}
               reportPreferences={adminData.reportPreferences}
               scheduledReportEmails={adminData.scheduledReportEmails}
               saveDelayCommonLocation={adminData.saveDelayCommonLocation}
@@ -209,6 +210,7 @@ export function App() {
                 setSelectedUserId(detail.id);
               }}
               createPassengerImport={adminData.createPassengerImport}
+              createReportDelivery={adminData.createReportDelivery}
               createPermissionGroup={adminData.createPermissionGroup}
               currentUserPermissions={currentUserPermissions}
               deletePermissionGroup={adminData.deletePermissionGroup}

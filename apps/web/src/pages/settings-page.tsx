@@ -34,6 +34,8 @@ import type {
   PropertySummary,
   ReferenceDataset,
   ReportConfigList,
+  ReportDeliveryRecordList,
+  ReportDeliveryRequest,
   ReportPreferenceList,
   ReportPreferenceUpdate,
   ReportConfigUpdate,
@@ -73,10 +75,12 @@ interface SettingsPageProps {
   property: PropertySummary;
   referenceData: ReferenceDataset;
   reportConfig: ReportConfigList;
+  reportDeliveries: ReportDeliveryRecordList;
   reportPreferences: ReportPreferenceList;
   scheduledReportEmails: ScheduledReportEmailJobList;
   createUser: (input: ManagedUserCreate) => Promise<void>;
   createPassengerImport: (input: PassengerReportImportCreate) => Promise<void>;
+  createReportDelivery: (input: ReportDeliveryRequest) => Promise<void>;
   createPermissionGroup: (input: PermissionGroupCreate) => Promise<void>;
   currentUserPermissions: string[];
   deletePermissionGroup: (groupId: string) => Promise<void>;
@@ -132,10 +136,12 @@ export function SettingsPage({
   property,
   referenceData,
   reportConfig,
+  reportDeliveries,
   reportPreferences,
   scheduledReportEmails,
   createUser,
   createPassengerImport,
+  createReportDelivery,
   createPermissionGroup,
   currentUserPermissions,
   deletePermissionGroup,
@@ -707,6 +713,65 @@ export function SettingsPage({
                 </button>
               </>
             ) : null}
+          </div>
+        </Panel>
+        <Panel title="Report delivery history" eyebrow={`${reportDeliveries.items.length} requests`}>
+          <div className="list-stack">
+            {reportDeliveries.items.map((delivery) => (
+              <article className="list-row" key={delivery.id}>
+                <div>
+                  <strong>{delivery.reportName}</strong>
+                  <p>
+                    {delivery.deliveryMode} · {delivery.recipient}
+                  </p>
+                  <p>{delivery.notes}</p>
+                </div>
+                <div className="list-meta">
+                  <span>{delivery.format}</span>
+                  <StatusBadge tone={delivery.status === "sent" ? "success" : "neutral"} label={delivery.status} />
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="button-row">
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    createReportDelivery({
+                      reportName: "Daily OTP",
+                      format: "pdf",
+                      deliveryMode: "download",
+                      recipient: "Operations Leadership",
+                      notes: "Generated on demand for service review."
+                    }),
+                  "Report delivery generated."
+                )
+              }
+            >
+              Generate report download
+            </button>
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    createReportDelivery({
+                      reportName: "Delay Detail",
+                      format: "xlsx",
+                      deliveryMode: "email",
+                      recipient: "dispatch.leadership@herzog.com",
+                      notes: "Emailed on demand for dispatch review."
+                    }),
+                  "Report delivery emailed."
+                )
+              }
+            >
+              Email report now
+            </button>
           </div>
         </Panel>
         <Panel title="Passenger report imports" eyebrow={`${passengerReportImports.items.length} imports`}>

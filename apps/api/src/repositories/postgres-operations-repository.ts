@@ -1469,6 +1469,27 @@ export class PostgresOperationsRepository implements OperationsRepository {
       workOrderId: row.work_order_id
     });
 
+    const runLookup = await this.db.query<{ train_run_id: string }>(
+      `
+        SELECT de.train_run_id
+        FROM shared.delay_event de
+        JOIN shared.train_run tr ON tr.id = de.train_run_id
+        WHERE tr.railroad_code = $1
+          AND de.id = $2
+      `,
+      [propertyCode, delayId]
+    );
+
+    if (runLookup.rows[0]?.train_run_id) {
+      await this.recordRunEvent(
+        propertyCode,
+        runLookup.rows[0].train_run_id,
+        "delay-work-order-created",
+        actorName,
+        `Work order ${row.work_order_id} created for delay ${delayId}.`
+      );
+    }
+
     return {
       delayId: row.delay_id,
       workOrderId: row.work_order_id,
@@ -1691,6 +1712,14 @@ export class PostgresOperationsRepository implements OperationsRepository {
       [runId, totals.rows[0]?.delay_minutes ?? 0]
     );
 
+    await this.recordRunEvent(
+      propertyCode,
+      runId,
+      "delay-created",
+      "Local Development User",
+      `${createdRows.length} delay event(s) created on the run.`
+    );
+
     return {
       items: createdRows
     };
@@ -1736,6 +1765,14 @@ export class PostgresOperationsRepository implements OperationsRepository {
       mechanicalNotes: "",
       passengerImpactSummary: ""
     });
+
+    await this.recordRunEvent(
+      propertyCode,
+      runId,
+      "delay-created",
+      "Local Development User",
+      `Delay created from template ${input.templateId}.`
+    );
 
     return delay;
   }

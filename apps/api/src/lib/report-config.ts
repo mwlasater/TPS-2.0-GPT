@@ -8,6 +8,9 @@ import type {
   ReportConfigList,
   ReportConfigRow,
   ReportConfigUpdate,
+  ReportDeliveryRecord,
+  ReportDeliveryRecordList,
+  ReportDeliveryRequest,
   ReportPreference,
   ReportPreferenceList,
   ReportPreferenceUpdate,
@@ -194,6 +197,38 @@ const streetcarPassengerImportsSeed: PassengerReportImportList = {
   ]
 };
 
+const commuterReportDeliveriesSeed: ReportDeliveryRecordList = {
+  items: [
+    {
+      id: "report-delivery-1",
+      reportName: "Daily OTP",
+      format: "pdf",
+      deliveryMode: "email",
+      recipient: "operations.leadership@herzog.com",
+      status: "sent",
+      requestedAt: "2026-03-06T06:16:00Z",
+      requestedBy: "Taylor Brooks",
+      notes: "Morning leadership packet."
+    }
+  ]
+};
+
+const streetcarReportDeliveriesSeed: ReportDeliveryRecordList = {
+  items: [
+    {
+      id: "street-report-delivery-1",
+      reportName: "Streetcar Service Summary",
+      format: "pdf",
+      deliveryMode: "download",
+      recipient: "Street Supervisors",
+      status: "generated",
+      requestedAt: "2026-03-06T07:05:00Z",
+      requestedBy: "Jordan Reyes",
+      notes: "Supervisor handoff packet."
+    }
+  ]
+};
+
 const streetcarProperties = new Set<PropertyCode>([
   "kcstreetcar",
   "okcstreetcar",
@@ -230,6 +265,12 @@ function clonePassengerImports(value: PassengerReportImportList): PassengerRepor
   };
 }
 
+function cloneReportDeliveries(value: ReportDeliveryRecordList): ReportDeliveryRecordList {
+  return {
+    items: value.items.map((item) => ({ ...item }))
+  };
+}
+
 function isStreetcarProperty(propertyCode: PropertyCode): boolean {
   return streetcarProperties.has(propertyCode);
 }
@@ -239,6 +280,7 @@ const reportPreferencesByProperty = new Map<PropertyCode, ReportPreferenceList>(
 const scheduledEmailJobsByProperty = new Map<PropertyCode, ScheduledReportEmailJobList>();
 const liveReportsByProperty = new Map<PropertyCode, LiveReportCatalogList>();
 const passengerImportsByProperty = new Map<PropertyCode, PassengerReportImportList>();
+const reportDeliveriesByProperty = new Map<PropertyCode, ReportDeliveryRecordList>();
 
 function getReportConfigStore(propertyCode: PropertyCode): ReportConfigList {
   let value = reportConfigByProperty.get(propertyCode);
@@ -300,6 +342,19 @@ function getPassengerImportsStore(propertyCode: PropertyCode): PassengerReportIm
       ? clonePassengerImports(streetcarPassengerImportsSeed)
       : clonePassengerImports(commuterPassengerImportsSeed);
     passengerImportsByProperty.set(propertyCode, value);
+  }
+
+  return value;
+}
+
+function getReportDeliveriesStore(propertyCode: PropertyCode): ReportDeliveryRecordList {
+  let value = reportDeliveriesByProperty.get(propertyCode);
+
+  if (!value) {
+    value = isStreetcarProperty(propertyCode)
+      ? cloneReportDeliveries(streetcarReportDeliveriesSeed)
+      : cloneReportDeliveries(commuterReportDeliveriesSeed);
+    reportDeliveriesByProperty.set(propertyCode, value);
   }
 
   return value;
@@ -439,10 +494,36 @@ export function createPassengerReportImport(
   });
 }
 
+export function listReportDeliveries(propertyCode: PropertyCode): ReportDeliveryRecordList {
+  return getReportDeliveriesStore(propertyCode);
+}
+
+export function createReportDelivery(
+  propertyCode: PropertyCode,
+  input: ReportDeliveryRequest,
+  actorName: string
+): ReportDeliveryRecord {
+  const source = getReportDeliveriesStore(propertyCode);
+  const record: ReportDeliveryRecord = {
+    id: crypto.randomUUID(),
+    reportName: input.reportName,
+    format: input.format,
+    deliveryMode: input.deliveryMode,
+    recipient: input.recipient,
+    status: input.deliveryMode === "email" ? "sent" : "generated",
+    requestedAt: new Date().toISOString(),
+    requestedBy: actorName,
+    notes: input.notes
+  };
+  source.items.unshift(record);
+  return record;
+}
+
 export function resetReportConfigData() {
   reportConfigByProperty.clear();
   reportPreferencesByProperty.clear();
   scheduledEmailJobsByProperty.clear();
   liveReportsByProperty.clear();
   passengerImportsByProperty.clear();
+  reportDeliveriesByProperty.clear();
 }

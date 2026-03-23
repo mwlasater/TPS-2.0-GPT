@@ -46,11 +46,13 @@ import {
 import { getPropertySettings, updatePropertySettings } from "../lib/property-settings.js";
 import { getReferenceData, updateReferenceData } from "../lib/reference-data.js";
 import {
+  createReportDelivery,
   createPassengerReportImport,
   createScheduledReportEmailJob,
   deleteScheduledReportEmailJob,
   listLiveReports,
   listPassengerReportImports,
+  listReportDeliveries,
   listReportConfig,
   listReportPreferences,
   listScheduledReportEmailJobs,
@@ -233,6 +235,8 @@ export function createMockDataAccess(): DataAccess {
       listLiveReports,
       listPassengerReportImports,
       createPassengerReportImport,
+      listReportDeliveries,
+      createReportDelivery,
       listFiles,
       listNotifications,
       updateNotification,
@@ -380,7 +384,21 @@ export function createMockDataAccess(): DataAccess {
       updateSpecialMovement,
       getDelayAdditionalInfo,
       getDelayWorkOrder,
-      createDelayWorkOrder,
+      createDelayWorkOrder(propertyCode, delayId, input, actorName) {
+        const workOrder = createDelayWorkOrder(propertyCode, delayId, input, actorName);
+        const runId =
+          listTrainRuns(propertyCode).items.find((run) =>
+            listDelayEvents(propertyCode, run.id).items.some((delay) => delay.id === delayId)
+          )?.id ?? "unknown-run";
+        recordTrainRunEventHistory(
+          propertyCode,
+          runId,
+          "delay-work-order-created",
+          actorName,
+          `Work order ${workOrder.workOrderId} created for delay ${delayId}.`
+        );
+        return workOrder;
+      },
       updateDelayAdditionalInfo,
       deleteDelayAdditionalInfo(propertyCode, delayId, actorName) {
         const result = deleteDelayAdditionalInfo(propertyCode, delayId);
@@ -399,11 +417,27 @@ export function createMockDataAccess(): DataAccess {
       },
       createDelayFromTemplate(propertyCode, runId, input) {
         assertRunMutable(propertyCode, runId);
-        return createDelayFromTemplate(propertyCode, runId, input);
+        const created = createDelayFromTemplate(propertyCode, runId, input);
+        recordTrainRunEventHistory(
+          propertyCode,
+          runId,
+          "delay-created",
+          "Local Development User",
+          `Delay created from template ${input.templateId}.`
+        );
+        return created;
       },
       createDelayEvents(propertyCode, runId, input) {
         assertRunMutable(propertyCode, runId);
-        return createDelayEvents(propertyCode, runId, input);
+        const created = createDelayEvents(propertyCode, runId, input);
+        recordTrainRunEventHistory(
+          propertyCode,
+          runId,
+          "delay-created",
+          "Local Development User",
+          `${created.items.length} delay event(s) created on the run.`
+        );
+        return created;
       },
       deleteDelayEvent(propertyCode, runId, delayId) {
         assertRunMutable(propertyCode, runId);

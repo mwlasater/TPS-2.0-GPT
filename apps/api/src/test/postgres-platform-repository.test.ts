@@ -202,6 +202,66 @@ describe("PostgresPlatformRepository", () => {
     expect(job.id).toEqual(expect.any(String));
   });
 
+  it("maps report delivery rows", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "report-delivery-1",
+          report_name: "Daily OTP",
+          delivery_format: "pdf",
+          delivery_mode: "email",
+          recipient: "operations.leadership@herzog.com",
+          status: "sent",
+          requested_at: new Date("2026-03-06T06:16:00Z"),
+          requested_by: "Taylor Brooks",
+          notes: "Morning leadership packet."
+        }
+      ]
+    });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const deliveries = await repository.listReportDeliveries("caltrain");
+
+    expect(deliveries).toEqual({
+      items: [
+        {
+          id: "report-delivery-1",
+          reportName: "Daily OTP",
+          format: "pdf",
+          deliveryMode: "email",
+          recipient: "operations.leadership@herzog.com",
+          status: "sent",
+          requestedAt: "2026-03-06T06:16:00.000Z",
+          requestedBy: "Taylor Brooks",
+          notes: "Morning leadership packet."
+        }
+      ]
+    });
+  });
+
+  it("creates report delivery rows", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const delivery = await repository.createReportDelivery("caltrain", {
+      reportName: "Delay Detail",
+      format: "xlsx",
+      deliveryMode: "email",
+      recipient: "dispatch.leadership@herzog.com",
+      notes: "On-demand review packet."
+    }, "Taylor Brooks");
+
+    expect(delivery).toMatchObject({
+      reportName: "Delay Detail",
+      format: "xlsx",
+      deliveryMode: "email",
+      recipient: "dispatch.leadership@herzog.com",
+      status: "sent",
+      requestedBy: "Taylor Brooks",
+      notes: "On-demand review packet."
+    });
+  });
+
   it("updates notification rows", async () => {
     const query = vi
       .fn()

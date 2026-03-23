@@ -244,8 +244,10 @@ export const trainRunEventHistoryEntrySchema = z.object({
     "status-updated",
     "run-reset",
     "run-deleted",
+    "delay-created",
     "delay-deleted",
-    "delay-metadata-cleared"
+    "delay-metadata-cleared",
+    "delay-work-order-created"
   ]),
   actorName: z.string(),
   notes: z.string(),
@@ -699,6 +701,30 @@ export const passengerReportImportCreateSchema = z.object({
   rowCount: z.number().int().positive(),
   status: z.enum(["processed", "warning"]),
   notes: z.string().min(1)
+});
+
+export const reportDeliveryRequestSchema = z.object({
+  reportName: z.string().min(1),
+  format: z.enum(["pdf", "xlsx"]),
+  deliveryMode: z.enum(["download", "email"]),
+  recipient: z.string().min(1),
+  notes: z.string().min(1)
+});
+
+export const reportDeliveryRecordSchema = z.object({
+  id: z.string(),
+  reportName: z.string(),
+  format: z.enum(["pdf", "xlsx"]),
+  deliveryMode: z.enum(["download", "email"]),
+  recipient: z.string(),
+  status: z.enum(["queued", "generated", "sent"]),
+  requestedAt: z.string(),
+  requestedBy: z.string(),
+  notes: z.string()
+});
+
+export const reportDeliveryRecordListSchema = z.object({
+  items: z.array(reportDeliveryRecordSchema)
 });
 
 export const jobProfileSchema = z.object({
