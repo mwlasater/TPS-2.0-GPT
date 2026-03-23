@@ -19,5 +19,37 @@ const streetcarProperties = new Set<PropertyCode>([
 ]);
 
 export function getReferenceData(propertyCode: PropertyCode): ReferenceDataset {
-  return streetcarProperties.has(propertyCode) ? streetcarReference : commuterReference;
+  if (!referenceCatalog[propertyCode]) {
+    referenceCatalog[propertyCode] = streetcarProperties.has(propertyCode)
+      ? {
+          delayReasons: [...streetcarReference.delayReasons],
+          crewRoles: [...streetcarReference.crewRoles],
+          stationCodes: [...streetcarReference.stationCodes]
+        }
+      : {
+          delayReasons: [...commuterReference.delayReasons],
+          crewRoles: [...commuterReference.crewRoles],
+          stationCodes: [...commuterReference.stationCodes]
+        };
+  }
+
+  return referenceCatalog[propertyCode]!;
+}
+
+const referenceCatalog: Partial<Record<PropertyCode, ReferenceDataset>> = {};
+
+export function updateReferenceData(propertyCode: PropertyCode, update: ReferenceDataset): ReferenceDataset {
+  referenceCatalog[propertyCode] = {
+    delayReasons: [...update.delayReasons],
+    crewRoles: [...update.crewRoles],
+    stationCodes: [...update.stationCodes]
+  };
+
+  return referenceCatalog[propertyCode]!;
+}
+
+export function resetReferenceData(): void {
+  for (const propertyCode of Object.keys(referenceCatalog) as PropertyCode[]) {
+    delete referenceCatalog[propertyCode];
+  }
 }

@@ -28,7 +28,8 @@ export const userSessionSchema = z.object({
   id: z.string(),
   email: z.string().email(),
   displayName: z.string(),
-  allowedProperties: z.array(z.string())
+  allowedProperties: z.array(z.string()),
+  propertyPermissions: z.record(z.string(), z.array(z.string()))
 });
 
 export const appBootstrapSchema = z.object({
@@ -81,6 +82,32 @@ export const managedUserListSchema = z.object({
   items: z.array(managedUserSchema)
 });
 
+export const managedUserCreateSchema = z.object({
+  displayName: z.string().min(1),
+  email: z.string().email(),
+  roleLabel: z.string().min(1),
+  propertyAccess: z.array(z.string().min(1)).min(1),
+  groups: z.array(z.string().min(1))
+});
+
+export const personnelRecordSchema = z.object({
+  id: z.string(),
+  employeeId: z.string(),
+  employeeName: z.string(),
+  status: z.enum(["active", "inactive", "on_leave"]),
+  primaryRole: z.string(),
+  certifications: z.array(z.string())
+});
+
+export const personnelRecordListSchema = z.object({
+  items: z.array(personnelRecordSchema)
+});
+
+export const personnelStatusUpdateSchema = z.object({
+  status: z.enum(["active", "inactive", "on_leave"]),
+  primaryRole: z.string().min(1)
+});
+
 export const managedUserDetailSchema = managedUserSchema.extend({
   propertyAccess: z.array(z.string()),
   groups: z.array(z.string()),
@@ -98,11 +125,26 @@ export const userPermissionGroupUpdateSchema = z.object({
 export const userAdminActionSchema = z.object({
   id: z.string(),
   label: z.string(),
-  style: z.enum(["primary", "secondary", "warning"])
+  style: z.enum(["primary", "secondary", "warning"]),
+  requiredPermission: z.string(),
+  isAllowed: z.boolean()
 });
 
 export const userAdminActionListSchema = z.object({
   items: z.array(userAdminActionSchema)
+});
+
+export const userAdminHistoryEntrySchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  action: z.string(),
+  actorName: z.string(),
+  summary: z.string(),
+  createdAt: z.string()
+});
+
+export const userAdminHistoryListSchema = z.object({
+  items: z.array(userAdminHistoryEntrySchema)
 });
 
 export const referenceDatasetSchema = z.object({
@@ -139,6 +181,95 @@ export const trainRunSchema = z.object({
 
 export const trainRunListSchema = z.object({
   items: z.array(trainRunSchema)
+});
+
+export const downstreamStationImpactSchema = z.object({
+  stationCode: z.string(),
+  scheduledTime: z.string(),
+  projectedTime: z.string(),
+  projectedDelayMinutes: z.number().int().nonnegative(),
+  boardings: z.number().int().nonnegative(),
+  alightings: z.number().int().nonnegative(),
+  passengerLoadDelta: z.number().int()
+});
+
+export const trainRunImpactSummarySchema = z.object({
+  runId: z.string(),
+  totalDelayMinutes: z.number().int().nonnegative(),
+  impactedStationCount: z.number().int().nonnegative(),
+  maxProjectedDelayMinutes: z.number().int().nonnegative(),
+  affectedPassengers: z.number().int().nonnegative(),
+  estimatedRecoveryTime: z.string().nullable(),
+  passengerImpactSummaries: z.array(z.string()),
+  downstreamStations: z.array(downstreamStationImpactSchema)
+});
+
+export const scheduleApprovalBlockedRunSummarySchema = z.object({
+  runId: z.string(),
+  trainNumber: z.string(),
+  delayMinutes: z.number().int().nonnegative(),
+  maxProjectedDelayMinutes: z.number().int().nonnegative(),
+  blockers: z.array(z.string())
+});
+
+export const trainScheduleApprovalSummarySchema = z.object({
+  scheduleId: z.string(),
+  totalRuns: z.number().int().nonnegative(),
+  approvedCount: z.number().int().nonnegative(),
+  readyCount: z.number().int().nonnegative(),
+  blockedCount: z.number().int().nonnegative(),
+  totalDelayMinutes: z.number().int().nonnegative(),
+  readyRunIds: z.array(z.string()),
+  approvedRunIds: z.array(z.string()),
+  blockedRuns: z.array(scheduleApprovalBlockedRunSummarySchema)
+});
+
+export const trainRunStatusRecordSchema = z.object({
+  runId: z.string(),
+  status: z.enum(["scheduled", "in_progress", "approved", "delayed"]),
+  comment: z.string(),
+  updatedAt: z.string().nullable(),
+  updatedBy: z.string().nullable()
+});
+
+export const trainRunStatusUpdateSchema = z.object({
+  status: z.enum(["scheduled", "in_progress", "approved", "delayed"]),
+  comment: z.string()
+});
+
+export const trainRunEventHistoryEntrySchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  action: z.enum([
+    "status-updated",
+    "run-reset",
+    "run-deleted",
+    "delay-created",
+    "delay-deleted",
+    "delay-metadata-cleared",
+    "delay-work-order-created"
+  ]),
+  actorName: z.string(),
+  notes: z.string(),
+  createdAt: z.string()
+});
+
+export const trainRunEventHistoryListSchema = z.object({
+  items: z.array(trainRunEventHistoryEntrySchema)
+});
+
+export const trainRunInitializeRequestSchema = z.object({
+  operatingDate: z.string().min(1),
+  scheduleIds: z.array(z.string().min(1)).min(1)
+});
+
+export const trainRunInitializeResultSchema = z.object({
+  createdRuns: z.array(trainRunSchema),
+  skippedScheduleIds: z.array(z.string())
+});
+
+export const trainRunDeleteResultSchema = z.object({
+  deletedRunId: z.string()
 });
 
 export const trainRunApprovalUpdateSchema = z.object({
@@ -197,6 +328,106 @@ export const delayEventListSchema = z.object({
   items: z.array(delayEventSchema)
 });
 
+export const delayEventCreateSchema = z.object({
+  category: z.string().min(1),
+  minutes: z.number().int().nonnegative(),
+  notes: z.string().min(1),
+  reportedAt: z.string().min(1)
+});
+
+export const delayEventBatchCreateSchema = z.object({
+  delays: z.array(delayEventCreateSchema).min(1)
+});
+
+export const delayTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  category: z.string(),
+  minutes: z.number(),
+  notes: z.string(),
+  notableDelayType: z.string(),
+  specialMovementId: z.string().nullable()
+});
+
+export const delayTemplateListSchema = z.object({
+  items: z.array(delayTemplateSchema)
+});
+
+export const delayTemplateCreateRequestSchema = z.object({
+  templateId: z.string().min(1),
+  reportedAt: z.string().datetime()
+});
+
+export const delayTemplateUpdateSchema = z.object({
+  name: z.string().min(1),
+  category: z.string().min(1),
+  minutes: z.number().int().nonnegative(),
+  notes: z.string().min(1),
+  notableDelayType: z.string().min(1),
+  specialMovementId: z.string().nullable()
+});
+
+export const delayEventDeleteResultSchema = z.object({
+  deletedId: z.string(),
+  runId: z.string(),
+  delayMinutes: z.number().int().nonnegative()
+});
+
+export const delayCommonLocationSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  usageCount: z.number().int().nonnegative()
+});
+
+export const delayCommonLocationListSchema = z.object({
+  items: z.array(delayCommonLocationSchema)
+});
+
+export const delayCommonLocationUpdateSchema = z.object({
+  label: z.string().min(1),
+  usageCount: z.number().int().nonnegative()
+});
+
+export const specialMovementSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  description: z.string()
+});
+
+export const specialMovementListSchema = z.object({
+  items: z.array(specialMovementSchema)
+});
+
+export const specialMovementUpdateSchema = z.object({
+  label: z.string().min(1),
+  description: z.string().min(1)
+});
+
+export const delayAdditionalInfoSchema = z.object({
+  delayId: z.string(),
+  locationDetail: z.string(),
+  responsibleParty: z.string(),
+  notableDelayType: z.string(),
+  specialMovementId: z.string().nullable(),
+  workOrderId: z.string().nullable(),
+  mechanicalNotes: z.string(),
+  passengerImpactSummary: z.string()
+});
+
+export const delayAdditionalInfoUpdateSchema = z.object({
+  locationDetail: z.string(),
+  responsibleParty: z.string(),
+  notableDelayType: z.string(),
+  specialMovementId: z.string().nullable(),
+  workOrderId: z.string().nullable(),
+  mechanicalNotes: z.string(),
+  passengerImpactSummary: z.string()
+});
+
+export const delayAdditionalInfoDeleteResultSchema = z.object({
+  delayId: z.string()
+});
+
 export const delayEventUpdateSchema = z.object({
   category: z.string().min(1),
   minutes: z.number().int().nonnegative(),
@@ -216,6 +447,16 @@ export const consistEquipmentListSchema = z.object({
   items: z.array(consistEquipmentSchema)
 });
 
+export const consistTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  items: z.array(consistEquipmentSchema)
+});
+
+export const consistTemplateListSchema = z.object({
+  items: z.array(consistTemplateSchema)
+});
+
 export const consistEquipmentUpdateSchema = z.object({
   position: z.number().int().positive(),
   status: z.enum(["active", "bad_order", "spare"])
@@ -233,10 +474,24 @@ export const crewAssignmentListSchema = z.object({
   items: z.array(crewAssignmentSchema)
 });
 
+export const crewTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  items: z.array(crewAssignmentSchema)
+});
+
+export const crewTemplateListSchema = z.object({
+  items: z.array(crewTemplateSchema)
+});
+
 export const crewAssignmentUpdateSchema = z.object({
   role: z.string().min(1),
   onDutyTime: z.string().min(1),
   status: z.enum(["assigned", "pending_relief", "complete"])
+});
+
+export const resourceSwapRequestSchema = z.object({
+  templateId: z.string().min(1)
 });
 
 export const fareEnforcementRecordSchema = z.object({
@@ -256,6 +511,11 @@ export const fareEnforcementRecordSchema = z.object({
 
 export const fareEnforcementListSchema = z.object({
   items: z.array(fareEnforcementRecordSchema)
+});
+
+export const fareEnforcementDeleteResultSchema = z.object({
+  deletedRecordId: z.string(),
+  runId: z.string()
 });
 
 export const fareEnforcementSummarySchema = z.object({
@@ -290,6 +550,19 @@ export const fareEnforcementDashboardSchema = z.object({
       recordCount: z.number()
     })
   )
+});
+
+export const fareEnforcementHistoryEntrySchema = z.object({
+  id: z.string(),
+  recordId: z.string(),
+  action: z.enum(["created", "updated", "deleted"]),
+  actorName: z.string(),
+  notes: z.string(),
+  createdAt: z.string()
+});
+
+export const fareEnforcementHistoryListSchema = z.object({
+  items: z.array(fareEnforcementHistoryEntrySchema)
 });
 
 export const fareEnforcementUpdateSchema = z.object({
@@ -331,6 +604,17 @@ export const permissionGroupListSchema = z.object({
   items: z.array(permissionGroupSchema)
 });
 
+export const permissionGroupUpdateSchema = z.object({
+  description: z.string().min(1),
+  permissions: z.array(z.string().min(1)).min(1)
+});
+
+export const permissionGroupCreateSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1),
+  permissions: z.array(z.string().min(1)).min(1)
+});
+
 export const reportConfigRowSchema = z.object({
   id: z.string(),
   reportName: z.string(),
@@ -347,6 +631,152 @@ export const reportConfigUpdateSchema = z.object({
 
 export const reportConfigListSchema = z.object({
   items: z.array(reportConfigRowSchema)
+});
+
+export const reportPreferenceSchema = z.object({
+  id: z.string(),
+  reportName: z.string(),
+  visibleColumns: z.array(z.string()),
+  sortOrder: z.string(),
+  filtersSummary: z.string()
+});
+
+export const reportPreferenceUpdateSchema = z.object({
+  visibleColumns: z.array(z.string()).min(1),
+  sortOrder: z.string().min(1),
+  filtersSummary: z.string().min(1)
+});
+
+export const reportPreferenceListSchema = z.object({
+  items: z.array(reportPreferenceSchema)
+});
+
+export const scheduledReportEmailJobSchema = z.object({
+  id: z.string(),
+  reportName: z.string(),
+  recipientGroup: z.string(),
+  schedule: z.string(),
+  format: z.enum(["pdf", "xlsx"]),
+  enabled: z.boolean()
+});
+
+export const scheduledReportEmailJobCreateSchema = z.object({
+  reportName: z.string().min(1),
+  recipientGroup: z.string().min(1),
+  schedule: z.string().min(1),
+  format: z.enum(["pdf", "xlsx"]),
+  enabled: z.boolean()
+});
+
+export const scheduledReportEmailJobUpdateSchema = z.object({
+  recipientGroup: z.string().min(1),
+  schedule: z.string().min(1),
+  format: z.enum(["pdf", "xlsx"]),
+  enabled: z.boolean()
+});
+
+export const scheduledReportEmailJobDeleteResultSchema = z.object({
+  deletedJobId: z.string()
+});
+
+export const scheduledReportEmailJobListSchema = z.object({
+  items: z.array(scheduledReportEmailJobSchema)
+});
+
+export const liveReportCatalogItemSchema = z.object({
+  id: z.string(),
+  reportName: z.string(),
+  provider: z.enum(["power_bi", "paginated"]),
+  audience: z.string(),
+  embedUrl: z.string().url(),
+  status: z.enum(["available", "restricted"])
+});
+
+export const liveReportCatalogListSchema = z.object({
+  items: z.array(liveReportCatalogItemSchema)
+});
+
+export const passengerReportImportRecordSchema = z.object({
+  id: z.string(),
+  importName: z.string(),
+  sourceFileName: z.string(),
+  importedAt: z.string(),
+  importedBy: z.string(),
+  operatingDate: z.string(),
+  rowCount: z.number().int().nonnegative(),
+  status: z.enum(["processed", "warning"]),
+  notes: z.string()
+});
+
+export const passengerReportImportListSchema = z.object({
+  items: z.array(passengerReportImportRecordSchema)
+});
+
+export const passengerReportImportCreateSchema = z.object({
+  importName: z.string().min(1),
+  sourceFileName: z.string().min(1),
+  operatingDate: z.string().min(1),
+  rowCount: z.number().int().positive(),
+  status: z.enum(["processed", "warning"]),
+  notes: z.string().min(1)
+});
+
+export const liveReportExecutionRequestSchema = z.object({
+  format: z.enum(["interactive", "pdf", "xlsx"]),
+  deliveryMode: z.enum(["view", "download", "email"]),
+  recipient: z.string().min(1),
+  filtersSummary: z.string().min(1),
+  notes: z.string().min(1)
+});
+
+export const liveReportExecutionRecordSchema = z.object({
+  id: z.string(),
+  reportId: z.string(),
+  reportName: z.string(),
+  format: z.enum(["interactive", "pdf", "xlsx"]),
+  deliveryMode: z.enum(["view", "download", "email"]),
+  recipient: z.string(),
+  status: z.enum(["ready", "generated", "sent"]),
+  executedAt: z.string(),
+  executedBy: z.string(),
+  filtersSummary: z.string(),
+  notes: z.string(),
+  linkedDeliveryId: z.string().nullable()
+});
+
+export const liveReportExecutionListSchema = z.object({
+  items: z.array(liveReportExecutionRecordSchema)
+});
+
+export const reportDeliveryRequestSchema = z.object({
+  reportName: z.string().min(1),
+  format: z.enum(["pdf", "xlsx"]),
+  deliveryMode: z.enum(["download", "email"]),
+  recipient: z.string().min(1),
+  notes: z.string().min(1)
+});
+
+export const reportDeliveryStatusUpdateSchema = z.object({
+  status: z.enum(["queued", "generated", "sent"]),
+  notes: z.string().min(1)
+});
+
+export const reportDeliveryRecordSchema = z.object({
+  id: z.string(),
+  reportName: z.string(),
+  format: z.enum(["pdf", "xlsx"]),
+  deliveryMode: z.enum(["download", "email"]),
+  recipient: z.string(),
+  status: z.enum(["queued", "generated", "sent"]),
+  requestedAt: z.string(),
+  requestedBy: z.string(),
+  notes: z.string(),
+  retryCount: z.number().int().nonnegative(),
+  lastRetriedAt: z.string().nullable()
+});
+
+export const reportDeliveryRecordListSchema = z.object({
+  items: z.array(reportDeliveryRecordSchema)
 });
 
 export const jobProfileSchema = z.object({
@@ -369,9 +799,11 @@ export const jobProfileListSchema = z.object({
 
 export const attendanceExceptionSchema = z.object({
   id: z.string(),
+  employeeId: z.string().optional(),
   employeeName: z.string(),
   exceptionType: z.enum(["absence", "tardy"]),
   startDate: z.string(),
+  endDate: z.string().nullable().optional(),
   status: z.enum(["open", "approved", "resolved"]),
   notes: z.string()
 });
@@ -385,6 +817,64 @@ export const attendanceExceptionListSchema = z.object({
   items: z.array(attendanceExceptionSchema)
 });
 
+export const attendanceIssueRecordSchema = z.object({
+  id: z.string(),
+  employeeId: z.string(),
+  employeeName: z.string(),
+  issueType: z.enum(["absence", "tardiness"]),
+  startDate: z.string(),
+  endDate: z.string().nullable(),
+  status: z.enum(["open", "approved", "resolved"]),
+  notes: z.string()
+});
+
+export const attendanceIssueUpdateSchema = z.object({
+  status: z.enum(["open", "approved", "resolved"]),
+  notes: z.string().min(1),
+  endDate: z.string().nullable()
+});
+
+export const attendanceIssueListSchema = z.object({
+  items: z.array(attendanceIssueRecordSchema)
+});
+
+export const attendanceHistoryListSchema = z.object({
+  employeeId: z.string(),
+  items: z.array(attendanceIssueRecordSchema)
+});
+
+export const attendanceNotificationRuleSchema = z.object({
+  id: z.string(),
+  issueType: z.enum(["absence", "tardiness"]),
+  triggerStatus: z.enum(["open", "approved", "resolved"]),
+  recipientGroup: z.string(),
+  templateName: z.string(),
+  enabled: z.boolean()
+});
+
+export const attendanceNotificationRuleCreateSchema = z.object({
+  issueType: z.enum(["absence", "tardiness"]),
+  triggerStatus: z.enum(["open", "approved", "resolved"]),
+  recipientGroup: z.string().min(1),
+  templateName: z.string().min(1),
+  enabled: z.boolean()
+});
+
+export const attendanceNotificationRuleUpdateSchema = z.object({
+  triggerStatus: z.enum(["open", "approved", "resolved"]),
+  recipientGroup: z.string().min(1),
+  templateName: z.string().min(1),
+  enabled: z.boolean()
+});
+
+export const attendanceNotificationRuleDeleteResultSchema = z.object({
+  deletedRuleId: z.string()
+});
+
+export const attendanceNotificationRuleListSchema = z.object({
+  items: z.array(attendanceNotificationRuleSchema)
+});
+
 export const fileServiceItemSchema = z.object({
   id: z.string(),
   fileName: z.string(),
@@ -395,6 +885,12 @@ export const fileServiceItemSchema = z.object({
 
 export const fileServiceListSchema = z.object({
   items: z.array(fileServiceItemSchema)
+});
+
+export const fileServiceRequestSchema = z.object({
+  fileName: z.string().min(1),
+  category: z.string().min(1),
+  action: z.enum(["upload", "download"])
 });
 
 export const notificationItemSchema = z.object({
@@ -425,6 +921,87 @@ export const powerBiEmbedSchema = z.object({
 
 export const powerBiEmbedListSchema = z.object({
   items: z.array(powerBiEmbedSchema)
+});
+
+export const powerBiSessionSchema = z.object({
+  id: z.string(),
+  reportId: z.string(),
+  reportName: z.string(),
+  embedUrl: z.string().url(),
+  accessToken: z.string(),
+  expiresAt: z.string(),
+  requestedAt: z.string(),
+  requestedBy: z.string()
+});
+
+export const powerBiSessionListSchema = z.object({
+  items: z.array(powerBiSessionSchema)
+});
+
+export const cmmsSyncRecordSchema = z.object({
+  id: z.string(),
+  workOrderId: z.string(),
+  assetId: z.string().nullable(),
+  status: z.enum(["queued", "synced", "error"]),
+  requestedAt: z.string(),
+  requestedBy: z.string(),
+  notes: z.string()
+});
+
+export const cmmsSyncListSchema = z.object({
+  items: z.array(cmmsSyncRecordSchema)
+});
+
+export const cmmsSyncRequestSchema = z.object({
+  workOrderId: z.string().min(1),
+  assetId: z.string().nullable(),
+  notes: z.string().min(1)
+});
+
+export const notableDelayTypeSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  category: z.enum(["mechanical", "traffic", "operations", "passenger"]),
+  requiresWorkOrder: z.boolean()
+});
+
+export const notableDelayTypeListSchema = z.object({
+  items: z.array(notableDelayTypeSchema)
+});
+
+export const delayWorkOrderSchema = z.object({
+  delayId: z.string(),
+  workOrderId: z.string(),
+  notableDelayType: z.string(),
+  assetId: z.string().nullable(),
+  repairType: z.string(),
+  priority: z.enum(["low", "medium", "high"]),
+  status: z.enum(["open", "scheduled", "closed"]),
+  createdAt: z.string(),
+  createdBy: z.string()
+});
+
+export const delayWorkOrderCreateSchema = z.object({
+  notableDelayType: z.string().min(1),
+  assetId: z.string().nullable(),
+  repairType: z.string().min(1),
+  priority: z.enum(["low", "medium", "high"])
+});
+
+export const delayPropagationPreviewStopSchema = z.object({
+  stationCode: z.string(),
+  projectedDelayMinutes: z.number().int().nonnegative(),
+  severity: z.enum(["low", "medium", "high"])
+});
+
+export const delayPropagationPreviewSchema = z.object({
+  runId: z.string(),
+  sourceDelayIds: z.array(z.string()),
+  totalProjectedDelayMinutes: z.number().int().nonnegative(),
+  impactedStopCount: z.number().int().nonnegative(),
+  requiresCmmsFollowup: z.boolean(),
+  notableDelayTypes: z.array(z.string()),
+  downstreamStops: z.array(delayPropagationPreviewStopSchema)
 });
 
 export const propertyHeaderSchema = z.object({

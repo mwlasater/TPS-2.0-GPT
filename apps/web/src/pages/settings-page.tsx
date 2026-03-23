@@ -1,20 +1,56 @@
 import type {
   AttendanceExceptionUpdate,
   AttendanceExceptionList,
+  AttendanceHistoryList,
+  AttendanceIssueList,
+  AttendanceIssueUpdate,
+  AttendanceNotificationRuleCreate,
+  AttendanceNotificationRuleList,
+  AttendanceNotificationRuleUpdate,
+  CmmsSyncList,
+  CmmsSyncRequest,
+  DelayCommonLocationList,
+  DelayCommonLocationUpdate,
+  DelayTemplateList,
+  DelayTemplateUpdate,
+  FileServiceRequest,
   FileServiceList,
   JobProfileUpdate,
   JobProfileList,
+  LiveReportCatalogList,
+  LiveReportExecutionList,
+  LiveReportExecutionRequest,
+  ManagedUserCreate,
+  UserAdminHistoryList,
   ManagedUserDetail,
   ManagedUserList,
   NotificationUpdate,
   NotificationList,
+  PassengerReportImportCreate,
+  PassengerReportImportList,
+  PersonnelRecordList,
+  PersonnelStatusUpdate,
+  PermissionGroupCreate,
+  PermissionGroupUpdate,
   PermissionGroupList,
   PowerBiEmbedList,
+  PowerBiSessionList,
   PropertySettingsUpdate,
   PropertySettings,
   PropertySummary,
+  ReferenceDataset,
   ReportConfigList,
+  ReportDeliveryRecordList,
+  ReportDeliveryRequest,
+  ReportDeliveryStatusUpdate,
+  ReportPreferenceList,
+  ReportPreferenceUpdate,
   ReportConfigUpdate,
+  ScheduledReportEmailJobCreate,
+  ScheduledReportEmailJobList,
+  ScheduledReportEmailJobUpdate,
+  SpecialMovementList,
+  SpecialMovementUpdate,
   UserPermissionGroupUpdate,
   UserPropertyAccessUpdate,
   UserAdminActionList
@@ -26,52 +62,151 @@ import { StatusBadge } from "../components/status-badge.js";
 
 interface SettingsPageProps {
   attendance: AttendanceExceptionList;
+  attendanceHistory: AttendanceHistoryList;
+  attendanceIssues: AttendanceIssueList;
+  attendanceNotificationRules: AttendanceNotificationRuleList;
+  cmmsSync: CmmsSyncList;
+  delayCommonLocations: DelayCommonLocationList;
+  delayTemplates: DelayTemplateList;
   files: FileServiceList;
   isSaving: boolean;
   jobProfiles: JobProfileList;
+  liveReports: LiveReportCatalogList;
+  liveReportExecutions: LiveReportExecutionList;
   managedUserActions: UserAdminActionList;
+  managedUserHistory: UserAdminHistoryList;
   managedUserDetail: ManagedUserDetail;
+  passengerReportImports: PassengerReportImportList;
   permissionGroups: PermissionGroupList;
+  personnel: PersonnelRecordList;
   notifications: NotificationList;
   powerBi: PowerBiEmbedList;
+  powerBiSessions: PowerBiSessionList;
   property: PropertySummary;
+  referenceData: ReferenceDataset;
   reportConfig: ReportConfigList;
+  reportDeliveries: ReportDeliveryRecordList;
+  reportPreferences: ReportPreferenceList;
+  scheduledReportEmails: ScheduledReportEmailJobList;
+  createUser: (input: ManagedUserCreate) => Promise<void>;
+  createCmmsSync: (input: CmmsSyncRequest) => Promise<void>;
+  createFileRequest: (input: FileServiceRequest) => Promise<void>;
+  createPassengerImport: (input: PassengerReportImportCreate) => Promise<void>;
+  createPowerBiSession: (reportId: string) => Promise<void>;
+  createReportDelivery: (input: ReportDeliveryRequest) => Promise<void>;
+  executeLiveReport: (reportId: string, input: LiveReportExecutionRequest) => Promise<void>;
+  createPermissionGroup: (input: PermissionGroupCreate) => Promise<void>;
+  currentUserPermissions: string[];
+  deletePermissionGroup: (groupId: string) => Promise<void>;
+  saveDelayCommonLocation: (locationId: string, update: DelayCommonLocationUpdate) => Promise<void>;
+  saveDelayTemplate: (templateId: string, update: DelayTemplateUpdate) => Promise<void>;
   saveAttendance: (exceptionId: string, update: AttendanceExceptionUpdate) => Promise<void>;
+  saveAttendanceIssue: (issueId: string, update: AttendanceIssueUpdate) => Promise<void>;
+  createAttendanceNotificationRule: (input: AttendanceNotificationRuleCreate) => Promise<void>;
+  saveAttendanceNotificationRule: (ruleId: string, update: AttendanceNotificationRuleUpdate) => Promise<void>;
+  deleteAttendanceNotificationRule: (ruleId: string) => Promise<void>;
   saveJobProfile: (profileId: string, update: JobProfileUpdate) => Promise<void>;
   saveNotification: (notificationId: string, update: NotificationUpdate) => Promise<void>;
+  savePermissionGroup: (groupId: string, update: PermissionGroupUpdate) => Promise<void>;
+  savePersonnelStatus: (personnelId: string, update: PersonnelStatusUpdate) => Promise<void>;
   savePermissionGroups: (update: UserPermissionGroupUpdate) => Promise<void>;
   savePropertyAccess: (update: UserPropertyAccessUpdate) => Promise<void>;
   saveReportConfig: (reportId: string, update: ReportConfigUpdate) => Promise<void>;
+  saveReportPreference: (preferenceId: string, update: ReportPreferenceUpdate) => Promise<void>;
+  createScheduledReportEmail: (input: ScheduledReportEmailJobCreate) => Promise<void>;
+  saveScheduledReportEmail: (jobId: string, update: ScheduledReportEmailJobUpdate) => Promise<void>;
+  deleteScheduledReportEmail: (jobId: string) => Promise<void>;
+  saveReportDeliveryStatus: (deliveryId: string, update: ReportDeliveryStatusUpdate) => Promise<void>;
+  retryReportDelivery: (deliveryId: string) => Promise<void>;
+  saveReferenceData: (update: ReferenceDataset) => Promise<void>;
   saveSettings: (update: PropertySettingsUpdate) => Promise<void>;
+  saveSpecialMovement: (movementId: string, update: SpecialMovementUpdate) => Promise<void>;
+  runUserAdminAction: (actionId: string) => Promise<void>;
+  selectedUserId: string;
+  selectUser: (userId: string) => void;
   settings: PropertySettings;
+  specialMovements: SpecialMovementList;
   source: "api" | "fallback";
   users: ManagedUserList;
 }
 
 export function SettingsPage({
   attendance,
+  attendanceHistory,
+  attendanceIssues,
+  attendanceNotificationRules,
+  cmmsSync,
+  delayCommonLocations,
+  delayTemplates,
   files,
   isSaving,
   jobProfiles,
+  liveReports,
+  liveReportExecutions,
   managedUserActions,
+  managedUserHistory,
   managedUserDetail,
+  passengerReportImports,
+  personnel,
   notifications,
   permissionGroups,
   powerBi,
+  powerBiSessions,
   property,
+  referenceData,
   reportConfig,
+  reportDeliveries,
+  reportPreferences,
+  scheduledReportEmails,
+  createUser,
+  createCmmsSync,
+  createFileRequest,
+  createPassengerImport,
+  createPowerBiSession,
+  createReportDelivery,
+  executeLiveReport,
+  createPermissionGroup,
+  currentUserPermissions,
+  deletePermissionGroup,
+  saveDelayCommonLocation,
+  saveDelayTemplate,
   saveAttendance,
+  saveAttendanceIssue,
+  createAttendanceNotificationRule,
+  saveAttendanceNotificationRule,
+  deleteAttendanceNotificationRule,
   saveJobProfile,
   saveNotification,
+  savePermissionGroup,
+  savePersonnelStatus,
   savePermissionGroups,
   savePropertyAccess,
   saveReportConfig,
+  saveReportPreference,
+  createScheduledReportEmail,
+  saveScheduledReportEmail,
+  deleteScheduledReportEmail,
+  saveReportDeliveryStatus,
+  retryReportDelivery,
+  saveReferenceData,
   saveSettings,
+  saveSpecialMovement,
+  runUserAdminAction,
+  selectedUserId,
+  selectUser,
   settings,
+  specialMovements,
   source,
   users
 }: SettingsPageProps) {
   const [feedback, setFeedback] = useState<string>("");
+  const canInviteUsers = currentUserPermissions.includes("users.invite");
+  const canManageUsers = currentUserPermissions.includes("users.manage");
+  const canEditUserAccess = currentUserPermissions.includes("users.access.write");
+  const canManagePermissionGroups = currentUserPermissions.includes("admin.permissions.write");
+  const canScheduleReports = currentUserPermissions.includes("reports.schedule");
+  const canManageNotifications = currentUserPermissions.includes("notifications.write");
+  const canManageStaffing = currentUserPermissions.includes("staffing.write");
 
   async function runAction(action: () => Promise<void>, success: string) {
     try {
@@ -151,6 +286,39 @@ export function SettingsPage({
           </div>
         </Panel>
       </div>
+      <Panel title="Reference datasets" eyebrow="Property configuration">
+        <div className="two-column-grid">
+          <div>
+            <strong>Delay Reasons</strong>
+            <p>{referenceData.delayReasons.join(", ")}</p>
+          </div>
+          <div>
+            <strong>Crew Roles</strong>
+            <p>{referenceData.crewRoles.join(", ")}</p>
+          </div>
+          <div>
+            <strong>Station Codes</strong>
+            <p>{referenceData.stationCodes.join(", ")}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          disabled={!canInviteUsers}
+          onClick={() =>
+            void runAction(
+              () =>
+                saveReferenceData({
+                  delayReasons: [...referenceData.delayReasons, "Weather hold"],
+                  crewRoles: [...referenceData.crewRoles, "Road Foreman"],
+                  stationCodes: [...referenceData.stationCodes, "STX"]
+                }),
+              "Reference data updated."
+            )
+          }
+        >
+          Extend reference datasets
+        </button>
+      </Panel>
       <Panel title="Managed users" eyebrow={`${users.items.length} in scope`}>
         <div className="user-list">
           {users.items.length ? (
@@ -167,12 +335,33 @@ export function SettingsPage({
                     label={user.status}
                   />
                 </div>
+                <button type="button" onClick={() => selectUser(user.id)}>
+                  {selectedUserId === user.id ? "Selected" : "View user"}
+                </button>
               </article>
             ))
           ) : (
             <p>No seeded user records yet for this property.</p>
           )}
         </div>
+        <button
+          type="button"
+          onClick={() =>
+            void runAction(
+              () =>
+                createUser({
+                  displayName: "Morgan Lee",
+                  email: "morgan.lee@herzog.com",
+                  roleLabel: "Operations Analyst",
+                  propertyAccess: [property.code],
+                  groups: ["Reporting Admin"]
+                }),
+              "Managed user invited."
+            )
+          }
+        >
+          Invite staged user
+        </button>
       </Panel>
       <div className="two-column-grid">
         <Panel title="Selected user detail" eyebrow={managedUserDetail.status}>
@@ -201,6 +390,7 @@ export function SettingsPage({
           <div className="button-row">
             <button
               type="button"
+              disabled={!canEditUserAccess}
               onClick={() =>
                 void runAction(
                   () => savePropertyAccess({ propertyAccess: ["caltrain", "tre"] }),
@@ -212,6 +402,7 @@ export function SettingsPage({
             </button>
             <button
               type="button"
+              disabled={!canEditUserAccess}
               onClick={() =>
                 void runAction(
                   () => savePermissionGroups({ groups: ["Dispatch Leadership"] }),
@@ -226,26 +417,164 @@ export function SettingsPage({
         <Panel title="Admin actions" eyebrow={`${managedUserActions.items.length} available`}>
           <div className="badge-row">
             {managedUserActions.items.map((action) => (
-              <StatusBadge
+              <button
                 key={action.id}
-                tone={
-                  action.style === "primary"
-                    ? "success"
-                    : action.style === "warning"
-                      ? "warning"
-                      : "neutral"
+                type="button"
+                disabled={!action.isAllowed || (action.requiredPermission === "users.manage" && !canManageUsers)}
+                onClick={() =>
+                  void runAction(
+                    () => runUserAdminAction(action.id),
+                    `${action.label} executed.`
+                  )
                 }
-                label={action.label}
-              />
+              >
+                <StatusBadge
+                  tone={
+                    action.style === "primary"
+                      ? "success"
+                      : action.style === "warning"
+                        ? "warning"
+                        : "neutral"
+                  }
+                  label={action.label}
+                />
+              </button>
             ))}
           </div>
         </Panel>
       </div>
+      <Panel title="User admin history" eyebrow={`${managedUserHistory.items.length} events`}>
+        <div className="list-stack">
+          {managedUserHistory.items.length ? (
+            managedUserHistory.items.map((entry) => (
+              <article className="list-row" key={entry.id}>
+                <div>
+                  <strong>{entry.summary}</strong>
+                  <p>{entry.actorName}</p>
+                </div>
+                <div className="list-meta">
+                  <span>{entry.action}</span>
+                  <span>{entry.createdAt}</span>
+                </div>
+              </article>
+            ))
+          ) : (
+            <p>No admin history recorded yet for the selected user.</p>
+          )}
+        </div>
+      </Panel>
+      <Panel title="User admin permissions" eyebrow="Current operator">
+        <div className="badge-row">
+          {currentUserPermissions.length ? (
+            currentUserPermissions.map((permission) => (
+              <StatusBadge key={permission} tone="success" label={permission} />
+            ))
+          ) : (
+            <StatusBadge tone="warning" label="no user-admin permissions" />
+          )}
+        </div>
+      </Panel>
       <div className="two-column-grid">
-        <Panel title="Permission groups" eyebrow={`${permissionGroups.items.length} groups`}>
+        <Panel title="Delay templates" eyebrow={`${delayTemplates.items.length} templates`}>
           <div className="list-stack">
-            {permissionGroups.items.map((group) => (
-              <article className="list-row" key={group.id}>
+            {delayTemplates.items.map((template) => (
+              <article className="list-row" key={template.id}>
+                <div>
+                  <strong>{template.name}</strong>
+                  <p>
+                    {template.category} · {template.minutes} min
+                  </p>
+                </div>
+                <div className="list-meta">
+                  <span>{template.notableDelayType}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+          {delayTemplates.items[0] ? (
+            <button
+              type="button"
+              onClick={() =>
+                void runAction(
+                  () =>
+                    saveDelayTemplate(delayTemplates.items[0]!.id, {
+                      name: `${delayTemplates.items[0]!.name} Updated`,
+                      category: delayTemplates.items[0]!.category,
+                      minutes: delayTemplates.items[0]!.minutes + 1,
+                      notes: `${delayTemplates.items[0]!.notes} Supervisor review added.`,
+                      notableDelayType: delayTemplates.items[0]!.notableDelayType,
+                      specialMovementId: delayTemplates.items[0]!.specialMovementId
+                    }),
+                  "Delay template updated."
+                )
+              }
+            >
+              Update first delay template
+            </button>
+          ) : null}
+        </Panel>
+        <Panel title="Delay catalogs" eyebrow="Delay admin">
+          <div className="list-stack">
+            {delayCommonLocations.items.map((location) => (
+              <article className="list-row" key={location.id}>
+                <div>
+                  <strong>{location.label}</strong>
+                  <p>Usage count {location.usageCount}</p>
+                </div>
+              </article>
+            ))}
+            {specialMovements.items.map((movement) => (
+              <article className="list-row" key={movement.id}>
+                <div>
+                  <strong>{movement.label}</strong>
+                  <p>{movement.description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="button-row">
+            {delayCommonLocations.items[0] ? (
+              <button
+                type="button"
+                onClick={() =>
+                  void runAction(
+                    () =>
+                      saveDelayCommonLocation(delayCommonLocations.items[0]!.id, {
+                        label: `${delayCommonLocations.items[0]!.label} Updated`,
+                        usageCount: delayCommonLocations.items[0]!.usageCount + 1
+                      }),
+                    "Delay common location updated."
+                  )
+                }
+              >
+                Update first common location
+              </button>
+            ) : null}
+            {specialMovements.items[0] ? (
+              <button
+                type="button"
+                onClick={() =>
+                  void runAction(
+                    () =>
+                      saveSpecialMovement(specialMovements.items[0]!.id, {
+                        label: `${specialMovements.items[0]!.label} Updated`,
+                        description: `${specialMovements.items[0]!.description} Updated for admin workflow.`
+                      }),
+                    "Special movement updated."
+                  )
+                }
+              >
+                Update first special movement
+              </button>
+            ) : null}
+          </div>
+        </Panel>
+      </div>
+      <div className="two-column-grid">
+      <Panel title="Permission groups" eyebrow={`${permissionGroups.items.length} groups`}>
+        <div className="list-stack">
+          {permissionGroups.items.map((group) => (
+            <article className="list-row" key={group.id}>
                 <div>
                   <strong>{group.name}</strong>
                   <p>{group.description}</p>
@@ -286,6 +615,7 @@ export function SettingsPage({
           {reportConfig.items[0] ? (
             <button
               type="button"
+              disabled={!canScheduleReports}
               onClick={() =>
                 void runAction(
                   () =>
@@ -302,8 +632,293 @@ export function SettingsPage({
             </button>
           ) : null}
         </Panel>
+        <Panel title="Report preferences" eyebrow={`${reportPreferences.items.length} saved views`}>
+          <div className="list-stack">
+            {reportPreferences.items.map((preference) => (
+              <article className="list-row" key={preference.id}>
+                <div>
+                  <strong>{preference.reportName}</strong>
+                  <p>{preference.visibleColumns.join(", ")}</p>
+                  <p>{preference.filtersSummary}</p>
+                </div>
+                <div className="list-meta">
+                  <span>{preference.sortOrder}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+          {reportPreferences.items[0] ? (
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    saveReportPreference(reportPreferences.items[0]!.id, {
+                      visibleColumns: [...reportPreferences.items[0]!.visibleColumns, "onTimeStops"],
+                      sortOrder: "reportName asc",
+                      filtersSummary: "Updated saved view for leadership review"
+                    }),
+                  "Report preference updated."
+                )
+              }
+            >
+              Update first report preference
+            </button>
+          ) : null}
+        </Panel>
+        <Panel title="Scheduled report emails" eyebrow={`${scheduledReportEmails.items.length} jobs`}>
+          <div className="list-stack">
+            {scheduledReportEmails.items.map((job) => (
+              <article className="list-row" key={job.id}>
+                <div>
+                  <strong>{job.reportName}</strong>
+                  <p>
+                    {job.recipientGroup} · {job.schedule}
+                  </p>
+                </div>
+                <div className="list-meta">
+                  <span>{job.format}</span>
+                  <StatusBadge tone={job.enabled ? "success" : "neutral"} label={job.enabled ? "enabled" : "disabled"} />
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="button-row">
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    createScheduledReportEmail({
+                      reportName: "Daily OTP",
+                      recipientGroup: "Operations Leadership",
+                      schedule: "12:00 daily",
+                      format: "pdf",
+                      enabled: true
+                    }),
+                  "Scheduled report email created."
+                )
+              }
+            >
+              Add scheduled email
+            </button>
+            {scheduledReportEmails.items[0] ? (
+              <>
+                <button
+                  type="button"
+                  disabled={!canScheduleReports}
+                  onClick={() =>
+                    void runAction(
+                      () =>
+                        saveScheduledReportEmail(scheduledReportEmails.items[0]!.id, {
+                          recipientGroup: "Dispatch Leadership",
+                          schedule: "18:00 daily",
+                          format: "xlsx",
+                          enabled: false
+                        }),
+                      "Scheduled report email updated."
+                    )
+                  }
+                >
+                  Update first email job
+                </button>
+                <button
+                  type="button"
+                  disabled={!canScheduleReports}
+                  onClick={() =>
+                    void runAction(
+                      () => deleteScheduledReportEmail(scheduledReportEmails.items[0]!.id),
+                      "Scheduled report email deleted."
+                    )
+                  }
+                >
+                  Delete first email job
+                </button>
+              </>
+            ) : null}
+          </div>
+        </Panel>
+        <Panel title="Report delivery history" eyebrow={`${reportDeliveries.items.length} requests`}>
+          <div className="list-stack">
+            {reportDeliveries.items.map((delivery) => (
+              <article className="list-row" key={delivery.id}>
+                <div>
+                  <strong>{delivery.reportName}</strong>
+                  <p>
+                    {delivery.deliveryMode} · {delivery.recipient}
+                  </p>
+                  <p>{delivery.notes}</p>
+                </div>
+                <div className="list-meta">
+                  <span>{delivery.format}</span>
+                  <StatusBadge tone={delivery.status === "sent" ? "success" : "neutral"} label={delivery.status} />
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="button-row">
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    createReportDelivery({
+                      reportName: "Daily OTP",
+                      format: "pdf",
+                      deliveryMode: "download",
+                      recipient: "Operations Leadership",
+                      notes: "Generated on demand for service review."
+                    }),
+                  "Report delivery generated."
+                )
+              }
+            >
+              Generate report download
+            </button>
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    createReportDelivery({
+                      reportName: "Delay Detail",
+                      format: "xlsx",
+                      deliveryMode: "email",
+                      recipient: "dispatch.leadership@herzog.com",
+                      notes: "Emailed on demand for dispatch review."
+                    }),
+                  "Report delivery emailed."
+                )
+              }
+            >
+              Email report now
+            </button>
+            {reportDeliveries.items[0] ? (
+              <>
+                <button
+                  type="button"
+                  disabled={!canScheduleReports}
+                  onClick={() =>
+                    void runAction(
+                      () =>
+                        saveReportDeliveryStatus(reportDeliveries.items[0]!.id, {
+                          status: "queued",
+                          notes: "Held for final dispatch review."
+                        }),
+                      "Report delivery status updated."
+                    )
+                  }
+                >
+                  Queue first delivery
+                </button>
+                <button
+                  type="button"
+                  disabled={!canScheduleReports}
+                  onClick={() =>
+                    void runAction(
+                      () => retryReportDelivery(reportDeliveries.items[0]!.id),
+                      "Report delivery retried."
+                    )
+                  }
+                >
+                  Retry first delivery
+                </button>
+              </>
+            ) : null}
+          </div>
+        </Panel>
+        <Panel title="Passenger report imports" eyebrow={`${passengerReportImports.items.length} imports`}>
+          <div className="list-stack">
+            {passengerReportImports.items.map((item) => (
+              <article className="list-row" key={item.id}>
+                <div>
+                  <strong>{item.importName}</strong>
+                  <p>{item.sourceFileName}</p>
+                </div>
+                <div className="list-meta">
+                  <span>{item.operatingDate}</span>
+                  <StatusBadge
+                    tone={item.status === "processed" ? "success" : "warning"}
+                    label={item.status}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="button-row">
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    createPassengerImport({
+                      importName: "Daily passenger import",
+                      sourceFileName: `${property.code}-passenger-upload.csv`,
+                      operatingDate: "2026-03-07",
+                      rowCount: 128,
+                      status: "processed",
+                      notes: "Imported from station count workbook."
+                    }),
+                  "Passenger report import recorded."
+                )
+              }
+            >
+              Import passenger report
+            </button>
+          </div>
+        </Panel>
       </div>
       <div className="two-column-grid">
+        <Panel title="Personnel directory" eyebrow={`${personnel.items.length} records`}>
+          <div className="list-stack">
+            {personnel.items.map((record) => (
+              <article className="list-row" key={record.id}>
+                <div>
+                  <strong>{record.employeeName}</strong>
+                  <p>
+                    {record.employeeId} · {record.primaryRole}
+                  </p>
+                  <p>{record.certifications.join(", ")}</p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge
+                    tone={
+                      record.status === "active"
+                        ? "success"
+                        : record.status === "on_leave"
+                          ? "warning"
+                          : "neutral"
+                    }
+                    label={record.status}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+          {personnel.items[0] ? (
+            <button
+              type="button"
+              disabled={!canManageStaffing}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    savePersonnelStatus(personnel.items[0]!.id, {
+                      status: personnel.items[0]!.status === "active" ? "on_leave" : "active",
+                      primaryRole: personnel.items[0]!.primaryRole
+                    }),
+                  "Personnel status updated."
+                )
+              }
+            >
+              Toggle first personnel status
+            </button>
+          ) : null}
+        </Panel>
         <Panel title="Job profiles" eyebrow={`${jobProfiles.items.length} roles`}>
           <div className="list-stack">
             {jobProfiles.items.map((profile) => (
@@ -325,6 +940,7 @@ export function SettingsPage({
           {jobProfiles.items[0] ? (
             <button
               type="button"
+              disabled={!canManageStaffing}
               onClick={() =>
                 void runAction(
                   () =>
@@ -341,15 +957,16 @@ export function SettingsPage({
             </button>
           ) : null}
         </Panel>
-        <Panel title="Absence and tardiness" eyebrow={`${attendance.items.length} open records`}>
+        <Panel title="Absence and tardiness" eyebrow={`${attendanceIssues.items.length} tracked issues`}>
           <div className="list-stack">
-            {attendance.items.map((record) => (
+            {attendanceIssues.items.map((record) => (
               <article className="list-row" key={record.id}>
                 <div>
                   <strong>{record.employeeName}</strong>
                   <p>
-                    {record.exceptionType} · {record.startDate}
+                    {record.issueType} · {record.startDate}
                   </p>
+                  <p>{record.endDate ? `Ends ${record.endDate}` : "No end date recorded"}</p>
                   <p>{record.notes}</p>
                 </div>
                 <div className="list-meta">
@@ -367,23 +984,145 @@ export function SettingsPage({
               </article>
             ))}
           </div>
-          {attendance.items[0] ? (
-            <button
-              type="button"
-              onClick={() =>
-                void runAction(
-                  () =>
-                    saveAttendance(attendance.items[0]!.id, {
-                      status: "resolved",
-                      notes: "Cleared for duty."
-                    }),
-                  "Attendance record updated."
-                )
-              }
-            >
-              Resolve first attendance record
-            </button>
-          ) : null}
+          <div className="button-row">
+            {attendance.items[0] ? (
+              <button
+                type="button"
+                disabled={!canManageStaffing}
+                onClick={() =>
+                  void runAction(
+                    () =>
+                      saveAttendance(attendance.items[0]!.id, {
+                        status: "resolved",
+                        notes: "Cleared for duty."
+                      }),
+                    "Attendance compatibility record updated."
+                  )
+                }
+              >
+                Resolve first legacy attendance record
+              </button>
+            ) : null}
+            {attendanceIssues.items[0] ? (
+              <button
+                type="button"
+                disabled={!canManageStaffing}
+                onClick={() =>
+                  void runAction(
+                    () =>
+                      saveAttendanceIssue(attendanceIssues.items[0]!.id, {
+                        status: "resolved",
+                        notes: "Attendance workflow resolved by supervisor.",
+                        endDate: attendanceIssues.items[0]!.endDate ?? attendanceIssues.items[0]!.startDate
+                      }),
+                    "Attendance issue updated."
+                  )
+                }
+              >
+                Resolve first attendance issue
+              </button>
+            ) : null}
+          </div>
+          <div className="two-column-grid">
+            <div>
+              <strong>Selected employee history</strong>
+              <div className="list-stack">
+                {attendanceHistory.items.length ? (
+                  attendanceHistory.items.map((item) => (
+                    <article className="list-row" key={item.id}>
+                      <div>
+                        <strong>{item.issueType}</strong>
+                        <p>
+                          {item.startDate}
+                          {item.endDate ? ` to ${item.endDate}` : ""}
+                        </p>
+                        <p>{item.notes}</p>
+                      </div>
+                      <div className="list-meta">
+                        <StatusBadge tone={item.status === "resolved" ? "success" : item.status === "approved" ? "warning" : "neutral"} label={item.status} />
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <p>No attendance history for the selected employee.</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <strong>Notification rules</strong>
+              <div className="list-stack">
+                {attendanceNotificationRules.items.map((rule) => (
+                  <article className="list-row" key={rule.id}>
+                    <div>
+                      <strong>{rule.templateName}</strong>
+                      <p>
+                        {rule.issueType} · {rule.triggerStatus}
+                      </p>
+                      <p>{rule.recipientGroup}</p>
+                    </div>
+                    <div className="list-meta">
+                      <StatusBadge tone={rule.enabled ? "success" : "neutral"} label={rule.enabled ? "enabled" : "disabled"} />
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="button-row">
+                <button
+                  type="button"
+                  disabled={!canManageStaffing}
+                  onClick={() =>
+                    void runAction(
+                      () =>
+                        createAttendanceNotificationRule({
+                          issueType: "absence",
+                          triggerStatus: "open",
+                          recipientGroup: "Operations Leadership",
+                          templateName: "Attendance Escalation",
+                          enabled: true
+                        }),
+                      "Attendance notification rule created."
+                    )
+                  }
+                >
+                  Add attendance rule
+                </button>
+                {attendanceNotificationRules.items[0] ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={!canManageStaffing}
+                      onClick={() =>
+                        void runAction(
+                          () =>
+                            saveAttendanceNotificationRule(attendanceNotificationRules.items[0]!.id, {
+                              triggerStatus: "resolved",
+                              recipientGroup: "Operations Leadership",
+                              templateName: `${attendanceNotificationRules.items[0]!.templateName} Updated`,
+                              enabled: false
+                            }),
+                          "Attendance notification rule updated."
+                        )
+                      }
+                    >
+                      Update first rule
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canManageStaffing}
+                      onClick={() =>
+                        void runAction(
+                          () => deleteAttendanceNotificationRule(attendanceNotificationRules.items[0]!.id),
+                          "Attendance notification rule deleted."
+                        )
+                      }
+                    >
+                      Delete first rule
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
         </Panel>
       </div>
       <div className="two-column-grid">
@@ -406,6 +1145,42 @@ export function SettingsPage({
               </article>
             ))}
           </div>
+          <div className="button-row">
+            <button
+              type="button"
+              disabled={!canManageNotifications}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    createFileRequest({
+                      fileName: `${property.code}-operations-export.csv`,
+                      category: "operations",
+                      action: "download"
+                    }),
+                  "File request created."
+                )
+              }
+            >
+              Generate file export
+            </button>
+            <button
+              type="button"
+              disabled={!canManageNotifications}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    createFileRequest({
+                      fileName: `${property.code}-crew-upload.xlsx`,
+                      category: "crew",
+                      action: "upload"
+                    }),
+                  "File upload request queued."
+                )
+              }
+            >
+              Queue file upload
+            </button>
+          </div>
         </Panel>
         <Panel title="Notifications" eyebrow={`${notifications.items.length} templates`}>
           <div className="list-stack">
@@ -426,6 +1201,7 @@ export function SettingsPage({
           {notifications.items[0] ? (
             <button
               type="button"
+              disabled={!canManageNotifications}
               onClick={() =>
                 void runAction(
                   () =>
@@ -457,6 +1233,205 @@ export function SettingsPage({
               </div>
             </article>
           ))}
+        </div>
+        {powerBi.items[0] ? (
+          <button
+            type="button"
+            disabled={!canScheduleReports}
+            onClick={() =>
+              void runAction(
+                () => createPowerBiSession(powerBi.items[0]!.id),
+                "Power BI session generated."
+              )
+            }
+          >
+            Generate first Power BI session
+          </button>
+        ) : null}
+        <div className="list-stack">
+          {powerBiSessions.items.map((session) => (
+            <article className="list-row" key={session.id}>
+              <div>
+                <strong>{session.reportName}</strong>
+                <p>{session.requestedBy}</p>
+                <p>{session.expiresAt}</p>
+              </div>
+              <div className="list-meta">
+                <StatusBadge tone="success" label="session" />
+              </div>
+            </article>
+          ))}
+        </div>
+      </Panel>
+      <Panel title="CMMS sync" eyebrow={`${cmmsSync.items.length} jobs`}>
+        <div className="list-stack">
+          {cmmsSync.items.map((job) => (
+            <article className="list-row" key={job.id}>
+              <div>
+                <strong>{job.workOrderId}</strong>
+                <p>{job.assetId ?? "Unassigned asset"}</p>
+                <p>{job.notes}</p>
+              </div>
+              <div className="list-meta">
+                <StatusBadge
+                  tone={job.status === "synced" ? "success" : job.status === "queued" ? "warning" : "neutral"}
+                  label={job.status}
+                />
+              </div>
+            </article>
+          ))}
+        </div>
+        <button
+          type="button"
+          disabled={!canManageNotifications}
+          onClick={() =>
+            void runAction(
+              () =>
+                createCmmsSync({
+                  workOrderId: "WO-1427",
+                  assetId: "LOCO-120",
+                  notes: "Sync locomotive fault work order to CMMS."
+                }),
+              "CMMS sync requested."
+            )
+          }
+        >
+          Sync sample work order
+        </button>
+      </Panel>
+      <Panel title="Live reports" eyebrow={`${liveReports.items.length} views`}>
+        <div className="list-stack">
+          {liveReports.items.map((report) => (
+            <article className="list-row" key={report.id}>
+              <div>
+                <strong>{report.reportName}</strong>
+                <p>{report.audience}</p>
+                <p>{report.embedUrl}</p>
+              </div>
+              <div className="list-meta">
+                <span>{report.provider}</span>
+                <StatusBadge
+                  tone={report.status === "available" ? "success" : "warning"}
+                  label={report.status}
+                />
+              </div>
+            </article>
+          ))}
+        </div>
+        {liveReports.items[0] ? (
+          <div className="button-row">
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    executeLiveReport(liveReports.items[0]!.id, {
+                      format: "interactive",
+                      deliveryMode: "view",
+                      recipient: "Operations Leadership",
+                      filtersSummary: "Current operating day and leadership review filters",
+                      notes: "Interactive leadership review."
+                    }),
+                  "Live report opened."
+                )
+              }
+            >
+              Open first live report
+            </button>
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    executeLiveReport(liveReports.items[0]!.id, {
+                      format: "pdf",
+                      deliveryMode: "download",
+                      recipient: "Operations Leadership",
+                      filtersSummary: "Current operating day and leadership review filters",
+                      notes: "Generated PDF leadership handoff."
+                    }),
+                  "Live report export generated."
+                )
+              }
+            >
+              Export first live report
+            </button>
+          </div>
+        ) : null}
+        <div className="list-stack">
+          {liveReportExecutions.items.map((execution) => (
+            <article className="list-row" key={execution.id}>
+              <div>
+                <strong>{execution.reportName}</strong>
+                <p>
+                  {execution.deliveryMode} · {execution.recipient}
+                </p>
+                <p>{execution.filtersSummary}</p>
+              </div>
+              <div className="list-meta">
+                <span>{execution.format}</span>
+                <StatusBadge
+                  tone={execution.status === "ready" ? "neutral" : "success"}
+                  label={execution.status}
+                />
+              </div>
+            </article>
+          ))}
+        </div>
+      </Panel>
+      <Panel title="Permission group maintenance" eyebrow={`${permissionGroups.items.length} groups`}>
+        {permissionGroups.items[0] ? (
+          <button
+            type="button"
+            disabled={!canManagePermissionGroups}
+            onClick={() =>
+              void runAction(
+                () =>
+                  savePermissionGroup(permissionGroups.items[0]!.id, {
+                    description: `${permissionGroups.items[0]!.description} Includes edit-review workflow.`,
+                    permissions: [...permissionGroups.items[0]!.permissions, "reports.schedule"]
+                  }),
+                "Permission group updated."
+              )
+            }
+          >
+            Expand first permission group
+          </button>
+        ) : null}
+        <div className="button-row">
+          <button
+            type="button"
+            disabled={!canManagePermissionGroups}
+            onClick={() =>
+              void runAction(
+                () =>
+                  createPermissionGroup({
+                    name: "Service Review",
+                    description: "Review-focused access for service and incident oversight.",
+                    permissions: ["reports.view", "reports.schedule", "delays.write"]
+                  }),
+                "Permission group created."
+              )
+            }
+          >
+            Create staged permission group
+          </button>
+          {permissionGroups.items.at(-1) ? (
+            <button
+              type="button"
+              disabled={!canManagePermissionGroups}
+              onClick={() =>
+                void runAction(
+                  () => deletePermissionGroup(permissionGroups.items.at(-1)!.id),
+                  "Permission group deleted."
+                )
+              }
+            >
+              Delete last permission group
+            </button>
+          ) : null}
         </div>
       </Panel>
     </div>

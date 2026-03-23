@@ -1,4 +1,12 @@
-import type { PermissionGroupList, PropertyCode } from "@tps/types";
+import { randomUUID } from "node:crypto";
+
+import type {
+  PermissionGroupCreate,
+  PermissionGroupDeleteResult,
+  PermissionGroupList,
+  PermissionGroupUpdate,
+  PropertyCode
+} from "@tps/types";
 
 const commuterGroups: PermissionGroupList = {
   items: [
@@ -7,14 +15,23 @@ const commuterGroups: PermissionGroupList = {
       name: "Operations Admin",
       description: "Full operational control across schedules, runs, delays, and crew.",
       members: 4,
-      permissions: ["schedules.write", "runs.approve", "delays.write", "crew.assign"]
+      permissions: [
+        "schedules.write",
+        "runs.approve",
+        "runs.write",
+        "stops.write",
+        "delays.write",
+        "consist.write",
+        "crew.assign",
+        "fare.write"
+      ]
     },
     {
       id: "dispatch",
       name: "Dispatcher",
       description: "Day-of-service editing for train runs and delays.",
       members: 7,
-      permissions: ["runs.write", "delays.write", "stops.write"]
+      permissions: ["runs.write", "delays.write", "stops.write", "consist.write"]
     }
   ]
 };
@@ -26,7 +43,7 @@ const streetcarGroups: PermissionGroupList = {
       name: "Streetcar Operations",
       description: "Dispatch and service adjustments for streetcar operations.",
       members: 3,
-      permissions: ["runs.write", "delays.write", "crew.assign"]
+      permissions: ["runs.write", "delays.write", "consist.write", "crew.assign"]
     },
     {
       id: "streetcar-reporting",
@@ -44,6 +61,78 @@ const streetcarProperties = new Set<PropertyCode>([
   "octastreetcar"
 ]);
 
-export function listPermissionGroups(propertyCode: PropertyCode): PermissionGroupList {
+function cloneGroupList(source: PermissionGroupList): PermissionGroupList {
+  return {
+    items: source.items.map((item) => ({
+      ...item,
+      permissions: [...item.permissions]
+    }))
+  };
+}
+
+const initialPermissionGroups: Record<"commuter" | "streetcar", PermissionGroupList> = {
+  commuter: cloneGroupList(commuterGroups),
+  streetcar: cloneGroupList(streetcarGroups)
+};
+
+function getGroupCatalog(propertyCode: PropertyCode): PermissionGroupList {
   return streetcarProperties.has(propertyCode) ? streetcarGroups : commuterGroups;
+}
+
+export function listPermissionGroups(propertyCode: PropertyCode): PermissionGroupList {
+  return cloneGroupList(getGroupCatalog(propertyCode));
+}
+
+export function updatePermissionGroup(
+  propertyCode: PropertyCode,
+  groupId: string,
+  update: PermissionGroupUpdate
+): void {
+  const catalog = getGroupCatalog(propertyCode);
+  const group = catalog.items.find((candidate) => candidate.id === groupId);
+
+  if (!group) {
+    throw new Error("permission_group.not_found");
+  }
+
+  group.description = update.description;
+  group.permissions = [...update.permissions];
+}
+
+export function createPermissionGroup(
+  propertyCode: PropertyCode,
+  input: PermissionGroupCreate
+): void {
+  const catalog = getGroupCatalog(propertyCode);
+
+  catalog.items.push({
+    id: `group-${randomUUID()}`,
+    name: input.name,
+    description: input.description,
+    members: 0,
+    permissions: [...input.permissions]
+  });
+}
+
+export function deletePermissionGroup(
+  propertyCode: PropertyCode,
+  groupId: string
+): PermissionGroupDeleteResult {
+  const catalog = getGroupCatalog(propertyCode);
+  const existing = catalog.items.find((candidate) => candidate.id === groupId);
+
+  if (!existing) {
+    throw new Error("permission_group.not_found");
+  }
+
+  catalog.items = catalog.items.filter((candidate) => candidate.id !== groupId);
+
+  return {
+    deletedGroupId: groupId
+  };
+}
+
+export function resetPermissionGroups(): void {
+  commuterGroups.items = cloneGroupList(initialPermissionGroups.commuter).items;
+  streetcarGroups.items = cloneGroupList(initialPermissionGroups.streetcar).items;
 }

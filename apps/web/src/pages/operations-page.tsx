@@ -1,26 +1,49 @@
 import type {
   ConsistEquipmentList,
+  ConsistTemplateList,
   ConsistEquipmentUpdate,
   CrewAssignmentList,
+  CrewTemplateList,
   CrewAssignmentUpdate,
+  DelayAdditionalInfo,
+  DelayAdditionalInfoUpdate,
+  DelayPropagationPreview,
+  DelayWorkOrder,
+  DelayWorkOrderCreate,
+  DelayEventCreate,
+  DelayEventBatchCreate,
+  DelayCommonLocationList,
+  DelayEventDeleteResult,
   DelayEventList,
+  DelayTemplateList,
   DelayEventUpdate,
   FareEnforcementCreate,
+  FareEnforcementHistoryList,
   FareEnforcementDashboard,
   FareEnforcementList,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
+  NotableDelayTypeList,
   PropertySummary,
   ReferenceDataset,
+  SpecialMovementList,
   StationStop,
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunDeleteResult,
+  TrainRunInitializeRequest,
+  TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
+  TrainRunEventHistoryList,
+  TrainRunImpactSummary,
+  TrainScheduleApprovalSummary,
   TrainRunList,
+  TrainRunStatusRecord,
+  TrainRunStatusUpdate,
   TrainScheduleList
 } from "@tps/types";
 import { useEffect, useState } from "react";
@@ -31,9 +54,13 @@ import { StatusBadge } from "../components/status-badge.js";
 interface OperationsPageProps {
   property: PropertySummary;
   consist: ConsistEquipmentList;
+  consistTemplates: ConsistTemplateList;
   crew: CrewAssignmentList;
+  crewTemplates: CrewTemplateList;
+  currentUserPermissions: string[];
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
+  fareHistory: FareEnforcementHistoryList;
   fareDashboard: FareEnforcementDashboard;
   fareSummary: FareEnforcementSummaryList;
   isSaving: boolean;
@@ -41,6 +68,17 @@ interface OperationsPageProps {
   runs: TrainRunList;
   approvalHistory: TrainRunApprovalHistoryList;
   scheduleApprovalHistory: TrainRunApprovalHistoryList;
+  eventHistory: TrainRunEventHistoryList;
+  impactSummary: TrainRunImpactSummary;
+  scheduleApprovalSummary: TrainScheduleApprovalSummary;
+  trainRunStatus: TrainRunStatusRecord;
+  delayAdditionalInfo: Record<string, DelayAdditionalInfo>;
+  delayPropagationPreview: DelayPropagationPreview;
+  delayCommonLocations: DelayCommonLocationList;
+  notableDelayTypes: NotableDelayTypeList;
+  delayWorkOrders: Record<string, DelayWorkOrder>;
+  delayTemplates: DelayTemplateList;
+  specialMovements: SpecialMovementList;
   schedules: TrainScheduleList;
   selectedRunId: string | null;
   selectRun: (runId: string) => Promise<void>;
@@ -54,6 +92,8 @@ interface OperationsPageProps {
     assignmentId: string,
     update: CrewAssignmentUpdate
   ) => Promise<CrewAssignmentList["items"][number] | undefined>;
+  swapConsist: (runId: string, templateId: string) => Promise<ConsistEquipmentList | undefined>;
+  swapCrew: (runId: string, templateId: string) => Promise<CrewAssignmentList | undefined>;
   saveDelay: (
     runId: string,
     delayId: string,
@@ -66,6 +106,8 @@ interface OperationsPageProps {
   createFare: (
     input: FareEnforcementCreate
   ) => Promise<FareEnforcementList["items"][number] | undefined>;
+  loadFareHistory: (recordId: string | null) => Promise<void>;
+  deleteFare: (recordId: string) => Promise<{ deletedRecordId: string; runId: string } | undefined>;
   saveRunApproval: (
     runId: string,
     update: TrainRunApprovalUpdate
@@ -73,20 +115,57 @@ interface OperationsPageProps {
   saveBatchRunApproval: (
     update: TrainRunBatchApprovalUpdate
   ) => Promise<TrainRunBatchApprovalResult | undefined>;
+  initializeRuns: (
+    request: TrainRunInitializeRequest
+  ) => Promise<TrainRunInitializeResult | undefined>;
+  saveRunStatus: (
+    runId: string,
+    update: TrainRunStatusUpdate
+  ) => Promise<TrainRunStatusRecord | undefined>;
+  resetRun: (runId: string) => Promise<TrainRun | undefined>;
+  deleteRun: (runId: string) => Promise<TrainRunDeleteResult | undefined>;
   saveStop: (
     runId: string,
     stopId: string,
     update: StationStopUpdate
   ) => Promise<StationStop | undefined>;
+  createDelayBatch: (
+    runId: string,
+    input: DelayEventBatchCreate
+  ) => Promise<DelayEventList | undefined>;
+  createDelayTemplate: (
+    runId: string,
+    templateId: string,
+    reportedAt: string
+  ) => Promise<DelayEventList["items"][number] | undefined>;
+  createWorkOrder: (
+    delayId: string,
+    input: DelayWorkOrderCreate
+  ) => Promise<DelayWorkOrder | undefined>;
+  saveDelayAdditionalInfo: (
+    delayId: string,
+    update: DelayAdditionalInfoUpdate
+  ) => Promise<DelayAdditionalInfo | undefined>;
+  clearDelayAdditionalInfo: (
+    delayId: string
+  ) => Promise<{ delayId: string } | undefined>;
+  deleteDelay: (
+    runId: string,
+    delayId: string
+  ) => Promise<DelayEventDeleteResult | undefined>;
   stationStops: StationStopList;
   source: "api" | "fallback";
 }
 
 export function OperationsPage({
   consist,
+  consistTemplates,
   crew,
+  crewTemplates,
+  currentUserPermissions,
   delayEvents,
   fareEnforcement,
+  fareHistory,
   fareDashboard,
   fareSummary,
   isSaving,
@@ -95,22 +174,60 @@ export function OperationsPage({
   runs,
   approvalHistory,
   scheduleApprovalHistory,
+  eventHistory,
+  impactSummary,
+  scheduleApprovalSummary,
+  trainRunStatus,
+  delayAdditionalInfo,
+  delayPropagationPreview,
+  delayCommonLocations,
+  notableDelayTypes,
+  delayWorkOrders,
+  delayTemplates,
+  specialMovements,
   schedules,
   selectedRunId,
   selectRun,
   saveConsist,
   saveCrew,
+  swapConsist,
+  swapCrew,
   saveDelay,
   createFare,
+  loadFareHistory,
+  deleteFare,
   saveFare,
   saveRunApproval,
   saveBatchRunApproval,
+  initializeRuns,
+  saveRunStatus,
+  resetRun,
+  deleteRun,
   saveStop,
+  createDelayBatch,
+  createDelayTemplate,
+  createWorkOrder,
+  saveDelayAdditionalInfo,
+  clearDelayAdditionalInfo,
+  deleteDelay,
   stationStops,
   source
 }: OperationsPageProps) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [approvalNotes, setApprovalNotes] = useState("Ready for dispatch closeout.");
+  const [initializeDate, setInitializeDate] = useState("2026-03-07");
+  const [runStatusForm, setRunStatusForm] = useState<TrainRunStatusUpdate>({
+    status: trainRunStatus.status,
+    comment: trainRunStatus.comment
+  });
+  const canInitializeSchedules = currentUserPermissions.includes("schedules.write");
+  const canApproveRuns = currentUserPermissions.includes("runs.approve");
+  const canEditRuns = currentUserPermissions.includes("runs.write");
+  const canEditStops = currentUserPermissions.includes("stops.write");
+  const canEditDelays = currentUserPermissions.includes("delays.write");
+  const canEditConsist = currentUserPermissions.includes("consist.write");
+  const canAssignCrew = currentUserPermissions.includes("crew.assign");
+  const canEditFare = currentUserPermissions.includes("fare.write");
   const selectedRun = runs.items.find((run) => run.id === selectedRunId) ?? runs.items[0];
   const selectedSchedule =
     schedules.items.find((schedule) => schedule.id === selectedRun?.scheduleId) ?? schedules.items[0];
@@ -122,8 +239,17 @@ export function OperationsPage({
 
   const [selectedStopId, setSelectedStopId] = useState<string | null>(stationStops.items[0]?.id ?? null);
   const [selectedDelayId, setSelectedDelayId] = useState<string | null>(delayEvents.items[0]?.id ?? null);
+  const [selectedDelayTemplateId, setSelectedDelayTemplateId] = useState<string>(
+    delayTemplates.items[0]?.id ?? ""
+  );
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(consist.items[0]?.id ?? null);
   const [selectedCrewId, setSelectedCrewId] = useState<string | null>(crew.items[0]?.id ?? null);
+  const [selectedConsistTemplateId, setSelectedConsistTemplateId] = useState(
+    consistTemplates.items[0]?.id ?? ""
+  );
+  const [selectedCrewTemplateId, setSelectedCrewTemplateId] = useState(
+    crewTemplates.items[0]?.id ?? ""
+  );
   const [selectedFareId, setSelectedFareId] = useState<string | null>(fareEnforcement.items[0]?.id ?? null);
 
   const selectedStop = stationStops.items.find((item) => item.id === selectedStopId) ?? stationStops.items[0];
@@ -144,6 +270,22 @@ export function OperationsPage({
     minutes: selectedDelay?.minutes ?? 0,
     notes: selectedDelay?.notes ?? "",
     reportedAt: selectedDelay?.reportedAt ?? ""
+  });
+  const [delayAdditionalForm, setDelayAdditionalForm] = useState<DelayAdditionalInfoUpdate>({
+    locationDetail: delayAdditionalInfo[selectedDelay?.id ?? ""]?.locationDetail ?? "",
+    responsibleParty: delayAdditionalInfo[selectedDelay?.id ?? ""]?.responsibleParty ?? "",
+    notableDelayType: delayAdditionalInfo[selectedDelay?.id ?? ""]?.notableDelayType ?? "",
+    specialMovementId: delayAdditionalInfo[selectedDelay?.id ?? ""]?.specialMovementId ?? null,
+    workOrderId: delayAdditionalInfo[selectedDelay?.id ?? ""]?.workOrderId ?? null,
+    mechanicalNotes: delayAdditionalInfo[selectedDelay?.id ?? ""]?.mechanicalNotes ?? "",
+    passengerImpactSummary:
+      delayAdditionalInfo[selectedDelay?.id ?? ""]?.passengerImpactSummary ?? ""
+  });
+  const [workOrderForm, setWorkOrderForm] = useState<DelayWorkOrderCreate>({
+    notableDelayType: delayAdditionalInfo[selectedDelay?.id ?? ""]?.notableDelayType ?? "",
+    assetId: null,
+    repairType: "Inspection",
+    priority: "medium"
   });
   const [equipmentForm, setEquipmentForm] = useState<ConsistEquipmentUpdate>({
     position: selectedEquipment?.position ?? 1,
@@ -180,6 +322,35 @@ export function OperationsPage({
     capturedAt: "2026-03-06T09:00:00Z"
   });
   const [fareInspectorFilter, setFareInspectorFilter] = useState("");
+  const [newDelayBatch, setNewDelayBatch] = useState<DelayEventBatchCreate>({
+    delays: [
+      {
+        category: referenceData.delayReasons[0] ?? "Signal delay",
+        minutes: 2,
+        notes: "Additional delay event.",
+        reportedAt: "2026-03-06T06:40:00Z"
+      },
+      {
+        category: referenceData.delayReasons[1] ?? "Passenger loading",
+        minutes: 1,
+        notes: "Trailing platform hold.",
+        reportedAt: "2026-03-06T06:43:00Z"
+      }
+    ]
+  });
+  const [delayTemplateReportedAt, setDelayTemplateReportedAt] = useState("2026-03-06T06:28:00Z");
+
+  useEffect(() => {
+    void loadFareHistory(selectedFare?.id ?? null);
+  }, [selectedFare?.id]);
+
+  function updateBatchDelay(index: number, update: Partial<DelayEventCreate>) {
+    setNewDelayBatch((current) => ({
+      delays: current.delays.map((delay, candidateIndex) =>
+        candidateIndex === index ? { ...delay, ...update } : delay
+      )
+    }));
+  }
 
   useEffect(() => {
     setSelectedStopId(stationStops.items[0]?.id ?? null);
@@ -190,12 +361,24 @@ export function OperationsPage({
   }, [delayEvents]);
 
   useEffect(() => {
+    setSelectedDelayTemplateId(delayTemplates.items[0]?.id ?? "");
+  }, [delayTemplates]);
+
+  useEffect(() => {
     setSelectedEquipmentId(consist.items[0]?.id ?? null);
   }, [consist]);
 
   useEffect(() => {
     setSelectedCrewId(crew.items[0]?.id ?? null);
   }, [crew]);
+
+  useEffect(() => {
+    setSelectedConsistTemplateId(consistTemplates.items[0]?.id ?? "");
+  }, [consistTemplates]);
+
+  useEffect(() => {
+    setSelectedCrewTemplateId(crewTemplates.items[0]?.id ?? "");
+  }, [crewTemplates]);
 
   useEffect(() => {
     setSelectedFareId(fareEnforcement.items[0]?.id ?? null);
@@ -217,6 +400,25 @@ export function OperationsPage({
       reportedAt: selectedDelay?.reportedAt ?? ""
     });
   }, [selectedDelay]);
+
+  useEffect(() => {
+    const current = selectedDelay ? delayAdditionalInfo[selectedDelay.id] : null;
+    setDelayAdditionalForm({
+      locationDetail: current?.locationDetail ?? "",
+      responsibleParty: current?.responsibleParty ?? "",
+      notableDelayType: current?.notableDelayType ?? "",
+      specialMovementId: current?.specialMovementId ?? null,
+      workOrderId: current?.workOrderId ?? null,
+      mechanicalNotes: current?.mechanicalNotes ?? "",
+      passengerImpactSummary: current?.passengerImpactSummary ?? ""
+    });
+    setWorkOrderForm({
+      notableDelayType: current?.notableDelayType ?? "",
+      assetId: null,
+      repairType: "Inspection",
+      priority: "medium"
+    });
+  }, [selectedDelay, delayAdditionalInfo]);
 
   useEffect(() => {
     setEquipmentForm({
@@ -260,6 +462,13 @@ export function OperationsPage({
   useEffect(() => {
     setApprovalNotes(selectedRun?.isApproved ? "Reopened for correction." : "Ready for dispatch closeout.");
   }, [selectedRunId, selectedRun?.isApproved]);
+
+  useEffect(() => {
+    setRunStatusForm({
+      status: trainRunStatus.status,
+      comment: trainRunStatus.comment
+    });
+  }, [trainRunStatus]);
 
   const filteredFareRecords = fareEnforcement.items.filter((record) =>
     fareInspectorFilter
@@ -334,6 +543,42 @@ export function OperationsPage({
                   <StatusBadge key={day} tone="neutral" label={day} />
                 ))}
               </div>
+              <div className="editor-grid">
+                <label className="field-stack">
+                  <span>Initialize Date</span>
+                  <input
+                    onChange={(event) => {
+                      setInitializeDate(event.target.value);
+                    }}
+                    type="date"
+                    value={initializeDate}
+                  />
+                </label>
+                <button
+                  className="action-button"
+                  disabled={isSaving || !canInitializeSchedules}
+                  onClick={() => {
+                    void runAction(
+                      async () => {
+                        const result = await initializeRuns({
+                          operatingDate: initializeDate,
+                          scheduleIds: selectedSchedule ? [selectedSchedule.id] : []
+                        });
+
+                        if (!result?.createdRuns.length) {
+                          throw new Error(
+                            `no runs initialized${result?.skippedScheduleIds.length ? `; skipped ${result.skippedScheduleIds.join(", ")}` : ""}`
+                          );
+                        }
+                      },
+                      `Initialized ${selectedSchedule.trainNumber} for ${initializeDate}.`
+                    );
+                  }}
+                  type="button"
+                >
+                  Initialize selected schedule
+                </button>
+              </div>
               <div className="list-stack">
                 {scheduleRuns.map((run) => (
                   <button
@@ -370,6 +615,60 @@ export function OperationsPage({
               </div>
               {selectedRun ? (
                 <div className="editor-grid">
+                  <article className="metric-card">
+                    <span>Schedule readiness</span>
+                    <strong>
+                      {scheduleApprovalSummary.readyCount}/{scheduleApprovalSummary.totalRuns}
+                    </strong>
+                  </article>
+                  <article className="metric-card">
+                    <span>Blocked runs</span>
+                    <strong>{scheduleApprovalSummary.blockedCount}</strong>
+                  </article>
+                  <article className="metric-card">
+                    <span>Schedule delay total</span>
+                    <strong>{scheduleApprovalSummary.totalDelayMinutes} min</strong>
+                  </article>
+                  <label className="field-stack editor-span">
+                    <span>Run Status</span>
+                    <select
+                      onChange={(event) => {
+                        setRunStatusForm((current) => ({
+                          ...current,
+                          status: event.target.value as TrainRunStatusUpdate["status"]
+                        }));
+                      }}
+                      value={runStatusForm.status}
+                    >
+                      <option value="scheduled">scheduled</option>
+                      <option value="in_progress">in_progress</option>
+                      <option value="delayed">delayed</option>
+                      <option value="approved">approved</option>
+                    </select>
+                  </label>
+                  <label className="field-stack editor-span">
+                    <span>Status Comment</span>
+                    <textarea
+                      onChange={(event) => {
+                        setRunStatusForm((current) => ({ ...current, comment: event.target.value }));
+                      }}
+                      rows={2}
+                      value={runStatusForm.comment}
+                    />
+                  </label>
+                  <button
+                    className="action-button"
+                    disabled={isSaving || !canEditRuns}
+                    onClick={() => {
+                      void runAction(
+                        () => saveRunStatus(selectedRun.id, runStatusForm),
+                        "Run status and comment updated."
+                      );
+                    }}
+                    type="button"
+                  >
+                    Save run status
+                  </button>
                   {selectedRun.approvalBlockers.length ? (
                     <p className="inline-feedback editor-span">{selectedRun.approvalBlockers.join(" ")}</p>
                   ) : null}
@@ -385,7 +684,12 @@ export function OperationsPage({
                   </label>
                   <button
                     className="action-button"
-                    disabled={selectedRun.isApproved || isSaving || selectedRun.approvalBlockers.length > 0}
+                    disabled={
+                      selectedRun.isApproved ||
+                      isSaving ||
+                      selectedRun.approvalBlockers.length > 0 ||
+                      !canApproveRuns
+                    }
                     onClick={() => {
                       void runAction(
                         () => saveRunApproval(selectedRun.id, { isApproved: true, notes: approvalNotes }),
@@ -398,7 +702,7 @@ export function OperationsPage({
                   </button>
                   <button
                     className="action-button"
-                    disabled={isSaving || batchReadyRunIds.length === 0}
+                    disabled={isSaving || batchReadyRunIds.length === 0 || !canApproveRuns}
                     onClick={() => {
                       void runAction(
                         async () => {
@@ -423,7 +727,33 @@ export function OperationsPage({
                   </button>
                   <button
                     className="action-button"
-                    disabled={isSaving || batchApprovedRunIds.length === 0}
+                    disabled={selectedRun.isApproved || isSaving || !canEditRuns}
+                    onClick={() => {
+                      void runAction(
+                        () => resetRun(selectedRun.id),
+                        "Run reset and operational data cleared."
+                      );
+                    }}
+                    type="button"
+                  >
+                    Reset selected run
+                  </button>
+                  <button
+                    className="action-button"
+                    disabled={selectedRun.isApproved || isSaving || !canEditRuns}
+                    onClick={() => {
+                      void runAction(
+                        () => deleteRun(selectedRun.id),
+                        "Run deleted from the schedule."
+                      );
+                    }}
+                    type="button"
+                  >
+                    Delete selected run
+                  </button>
+                  <button
+                    className="action-button"
+                    disabled={isSaving || batchApprovedRunIds.length === 0 || !canApproveRuns}
                     onClick={() => {
                       void runAction(
                         () =>
@@ -442,7 +772,7 @@ export function OperationsPage({
                   {selectedRun.isApproved ? (
                     <button
                       className="action-button"
-                      disabled={isSaving}
+                      disabled={isSaving || !canApproveRuns}
                       onClick={() => {
                         void runAction(
                           () => saveRunApproval(selectedRun.id, { isApproved: false, notes: approvalNotes }),
@@ -534,7 +864,7 @@ export function OperationsPage({
               <div className="action-row">
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving}
+                  disabled={selectedRun.isApproved || isSaving || !canEditStops}
                   onClick={() => {
                     void runAction(
                       () => saveStop(selectedRun.id, selectedStop.id, stopForm),
@@ -617,7 +947,7 @@ export function OperationsPage({
               <div className="action-row">
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving}
+                  disabled={selectedRun.isApproved || isSaving || !canEditDelays}
                   onClick={() => {
                     void runAction(
                       () => saveDelay(selectedRun.id, selectedDelay.id, delayForm),
@@ -627,6 +957,383 @@ export function OperationsPage({
                   type="button"
                 >
                   Save selected delay
+                </button>
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving || !canEditDelays}
+                  onClick={() => {
+                    void runAction(
+                      () => deleteDelay(selectedRun.id, selectedDelay.id),
+                      "Delay event deleted."
+                    );
+                  }}
+                  type="button"
+                >
+                  Delete selected delay
+                </button>
+              </div>
+              <label className="field-stack editor-span">
+                <span>Location Detail</span>
+                <input
+                  list="delay-common-locations"
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      locationDetail: event.target.value
+                    }));
+                  }}
+                  type="text"
+                  value={delayAdditionalForm.locationDetail}
+                />
+                <datalist id="delay-common-locations">
+                  {delayCommonLocations.items.map((item) => (
+                    <option key={item.id} value={item.label} />
+                  ))}
+                </datalist>
+              </label>
+              <label className="field-stack">
+                <span>Responsible Party</span>
+                <input
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      responsibleParty: event.target.value
+                    }));
+                  }}
+                  type="text"
+                  value={delayAdditionalForm.responsibleParty}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Notable Delay Type</span>
+                <input
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      notableDelayType: event.target.value
+                    }));
+                  }}
+                  type="text"
+                  value={delayAdditionalForm.notableDelayType}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Special Movement</span>
+                <select
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      specialMovementId: event.target.value || null
+                    }));
+                  }}
+                  value={delayAdditionalForm.specialMovementId ?? ""}
+                >
+                  <option value="">None</option>
+                  {specialMovements.items.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-stack">
+                <span>Work Order</span>
+                <input
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      workOrderId: event.target.value || null
+                    }));
+                  }}
+                  type="text"
+                  value={delayAdditionalForm.workOrderId ?? ""}
+                />
+              </label>
+              <label className="field-stack editor-span">
+                <span>Mechanical Notes</span>
+                <textarea
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      mechanicalNotes: event.target.value
+                    }));
+                  }}
+                  rows={2}
+                  value={delayAdditionalForm.mechanicalNotes}
+                />
+              </label>
+              <label className="field-stack editor-span">
+                <span>Passenger Impact Summary</span>
+                <textarea
+                  onChange={(event) => {
+                    setDelayAdditionalForm((current) => ({
+                      ...current,
+                      passengerImpactSummary: event.target.value
+                    }));
+                  }}
+                  rows={2}
+                  value={delayAdditionalForm.passengerImpactSummary}
+                />
+              </label>
+              <div className="action-row">
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving || !canEditDelays}
+                  onClick={() => {
+                    void runAction(
+                      () => saveDelayAdditionalInfo(selectedDelay.id, delayAdditionalForm),
+                      "Delay additional info updated."
+                    );
+                  }}
+                  type="button"
+                >
+                  Save delay metadata
+                </button>
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving || !canEditDelays}
+                  onClick={() => {
+                    void runAction(
+                      () => clearDelayAdditionalInfo(selectedDelay.id),
+                      "Delay additional info cleared."
+                    );
+                  }}
+                  type="button"
+                >
+                  Clear delay metadata
+                </button>
+              </div>
+              <article className="metric-card editor-span">
+                <span>Propagation preview</span>
+                <strong>{delayPropagationPreview.totalProjectedDelayMinutes} min downstream</strong>
+                <p>
+                  {delayPropagationPreview.impactedStopCount} impacted stop(s)
+                  {delayPropagationPreview.requiresCmmsFollowup ? " · CMMS follow-up suggested" : ""}
+                </p>
+              </article>
+              <label className="field-stack">
+                <span>Notable delay type catalog</span>
+                <select
+                  onChange={(event) => {
+                    setWorkOrderForm((current) => ({
+                      ...current,
+                      notableDelayType: event.target.value
+                    }));
+                  }}
+                  value={workOrderForm.notableDelayType}
+                >
+                  <option value="">Select type</option>
+                  {notableDelayTypes.items.map((item) => (
+                    <option key={item.id} value={item.label}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-stack">
+                <span>Repair Type</span>
+                <input
+                  onChange={(event) => {
+                    setWorkOrderForm((current) => ({ ...current, repairType: event.target.value }));
+                  }}
+                  type="text"
+                  value={workOrderForm.repairType}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Priority</span>
+                <select
+                  onChange={(event) => {
+                    setWorkOrderForm((current) => ({
+                      ...current,
+                      priority: event.target.value as DelayWorkOrderCreate["priority"]
+                    }));
+                  }}
+                  value={workOrderForm.priority}
+                >
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                </select>
+              </label>
+              <label className="field-stack">
+                <span>Asset ID</span>
+                <input
+                  onChange={(event) => {
+                    setWorkOrderForm((current) => ({
+                      ...current,
+                      assetId: event.target.value || null
+                    }));
+                  }}
+                  type="text"
+                  value={workOrderForm.assetId ?? ""}
+                />
+              </label>
+              <div className="action-row editor-span">
+                <button
+                  className="action-button"
+                  disabled={
+                    selectedRun.isApproved ||
+                    isSaving ||
+                    !canEditDelays ||
+                    !workOrderForm.notableDelayType
+                  }
+                  onClick={() => {
+                    void runAction(
+                      () => createWorkOrder(selectedDelay.id, workOrderForm),
+                      "Delay work order created."
+                    );
+                  }}
+                  type="button"
+                >
+                  {delayWorkOrders[selectedDelay.id] ? "Replace work order" : "Create work order"}
+                </button>
+                {delayWorkOrders[selectedDelay.id] ? (
+                  <p className="inline-feedback">
+                    {delayWorkOrders[selectedDelay.id]!.workOrderId} · {delayWorkOrders[selectedDelay.id]!.status}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          {selectedRun ? (
+            <div className="editor-grid">
+              <label className="field-stack editor-span">
+                <span>Delay Template</span>
+                <select
+                  onChange={(event) => {
+                    setSelectedDelayTemplateId(event.target.value);
+                  }}
+                  value={selectedDelayTemplateId}
+                >
+                  <option value="">Select template</option>
+                  {delayTemplates.items.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-stack">
+                <span>Template Reported At</span>
+                <input
+                  onChange={(event) => {
+                    setDelayTemplateReportedAt(event.target.value);
+                  }}
+                  type="text"
+                  value={delayTemplateReportedAt}
+                />
+              </label>
+              <div className="action-row">
+                <button
+                  className="action-button"
+                  disabled={
+                    selectedRun.isApproved ||
+                    isSaving ||
+                    !selectedDelayTemplateId ||
+                    !canEditDelays
+                  }
+                  onClick={() => {
+                    void runAction(
+                      () =>
+                        createDelayTemplate(
+                          selectedRun.id,
+                          selectedDelayTemplateId,
+                          delayTemplateReportedAt
+                        ),
+                      "Delay created from template."
+                    );
+                  }}
+                  type="button"
+                >
+                  Add delay from template
+                </button>
+              </div>
+              <label className="field-stack">
+                <span>Delay 1 Category</span>
+                <select
+                  onChange={(event) => {
+                    updateBatchDelay(0, { category: event.target.value });
+                  }}
+                  value={newDelayBatch.delays[0]?.category ?? ""}
+                >
+                  {referenceData.delayReasons.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-stack">
+                <span>Delay 1 Minutes</span>
+                <input
+                  min="0"
+                  onChange={(event) => {
+                    updateBatchDelay(0, { minutes: Number(event.target.value) });
+                  }}
+                  type="number"
+                  value={newDelayBatch.delays[0]?.minutes ?? 0}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Delay 2 Category</span>
+                <select
+                  onChange={(event) => {
+                    updateBatchDelay(1, { category: event.target.value });
+                  }}
+                  value={newDelayBatch.delays[1]?.category ?? ""}
+                >
+                  {referenceData.delayReasons.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-stack">
+                <span>Delay 2 Minutes</span>
+                <input
+                  min="0"
+                  onChange={(event) => {
+                    updateBatchDelay(1, { minutes: Number(event.target.value) });
+                  }}
+                  type="number"
+                  value={newDelayBatch.delays[1]?.minutes ?? 0}
+                />
+              </label>
+              <label className="field-stack editor-span">
+                <span>Delay 1 Notes</span>
+                <textarea
+                  onChange={(event) => {
+                    updateBatchDelay(0, { notes: event.target.value });
+                  }}
+                  rows={2}
+                  value={newDelayBatch.delays[0]?.notes ?? ""}
+                />
+              </label>
+              <label className="field-stack editor-span">
+                <span>Delay 2 Notes</span>
+                <textarea
+                  onChange={(event) => {
+                    updateBatchDelay(1, { notes: event.target.value });
+                  }}
+                  rows={2}
+                  value={newDelayBatch.delays[1]?.notes ?? ""}
+                />
+              </label>
+              <div className="action-row">
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving || !canEditDelays}
+                  onClick={() => {
+                    void runAction(
+                      () => createDelayBatch(selectedRun.id, newDelayBatch),
+                      `Added ${newDelayBatch.delays.length} delay events.`
+                    );
+                  }}
+                  type="button"
+                >
+                  Add multiple delays
                 </button>
               </div>
             </div>
@@ -662,6 +1369,22 @@ export function OperationsPage({
           </div>
           {selectedRun && selectedEquipment ? (
             <div className="editor-grid">
+              <label className="field-stack editor-span">
+                <span>Swap Template</span>
+                <select
+                  onChange={(event) => {
+                    setSelectedConsistTemplateId(event.target.value);
+                  }}
+                  value={selectedConsistTemplateId}
+                >
+                  <option value="">Select template</option>
+                  {consistTemplates.items.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="field-stack">
                 <span>Position</span>
                 <input
@@ -695,7 +1418,25 @@ export function OperationsPage({
               <div className="action-row">
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving}
+                  disabled={
+                    selectedRun.isApproved ||
+                    isSaving ||
+                    !selectedConsistTemplateId ||
+                    !canEditConsist
+                  }
+                  onClick={() => {
+                    void runAction(
+                      () => swapConsist(selectedRun.id, selectedConsistTemplateId),
+                      "Consist swapped from template."
+                    );
+                  }}
+                  type="button"
+                >
+                  Swap consist
+                </button>
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving || !canEditConsist}
                   onClick={() => {
                     void runAction(
                       () => saveConsist(selectedRun.id, selectedEquipment.id, equipmentForm),
@@ -744,6 +1485,22 @@ export function OperationsPage({
           </div>
           {selectedRun && selectedCrew ? (
             <div className="editor-grid">
+              <label className="field-stack editor-span">
+                <span>Swap Template</span>
+                <select
+                  onChange={(event) => {
+                    setSelectedCrewTemplateId(event.target.value);
+                  }}
+                  value={selectedCrewTemplateId}
+                >
+                  <option value="">Select template</option>
+                  {crewTemplates.items.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="field-stack">
                 <span>Role</span>
                 <input
@@ -783,7 +1540,25 @@ export function OperationsPage({
               <div className="action-row">
                 <button
                   className="action-button"
-                  disabled={selectedRun.isApproved || isSaving}
+                  disabled={
+                    selectedRun.isApproved ||
+                    isSaving ||
+                    !selectedCrewTemplateId ||
+                    !canAssignCrew
+                  }
+                  onClick={() => {
+                    void runAction(
+                      () => swapCrew(selectedRun.id, selectedCrewTemplateId),
+                      "Crew assignment swapped from template."
+                    );
+                  }}
+                  type="button"
+                >
+                  Swap crew
+                </button>
+                <button
+                  className="action-button"
+                  disabled={selectedRun.isApproved || isSaving || !canAssignCrew}
                   onClick={() => {
                     void runAction(
                       () => saveCrew(selectedRun.id, selectedCrew.id, crewForm),
@@ -1029,12 +1804,15 @@ export function OperationsPage({
             <div className="action-row">
               <button
                 className="action-button"
-                disabled={isSaving}
+                disabled={isSaving || !canEditFare}
                 onClick={() => {
-                  void runAction(
-                    () => createFare(newFareForm),
-                    "Fare enforcement record created."
-                  );
+                  void runAction(async () => {
+                    const record = await createFare(newFareForm);
+                    if (record) {
+                      setSelectedFareId(record.id);
+                    }
+                    return record;
+                  }, "Fare enforcement record created.");
                 }}
                 type="button"
               >
@@ -1211,7 +1989,7 @@ export function OperationsPage({
             <div className="action-row">
               <button
                 className="action-button"
-                disabled={isSaving}
+                disabled={isSaving || !canEditFare}
                 onClick={() => {
                   void runAction(
                     () => saveFare(selectedFare.id, fareForm),
@@ -1222,9 +2000,44 @@ export function OperationsPage({
               >
                 Save selected fare record
               </button>
+              <button
+                className="action-button secondary"
+                disabled={isSaving || !canEditFare}
+                onClick={() => {
+                  void runAction(async () => {
+                    const result = await deleteFare(selectedFare.id);
+                    setSelectedFareId(null);
+                    return result;
+                  }, "Fare enforcement record deleted.");
+                }}
+                type="button"
+              >
+                Delete selected fare record
+              </button>
+            </div>
+            <div className="editor-span">
+              <h4>Fare history</h4>
+              <div className="list-stack">
+                {fareHistory.items.length ? (
+                  fareHistory.items.map((entry) => (
+                    <article className="selection-card" key={entry.id}>
+                      <div>
+                        <strong>{entry.action}</strong>
+                        <p>{entry.notes}</p>
+                      </div>
+                      <div className="list-meta">
+                        <StatusBadge label={entry.actorName} tone="neutral" />
+                        <span>{entry.createdAt}</span>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <p>No fare history recorded for this selection yet.</p>
+                )}
+              </div>
             </div>
           </div>
-          ) : null}
+        ) : null}
         </Panel>
       </div>
       <Panel title="Approval history" eyebrow={`${approvalHistory.items.length} events`}>
@@ -1251,6 +2064,84 @@ export function OperationsPage({
           )}
         </div>
       </Panel>
+      <Panel title="Operational impacts" eyebrow={`${impactSummary.impactedStationCount} downstream stop(s)`}>
+        <div className="stats-grid">
+          <article className="metric-card">
+            <span>Total delay</span>
+            <strong>{impactSummary.totalDelayMinutes} min</strong>
+          </article>
+          <article className="metric-card">
+            <span>Max projected delay</span>
+            <strong>{impactSummary.maxProjectedDelayMinutes} min</strong>
+          </article>
+          <article className="metric-card">
+            <span>Affected passengers</span>
+            <strong>{impactSummary.affectedPassengers}</strong>
+          </article>
+          <article className="metric-card">
+            <span>Recovery target</span>
+            <strong>{impactSummary.estimatedRecoveryTime ?? "None"}</strong>
+          </article>
+        </div>
+        <div className="detail-stack">
+          <div>
+            <p className="eyebrow">Passenger impacts</p>
+            <div className="list-stack">
+              {impactSummary.passengerImpactSummaries.map((summary) => (
+                <article className="list-row" key={summary}>
+                  <div>
+                    <p>{summary}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="eyebrow">Downstream stations</p>
+            <div className="list-stack">
+              {impactSummary.downstreamStations.length ? (
+                impactSummary.downstreamStations.map((station) => (
+                  <article className="list-row" key={`${station.stationCode}-${station.scheduledTime}`}>
+                    <div>
+                      <strong>{station.stationCode}</strong>
+                      <p>
+                        Scheduled {station.scheduledTime} · projected {station.projectedTime}
+                      </p>
+                    </div>
+                    <div className="list-meta">
+                      <StatusBadge tone="warning" label={`${station.projectedDelayMinutes} min`} />
+                      <span>{station.boardings + station.alightings} riders</span>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p>No downstream impacts projected for the selected run.</p>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="eyebrow">Blocked runs in this schedule</p>
+            <div className="list-stack">
+              {scheduleApprovalSummary.blockedRuns.length ? (
+                scheduleApprovalSummary.blockedRuns.map((run) => (
+                  <article className="list-row" key={run.runId}>
+                    <div>
+                      <strong>{run.trainNumber}</strong>
+                      <p>{run.blockers.join(" ")}</p>
+                    </div>
+                    <div className="list-meta">
+                      <span>{run.delayMinutes} current min</span>
+                      <span>{run.maxProjectedDelayMinutes} projected min</span>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p>No blocked runs in the selected schedule.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </Panel>
       <Panel title="Schedule approval history" eyebrow={`${scheduleApprovalHistory.items.length} events`}>
         <div className="list-stack">
           {scheduleApprovalHistory.items.length ? (
@@ -1274,6 +2165,27 @@ export function OperationsPage({
             ))
           ) : (
             <p>No schedule approval events recorded yet.</p>
+          )}
+        </div>
+      </Panel>
+      <Panel title="Run event history" eyebrow={`${eventHistory.items.length} events`}>
+        <div className="list-stack">
+          {eventHistory.items.length ? (
+            eventHistory.items.map((entry) => (
+              <article className="list-row" key={entry.id}>
+                <div>
+                  <strong>{entry.actorName}</strong>
+                  <p>{entry.action}</p>
+                  <p>{entry.notes}</p>
+                </div>
+                <div className="list-meta">
+                  <StatusBadge tone="neutral" label={entry.action} />
+                  <span>{entry.createdAt}</span>
+                </div>
+              </article>
+            ))
+          ) : (
+            <p>No operational events recorded for this run yet.</p>
           )}
         </div>
       </Panel>

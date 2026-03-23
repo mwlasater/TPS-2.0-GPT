@@ -1,23 +1,37 @@
 import {
+  delayWorkOrderCreateSchema,
   consistEquipmentUpdateSchema,
+  delayAdditionalInfoUpdateSchema,
   crewAssignmentUpdateSchema,
+  delayEventBatchCreateSchema,
+  delayTemplateCreateRequestSchema,
   fareEnforcementCreateSchema,
   delayEventUpdateSchema,
   fareEnforcementUpdateSchema,
+  resourceSwapRequestSchema,
   stationStopUpdateSchema,
+  trainRunInitializeRequestSchema,
   trainRunBatchApprovalUpdateSchema,
-  trainRunApprovalUpdateSchema
+  trainRunApprovalUpdateSchema,
+  trainRunStatusUpdateSchema
 } from "@tps/validation";
 import type { FastifyInstance } from "fastify";
 import type {
   ConsistEquipmentUpdate,
   CrewAssignmentUpdate,
+  DelayAdditionalInfoUpdate,
+  DelayWorkOrderCreate,
+  DelayEventBatchCreate,
+  DelayTemplateCreateRequest,
   FareEnforcementCreate,
   DelayEventUpdate,
   FareEnforcementUpdate,
+  ResourceSwapRequest,
   StationStopUpdate,
+  TrainRunInitializeRequest,
   TrainRunBatchApprovalUpdate,
-  TrainRunApprovalUpdate
+  TrainRunApprovalUpdate,
+  TrainRunStatusUpdate
 } from "@tps/types";
 
 export async function registerOperationsRoutes(app: FastifyInstance): Promise<void> {
@@ -38,11 +52,24 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
   );
 
   app.put(
+    "/train-runs/initialize",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "schedules.write");
+      const payload = trainRunInitializeRequestSchema.parse(request.body) as TrainRunInitializeRequest;
+      return app.dataAccess.operations.initializeTrainRuns(request.property, payload);
+    }
+  );
+
+  app.put(
     "/train-runs/approval/batch",
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "runs.approve");
       const payload = trainRunBatchApprovalUpdateSchema.parse(
         request.body
       ) as TrainRunBatchApprovalUpdate;
@@ -60,12 +87,41 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "runs.approve");
       const payload = trainRunApprovalUpdateSchema.parse(request.body) as TrainRunApprovalUpdate;
       return app.dataAccess.operations.updateTrainRunApproval(
         request.property,
         (request.params as { runId: string }).runId,
         payload,
         request.user.displayName
+      );
+    }
+  );
+
+  app.put(
+    "/train-runs/:runId/reset",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "runs.write");
+      return app.dataAccess.operations.resetTrainRun(
+        request.property,
+        (request.params as { runId: string }).runId
+      );
+    }
+  );
+
+  app.delete(
+    "/train-runs/:runId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "runs.write");
+      return app.dataAccess.operations.deleteTrainRun(
+        request.property,
+        (request.params as { runId: string }).runId
       );
     }
   );
@@ -82,11 +138,72 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
   );
 
   app.get(
+    "/train-schedules/:scheduleId/approval-summary",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.getTrainScheduleApprovalSummary(
+      request.property,
+      (request.params as { scheduleId: string }).scheduleId
+    )
+  );
+
+  app.get(
     "/train-runs/:runId/approval-history",
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => app.dataAccess.operations.listTrainRunApprovalHistory(
+      request.property,
+      (request.params as { runId: string }).runId
+    )
+  );
+
+  app.get(
+    "/train-runs/:runId/impacts",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.getTrainRunImpactSummary(
+      request.property,
+      (request.params as { runId: string }).runId
+    )
+  );
+
+  app.get(
+    "/train-runs/:runId/status",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.getTrainRunStatus(
+      request.property,
+      (request.params as { runId: string }).runId
+    )
+  );
+
+  app.put(
+    "/train-runs/:runId/status",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "runs.write");
+      const payload = trainRunStatusUpdateSchema.parse(request.body) as TrainRunStatusUpdate;
+      return app.dataAccess.operations.updateTrainRunStatus(
+        request.property,
+        (request.params as { runId: string }).runId,
+        payload,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.get(
+    "/train-runs/:runId/events",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listTrainRunEventHistory(
       request.property,
       (request.params as { runId: string }).runId
     )
@@ -109,6 +226,7 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "stops.write");
       const payload = stationStopUpdateSchema.parse(request.body) as StationStopUpdate;
       const params = request.params as { runId: string; stopId: string };
 
@@ -117,6 +235,110 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
         params.runId,
         params.stopId,
         payload
+      );
+    }
+  );
+
+  app.get(
+    "/delays/common-locations",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listDelayCommonLocations(request.property)
+  );
+
+  app.get(
+    "/delays/templates",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listDelayTemplates(request.property)
+  );
+
+  app.get(
+    "/delays/notable-delay-types",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listNotableDelayTypes(request.property)
+  );
+
+  app.get(
+    "/delays/special-movements",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listSpecialMovements(request.property)
+  );
+
+  app.get(
+    "/delays/:delayId/additional-info",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.getDelayAdditionalInfo(
+      request.property,
+      (request.params as { delayId: string }).delayId
+    )
+  );
+
+  app.get(
+    "/delays/:delayId/work-order",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.getDelayWorkOrder(
+      request.property,
+      (request.params as { delayId: string }).delayId
+    )
+  );
+
+  app.post(
+    "/delays/:delayId/work-order",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "delays.write");
+      const payload = delayWorkOrderCreateSchema.parse(request.body) as DelayWorkOrderCreate;
+      return app.dataAccess.operations.createDelayWorkOrder(
+        request.property,
+        (request.params as { delayId: string }).delayId,
+        payload,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.put(
+    "/delays/:delayId/additional-info",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "delays.write");
+      const payload = delayAdditionalInfoUpdateSchema.parse(
+        request.body
+      ) as DelayAdditionalInfoUpdate;
+      return app.dataAccess.operations.updateDelayAdditionalInfo(
+        request.property,
+        (request.params as { delayId: string }).delayId,
+        payload
+      );
+    }
+  );
+
+  app.delete(
+    "/delays/:delayId/additional-info",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "delays.write");
+      return app.dataAccess.operations.deleteDelayAdditionalInfo(
+        request.property,
+        (request.params as { delayId: string }).delayId,
+        request.user.displayName
       );
     }
   );
@@ -132,12 +354,72 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     )
   );
 
+  app.get(
+    "/train-runs/:runId/delay-propagation",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.getDelayPropagationPreview(
+      request.property,
+      (request.params as { runId: string }).runId
+    )
+  );
+
+  app.post(
+    "/train-runs/:runId/delays/template",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "delays.write");
+      const payload = delayTemplateCreateRequestSchema.parse(request.body) as DelayTemplateCreateRequest;
+      return app.dataAccess.operations.createDelayFromTemplate(
+        request.property,
+        (request.params as { runId: string }).runId,
+        payload
+      );
+    }
+  );
+
+  app.post(
+    "/train-runs/:runId/delays/batch",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "delays.write");
+      const payload = delayEventBatchCreateSchema.parse(request.body) as DelayEventBatchCreate;
+      return app.dataAccess.operations.createDelayEvents(
+        request.property,
+        (request.params as { runId: string }).runId,
+        payload
+      );
+    }
+  );
+
+  app.delete(
+    "/train-runs/:runId/delays/:delayId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "delays.write");
+      const params = request.params as { runId: string; delayId: string };
+      return app.dataAccess.operations.deleteDelayEvent(
+        request.property,
+        params.runId,
+        params.delayId
+      );
+    }
+  );
+
   app.put(
     "/train-runs/:runId/delays/:delayId",
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "delays.write");
       const payload = delayEventUpdateSchema.parse(request.body) as DelayEventUpdate;
       const params = request.params as { runId: string; delayId: string };
 
@@ -161,12 +443,37 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     )
   );
 
+  app.get(
+    "/consist/templates",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listConsistTemplates(request.property)
+  );
+
+  app.post(
+    "/train-runs/:runId/consist/swap",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "consist.write");
+      const payload = resourceSwapRequestSchema.parse(request.body) as ResourceSwapRequest;
+      return app.dataAccess.operations.swapConsistEquipment(
+        request.property,
+        (request.params as { runId: string }).runId,
+        payload
+      );
+    }
+  );
+
   app.put(
     "/train-runs/:runId/consist/:equipmentId",
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "consist.write");
       const payload = consistEquipmentUpdateSchema.parse(request.body) as ConsistEquipmentUpdate;
       const params = request.params as { runId: string; equipmentId: string };
 
@@ -190,12 +497,37 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     )
   );
 
+  app.get(
+    "/crew/templates",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listCrewTemplates(request.property)
+  );
+
+  app.post(
+    "/train-runs/:runId/crew/swap",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "crew.assign");
+      const payload = resourceSwapRequestSchema.parse(request.body) as ResourceSwapRequest;
+      return app.dataAccess.operations.swapCrewAssignments(
+        request.property,
+        (request.params as { runId: string }).runId,
+        payload
+      );
+    }
+  );
+
   app.put(
     "/train-runs/:runId/crew/:assignmentId",
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "crew.assign");
       const payload = crewAssignmentUpdateSchema.parse(request.body) as CrewAssignmentUpdate;
       const params = request.params as { runId: string; assignmentId: string };
 
@@ -219,12 +551,24 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     )
   );
 
+  app.get(
+    "/fare-enforcement/:recordId/history",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listFareEnforcementHistory(
+      request.property,
+      (request.params as { recordId: string }).recordId
+    )
+  );
+
   app.post(
     "/fare-enforcement",
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "fare.write");
       const payload = fareEnforcementCreateSchema.parse(request.body) as FareEnforcementCreate;
       return app.dataAccess.operations.createFareEnforcement(request.property, payload);
     }
@@ -252,11 +596,27 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "fare.write");
       const payload = fareEnforcementUpdateSchema.parse(request.body) as FareEnforcementUpdate;
       return app.dataAccess.operations.updateFareEnforcement(
         request.property,
         (request.params as { recordId: string }).recordId,
         payload
+      );
+    }
+  );
+
+  app.delete(
+    "/fare-enforcement/:recordId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "fare.write");
+      return app.dataAccess.operations.deleteFareEnforcement(
+        request.property,
+        (request.params as { recordId: string }).recordId,
+        request.user.displayName
       );
     }
   );

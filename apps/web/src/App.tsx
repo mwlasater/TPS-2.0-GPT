@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/app-shell.js";
 import { useAdminData } from "./hooks/use-admin-data.js";
+import { useAuth } from "./hooks/use-auth.js";
 import { useBaselineData } from "./hooks/use-baseline-data.js";
 import { useBootstrap } from "./hooks/use-bootstrap.js";
 import { useOperationsData } from "./hooks/use-operations-data.js";
@@ -14,8 +15,10 @@ import { OperationsPage } from "./pages/operations-page.js";
 import { SettingsPage } from "./pages/settings-page.js";
 
 export function App() {
-  const { data, isLoading, source } = useBootstrap();
+  const auth = useAuth();
+  const { data, error, isLoading, source } = useBootstrap(auth.isAuthenticated);
   const [selectedProperty, setSelectedProperty] = useState(data.defaultProperty);
+  const [selectedUserId, setSelectedUserId] = useState("ops-manager");
   const activeProperty =
     data.availableProperties.find((property) => property.code === selectedProperty) ??
     data.availableProperties[0];
@@ -23,13 +26,53 @@ export function App() {
   const baselineData = useBaselineData(activeProperty?.code ?? data.defaultProperty);
   const propertyData = usePropertyData(activeProperty?.code ?? data.defaultProperty);
   const platformData = usePlatformData(activeProperty?.code ?? data.defaultProperty);
-  const userAdminData = useUserAdminData(activeProperty?.code ?? data.defaultProperty, "ops-manager");
+  const activePropertyCode = activeProperty?.code ?? data.defaultProperty;
+  const currentUserPermissions = data.user.propertyPermissions[activePropertyCode] ?? [];
+  const scopedUsers = propertyData.users;
+  const effectiveSelectedUserId =
+    scopedUsers.items.find((user) => user.id === selectedUserId)?.id ??
+    scopedUsers.items[0]?.id ??
+    selectedUserId;
+  const userAdminData = useUserAdminData(activePropertyCode, effectiveSelectedUserId, scopedUsers);
   const operationsData = useOperationsData(activeProperty?.code ?? data.defaultProperty);
 
   const appVersion = import.meta.env.VITE_APP_VERSION ?? "0.1.0";
 
-  if (isLoading || !activeProperty) {
+  if (auth.isLoading || isLoading) {
     return <div className="loading-screen">Loading TPS 2.0...</div>;
+  }
+
+  if (!auth.isAuthenticated) {
+    return (
+      <div className="loading-screen">
+        <div className="panel">
+          <p className="eyebrow">Authentication</p>
+          <h1>Sign in to Herzog TPS 2.0</h1>
+          <p>
+            The web client is configured for <strong>{auth.mode}</strong> authentication.
+          </p>
+          {auth.error ? <p>{auth.error}</p> : null}
+          <button className="primary-action" onClick={() => void auth.signIn()} type="button">
+            Sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !activeProperty) {
+    return (
+      <div className="loading-screen">
+        <div className="panel">
+          <p className="eyebrow">Bootstrap Error</p>
+          <h1>Authenticated, but bootstrap failed</h1>
+          <p>{error ?? "bootstrap.failed"}</p>
+          <button className="primary-action" onClick={() => window.location.reload()} type="button">
+            Retry bootstrap
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -37,7 +80,10 @@ export function App() {
       appVersion={appVersion}
       properties={data.availableProperties}
       selectedProperty={activeProperty.code}
-      onPropertyChange={setSelectedProperty}
+      onPropertyChange={(propertyCode) => {
+        setSelectedProperty(propertyCode);
+        setSelectedUserId("ops-manager");
+      }}
     >
       <header className="topbar">
         <div>
@@ -52,6 +98,10 @@ export function App() {
           <span>Data source</span>
           <strong>{source}</strong>
         </div>
+        <button className="topbar-chip topbar-action" onClick={() => auth.signOut()} type="button">
+          <span>Session</span>
+          <strong>Sign out</strong>
+        </button>
       </header>
       <Routes>
         <Route path="/" element={<DashboardPage property={activeProperty} source={source} />} />
@@ -60,9 +110,13 @@ export function App() {
           element={
             <OperationsPage
               consist={operationsData.consist}
+              consistTemplates={operationsData.consistTemplates}
               crew={operationsData.crew}
+              crewTemplates={operationsData.crewTemplates}
+              currentUserPermissions={currentUserPermissions}
               delayEvents={operationsData.delayEvents}
               fareEnforcement={operationsData.fareEnforcement}
+              fareHistory={operationsData.fareHistory}
               fareDashboard={operationsData.fareDashboard}
               fareSummary={operationsData.fareSummary}
               isSaving={operationsData.isSaving}
@@ -71,13 +125,38 @@ export function App() {
               runs={operationsData.runs}
               approvalHistory={operationsData.approvalHistory}
               scheduleApprovalHistory={operationsData.scheduleApprovalHistory}
+              eventHistory={operationsData.eventHistory}
+              impactSummary={operationsData.impactSummary}
+              scheduleApprovalSummary={operationsData.scheduleApprovalSummary}
+              trainRunStatus={operationsData.trainRunStatus}
+              delayAdditionalInfo={operationsData.delayAdditionalInfo}
+              delayPropagationPreview={operationsData.delayPropagationPreview}
+              delayCommonLocations={operationsData.delayCommonLocations}
+              notableDelayTypes={operationsData.notableDelayTypes}
+              delayWorkOrders={operationsData.delayWorkOrders}
+              delayTemplates={operationsData.delayTemplates}
+              specialMovements={operationsData.specialMovements}
               selectedRunId={operationsData.selectedRunId}
               selectRun={operationsData.selectRun}
               saveConsist={operationsData.saveConsist}
               saveCrew={operationsData.saveCrew}
+              swapConsist={operationsData.swapConsist}
+              swapCrew={operationsData.swapCrew}
               saveDelay={operationsData.saveDelay}
+              createDelayBatch={operationsData.createDelayBatch}
+              createDelayTemplate={operationsData.createDelayTemplate}
+              createWorkOrder={operationsData.createWorkOrder}
+              saveDelayAdditionalInfo={operationsData.saveDelayAdditionalInfo}
+              clearDelayAdditionalInfo={operationsData.clearDelayAdditionalInfo}
+              deleteDelay={operationsData.deleteDelay}
               saveBatchRunApproval={operationsData.saveBatchRunApproval}
+              initializeRuns={operationsData.initializeRuns}
+              saveRunStatus={operationsData.saveRunStatus}
+              resetRun={operationsData.resetRun}
+              deleteRun={operationsData.deleteRun}
               createFare={operationsData.createFare}
+              loadFareHistory={operationsData.loadFareHistory}
+              deleteFare={operationsData.deleteFare}
               saveFare={operationsData.saveFare}
               saveRunApproval={operationsData.saveRunApproval}
               saveStop={operationsData.saveStop}
@@ -92,8 +171,16 @@ export function App() {
           element={
             <SettingsPage
               attendance={baselineData.attendance}
+              attendanceHistory={baselineData.attendanceHistory}
+              attendanceIssues={baselineData.attendanceIssues}
+              attendanceNotificationRules={baselineData.attendanceNotificationRules}
+              delayCommonLocations={adminData.delayCommonLocations}
+              delayTemplates={adminData.delayTemplates}
+              cmmsSync={platformData.cmmsSync}
               files={platformData.files}
               jobProfiles={baselineData.jobProfiles}
+              liveReports={adminData.liveReports}
+              liveReportExecutions={adminData.liveReportExecutions}
               isSaving={
                 propertyData.isSaving ||
                 adminData.isSaving ||
@@ -102,21 +189,62 @@ export function App() {
                 userAdminData.isSaving
               }
               managedUserActions={userAdminData.actions}
+              managedUserHistory={userAdminData.history}
               managedUserDetail={userAdminData.detail}
               notifications={platformData.notifications}
+              personnel={baselineData.personnel}
+              passengerReportImports={adminData.passengerReportImports}
               permissionGroups={adminData.permissionGroups}
               powerBi={platformData.powerBi}
+              powerBiSessions={platformData.powerBiSessions}
               property={activeProperty}
+              referenceData={propertyData.referenceData}
               reportConfig={adminData.reportConfig}
+              reportDeliveries={adminData.reportDeliveries}
+              reportPreferences={adminData.reportPreferences}
+              scheduledReportEmails={adminData.scheduledReportEmails}
+              saveDelayCommonLocation={adminData.saveDelayCommonLocation}
+              saveDelayTemplate={adminData.saveDelayTemplate}
               saveAttendance={baselineData.saveAttendance}
+              saveAttendanceIssue={baselineData.saveAttendanceIssue}
+              createAttendanceNotificationRule={baselineData.createAttendanceNotificationRule}
+              createCmmsSync={platformData.createCmmsSync}
+              saveAttendanceNotificationRule={baselineData.saveAttendanceNotificationRule}
+              deleteAttendanceNotificationRule={baselineData.deleteAttendanceNotificationRule}
+              createFileRequest={platformData.createFileRequest}
               saveJobProfile={baselineData.saveJobProfile}
+              createUser={async (input) => {
+                const detail = await propertyData.createUser(input);
+                setSelectedUserId(detail.id);
+              }}
+              createPassengerImport={adminData.createPassengerImport}
+              createPowerBiSession={platformData.createPowerBiSession}
+              createReportDelivery={adminData.createReportDelivery}
+              executeLiveReport={adminData.executeLiveReport}
+              createPermissionGroup={adminData.createPermissionGroup}
+              currentUserPermissions={currentUserPermissions}
+              deletePermissionGroup={adminData.deletePermissionGroup}
               saveNotification={platformData.saveNotification}
+              savePermissionGroup={adminData.savePermissionGroup}
+              savePersonnelStatus={baselineData.savePersonnelStatus}
               savePermissionGroups={userAdminData.savePermissionGroups}
               savePropertyAccess={userAdminData.savePropertyAccess}
               saveReportConfig={adminData.saveReportConfig}
+              saveReportPreference={adminData.saveReportPreference}
+              createScheduledReportEmail={adminData.createScheduledReportEmail}
+              saveScheduledReportEmail={adminData.saveScheduledReportEmail}
+              deleteScheduledReportEmail={adminData.deleteScheduledReportEmail}
+              saveReportDeliveryStatus={adminData.saveReportDeliveryStatus}
+              retryReportDelivery={adminData.retryReportDelivery}
+              saveReferenceData={propertyData.saveReferenceData}
               saveSettings={propertyData.saveSettings}
+              saveSpecialMovement={adminData.saveSpecialMovement}
+              runUserAdminAction={userAdminData.runAdminAction}
               settings={propertyData.settings}
+              specialMovements={adminData.specialMovements}
               source={propertyData.source}
+              selectedUserId={effectiveSelectedUserId}
+              selectUser={setSelectedUserId}
               users={propertyData.users}
             />
           }

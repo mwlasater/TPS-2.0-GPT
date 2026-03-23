@@ -1,4 +1,6 @@
-import type { ManagedUser, ManagedUserList, PropertyCode } from "@tps/types";
+import { randomUUID } from "node:crypto";
+
+import type { ManagedUser, ManagedUserCreate, ManagedUserList, PropertyCode } from "@tps/types";
 
 const defaultUsers: ManagedUser[] = [
   {
@@ -27,6 +29,9 @@ const defaultUsers: ManagedUser[] = [
   }
 ];
 
+const usersById = new Map(defaultUsers.map((user) => [user.id, { ...user }]));
+const initialUserIds = defaultUsers.map((user) => user.id);
+
 const propertyRoleOverrides: Partial<Record<PropertyCode, string[]>> = {
   capmetro: ["Transit Operations Manager", "Dispatcher", "Maintenance Liaison"],
   tre: ["Rail Operations Manager", "Crew Dispatcher", "Reporting Admin"],
@@ -37,9 +42,39 @@ export function listManagedUsers(propertyCode: PropertyCode): ManagedUserList {
   const overrides = propertyRoleOverrides[propertyCode];
 
   return {
-    items: defaultUsers.map((user, index) => ({
+    items: Array.from(usersById.values()).map((user, index) => ({
       ...user,
       roleLabel: overrides?.[index] ?? user.roleLabel
     }))
   };
+}
+
+export function upsertManagedUser(user: ManagedUser): ManagedUser {
+  usersById.set(user.id, { ...user });
+  return usersById.get(user.id)!;
+}
+
+export function createManagedUser(input: ManagedUserCreate): ManagedUser {
+  const user: ManagedUser = {
+    id: `user-${randomUUID()}`,
+    displayName: input.displayName,
+    email: input.email,
+    status: "invited",
+    roleLabel: input.roleLabel,
+    lastSeen: ""
+  };
+
+  return upsertManagedUser(user);
+}
+
+export function resetManagedUsers(): void {
+  usersById.clear();
+
+  for (const userId of initialUserIds) {
+    const user = defaultUsers.find((candidate) => candidate.id === userId);
+
+    if (user) {
+      usersById.set(user.id, { ...user });
+    }
+  }
 }

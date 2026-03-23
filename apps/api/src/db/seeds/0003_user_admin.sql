@@ -64,19 +64,28 @@ VALUES
     'caltrain',
     'Operations Admin',
     'Full operational control across schedules, runs, delays, and crew.',
-    ARRAY['schedules.write', 'runs.approve', 'delays.write', 'crew.assign']
+    ARRAY[
+      'schedules.write',
+      'runs.approve',
+      'runs.write',
+      'stops.write',
+      'delays.write',
+      'consist.write',
+      'crew.assign',
+      'fare.write'
+    ]
   ),
   (
     'caltrain',
     'Dispatch Leadership',
     'Day-of-service editing for train runs and delays.',
-    ARRAY['runs.write', 'delays.write', 'stops.write']
+    ARRAY['runs.write', 'delays.write', 'stops.write', 'consist.write']
   ),
   (
     'tre',
     'Dispatcher',
     'Day-of-service editing for train runs and delays.',
-    ARRAY['runs.write', 'delays.write', 'stops.write']
+    ARRAY['runs.write', 'delays.write', 'stops.write', 'consist.write']
   )
 ON CONFLICT (railroad_code, name) DO UPDATE
 SET

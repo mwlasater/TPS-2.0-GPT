@@ -1,6 +1,9 @@
 import type {
   FareEnforcementCreate,
   FareEnforcementDashboard,
+  FareEnforcementDeleteResult,
+  FareEnforcementHistoryEntry,
+  FareEnforcementHistoryList,
   FareEnforcementList,
   FareEnforcementRecord,
   FareEnforcementSummary,
@@ -9,7 +12,7 @@ import type {
   PropertyCode
 } from "@tps/types";
 
-const fareCatalog: Partial<Record<PropertyCode, FareEnforcementList>> = {
+const initialFareCatalog: Partial<Record<PropertyCode, FareEnforcementList>> = {
   caltrain: {
     items: [
       {
@@ -66,12 +69,69 @@ const fareCatalog: Partial<Record<PropertyCode, FareEnforcementList>> = {
   }
 };
 
+const fareCatalog: Partial<Record<PropertyCode, FareEnforcementList>> = cloneFareCatalog(initialFareCatalog);
+const fareHistoryCatalog: Partial<Record<PropertyCode, FareEnforcementHistoryEntry[]>> = {
+  caltrain: [
+    {
+      id: "fare-history-caltrain-1",
+      recordId: "fare-caltrain-1",
+      action: "created",
+      actorName: "Morgan Lee",
+      notes: "Initial fare inspection capture logged.",
+      createdAt: "2026-03-06T06:28:00Z"
+    }
+  ]
+};
+
+function cloneFareCatalog(
+  source: Partial<Record<PropertyCode, FareEnforcementList>>
+): Partial<Record<PropertyCode, FareEnforcementList>> {
+  return Object.fromEntries(
+    Object.entries(source).map(([propertyCode, list]) => [
+      propertyCode,
+      {
+        items: list.items.map((item) => ({ ...item }))
+      }
+    ])
+  ) as Partial<Record<PropertyCode, FareEnforcementList>>;
+}
+
 export function listFareEnforcement(propertyCode: PropertyCode, runId?: string): FareEnforcementList {
   const items = fareCatalog[propertyCode]?.items ?? [];
 
   return {
     items: runId ? items.filter((item) => item.runId === runId) : items
   };
+}
+
+export function listFareEnforcementHistory(
+  propertyCode: PropertyCode,
+  recordId: string
+): FareEnforcementHistoryList {
+  return {
+    items: (fareHistoryCatalog[propertyCode] ?? []).filter((item) => item.recordId === recordId)
+  };
+}
+
+function recordFareHistory(
+  propertyCode: PropertyCode,
+  recordId: string,
+  action: FareEnforcementHistoryEntry["action"],
+  notes: string,
+  actorName = "Local Development User"
+): void {
+  if (!fareHistoryCatalog[propertyCode]) {
+    fareHistoryCatalog[propertyCode] = [];
+  }
+
+  fareHistoryCatalog[propertyCode]!.unshift({
+    id: `fare-history-${crypto.randomUUID()}`,
+    recordId,
+    action,
+    actorName,
+    notes,
+    createdAt: new Date().toISOString()
+  });
 }
 
 export function listFareEnforcementSummary(propertyCode: PropertyCode): FareEnforcementSummaryList {
@@ -175,6 +235,7 @@ export function updateFareEnforcement(
   row.ticketsSold = update.ticketsSold;
   row.notes = update.notes;
   row.capturedAt = update.capturedAt;
+  recordFareHistory(propertyCode, recordId, "updated", "Fare enforcement record updated.");
 
   return row;
 }
@@ -202,6 +263,71 @@ export function createFareEnforcement(
   };
 
   source.items.unshift(record);
+  recordFareHistory(propertyCode, record.id, "created", "Fare enforcement record created.");
 
   return record;
+}
+
+export function deleteFareEnforcement(
+  propertyCode: PropertyCode,
+  recordId: string,
+  actorName = "Local Development User"
+): FareEnforcementDeleteResult {
+  const source = fareCatalog[propertyCode] ?? { items: [] };
+  fareCatalog[propertyCode] = source;
+
+  const record = source.items.find((item) => item.id === recordId);
+
+  if (!record) {
+    throw new Error("fare_enforcement.not_found");
+  }
+
+  source.items = source.items.filter((item) => item.id !== recordId);
+  recordFareHistory(
+    propertyCode,
+    recordId,
+    "deleted",
+    "Fare enforcement record deleted.",
+    actorName
+  );
+
+  return {
+    deletedRecordId: recordId,
+    runId: record.runId
+  };
+}
+
+export function deleteFareEnforcementForRun(propertyCode: PropertyCode, runId: string): void {
+  const source = fareCatalog[propertyCode];
+
+  if (!source) {
+    return;
+  }
+
+  source.items = source.items.filter((item) => item.runId !== runId);
+}
+
+export function resetFareEnforcementData(): void {
+  for (const propertyCode of Object.keys(fareCatalog) as PropertyCode[]) {
+    delete fareCatalog[propertyCode];
+  }
+
+  Object.assign(fareCatalog, cloneFareCatalog(initialFareCatalog));
+
+  for (const propertyCode of Object.keys(fareHistoryCatalog) as PropertyCode[]) {
+    delete fareHistoryCatalog[propertyCode];
+  }
+
+  Object.assign(fareHistoryCatalog, {
+    caltrain: [
+      {
+        id: "fare-history-caltrain-1",
+        recordId: "fare-caltrain-1",
+        action: "created",
+        actorName: "Morgan Lee",
+        notes: "Initial fare inspection capture logged.",
+        createdAt: "2026-03-06T06:28:00Z"
+      }
+    ]
+  });
 }

@@ -1,27 +1,47 @@
 import type {
   AttendanceExceptionList,
+  AttendanceHistoryList,
+  AttendanceIssueList,
+  AttendanceNotificationRuleList,
   AppBootstrap,
   ConsistEquipmentList,
+  ConsistTemplateList,
   CrewAssignmentList,
+  CrewTemplateList,
+  DelayAdditionalInfo,
+  DelayPropagationPreview,
+  DelayWorkOrder,
+  DelayCommonLocationList,
   DelayEventList,
+  DelayTemplateList,
   FareEnforcementList,
   FareEnforcementSummaryList,
   FileServiceList,
   JobProfileList,
+  LiveReportCatalogList,
   ManagedUserDetail,
   ManagedUserList,
+  NotableDelayTypeList,
   NotificationList,
+  PassengerReportImportList,
+  PersonnelRecordList,
   PermissionGroupList,
   PowerBiEmbedList,
   PropertyCode,
   PropertySettings,
   ReferenceDataset,
   ReportConfigList,
+  ReportDeliveryRecordList,
+  ReportPreferenceList,
+  ScheduledReportEmailJobList,
+  SpecialMovementList,
   StationStopList,
   TrainRunList,
   TrainRunApprovalHistoryList,
   TrainScheduleList,
   UserAdminActionList,
+  ManagedUserCreate,
+  UserAdminHistoryList,
   UserSession
 } from "@tps/types";
 
@@ -29,7 +49,60 @@ export const demoSession: UserSession = {
   id: "local-dev-user",
   email: "local-dev-user@herzog.com",
   displayName: "Local Development User",
-  allowedProperties: ["caltrain", "capmetro", "tre"]
+  allowedProperties: ["caltrain", "capmetro", "tre"],
+  propertyPermissions: {
+    caltrain: [
+      "schedules.write",
+      "runs.approve",
+      "runs.write",
+      "stops.write",
+      "delays.write",
+      "consist.write",
+      "crew.assign",
+      "fare.write",
+      "users.invite",
+      "users.manage",
+      "users.access.write",
+      "admin.permissions.write",
+      "reports.schedule",
+      "notifications.write",
+      "staffing.write"
+    ],
+    capmetro: [
+      "schedules.write",
+      "runs.approve",
+      "runs.write",
+      "stops.write",
+      "delays.write",
+      "consist.write",
+      "crew.assign",
+      "fare.write",
+      "users.invite",
+      "users.manage",
+      "users.access.write",
+      "admin.permissions.write",
+      "reports.schedule",
+      "notifications.write",
+      "staffing.write"
+    ],
+    tre: [
+      "schedules.write",
+      "runs.approve",
+      "runs.write",
+      "stops.write",
+      "delays.write",
+      "consist.write",
+      "crew.assign",
+      "fare.write",
+      "users.invite",
+      "users.manage",
+      "users.access.write",
+      "admin.permissions.write",
+      "reports.schedule",
+      "notifications.write",
+      "staffing.write"
+    ]
+  }
 };
 
 export const demoBootstrap: AppBootstrap = {
@@ -255,6 +328,63 @@ export const demoManagedUsers: Record<PropertyCode, ManagedUserList> = {
   silverline: { items: [] }
 };
 
+export const demoPersonnelRecords: Record<PropertyCode, PersonnelRecordList> = {
+  caltrain: {
+    items: [
+      {
+        id: "personnel-1",
+        employeeId: "HZG-1001",
+        employeeName: "Jordan Reyes",
+        status: "active",
+        primaryRole: "Engineer",
+        certifications: ["FRA Engineer", "Rules Qualified"]
+      },
+      {
+        id: "personnel-2",
+        employeeId: "HZG-1002",
+        employeeName: "Taylor Brooks",
+        status: "on_leave",
+        primaryRole: "Conductor",
+        certifications: ["Conductor", "Roadway Worker Protection"]
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "personnel-1",
+        employeeId: "HZG-1001",
+        employeeName: "Jordan Reyes",
+        status: "active",
+        primaryRole: "Engineer",
+        certifications: ["FRA Engineer", "Rules Qualified"]
+      }
+    ]
+  },
+  kcstreetcar: {
+    items: [
+      {
+        id: "personnel-street-1",
+        employeeId: "HZG-2001",
+        employeeName: "Morgan Lee",
+        status: "active",
+        primaryRole: "Operator",
+        certifications: ["Streetcar Operations", "Traffic Control"]
+      }
+    ]
+  },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
 const makeUserDetail = (
   propertyCode: PropertyCode,
   roleLabel: string,
@@ -287,25 +417,113 @@ export const demoUserDetails: Record<PropertyCode, ManagedUserDetail> = {
   silverline: makeUserDetail("silverline", "Operations Manager", ["Operations Admin"])
 };
 
+export function getDemoUserDetail(
+  propertyCode: PropertyCode,
+  userId: string
+): ManagedUserDetail {
+  if (userId === "dispatcher-1") {
+    return {
+      id: "dispatcher-1",
+      displayName: "Taylor Brooks",
+      email: "taylor.brooks@herzog.com",
+      status: "active",
+      roleLabel: propertyCode === "tre" ? "Crew Dispatcher" : "Dispatcher",
+      lastSeen: "2026-03-06T13:45:00Z",
+      propertyAccess: [propertyCode],
+      groups: ["Dispatcher"],
+      lastAction: "Invite accepted on 2026-02-19"
+    };
+  }
+
+  return demoUserDetails[propertyCode];
+}
+
+export function createDemoManagedUserDetail(
+  propertyCode: PropertyCode,
+  input: ManagedUserCreate
+): ManagedUserDetail {
+  return {
+    id: "demo-invited-user",
+    displayName: input.displayName,
+    email: input.email,
+    status: "invited",
+    roleLabel: input.roleLabel,
+    lastSeen: "",
+    propertyAccess: input.propertyAccess,
+    groups: input.groups,
+    lastAction: "Invitation sent on 2026-03-20"
+  };
+}
+
 export const demoUserAdminActions: UserAdminActionList = {
   items: [
     {
       id: "reset-password",
       label: "Reset Password",
-      style: "primary"
+      style: "primary",
+      requiredPermission: "users.manage",
+      isAllowed: true
     },
     {
       id: "resend-invite",
       label: "Resend Invite",
-      style: "secondary"
+      style: "secondary",
+      requiredPermission: "users.invite",
+      isAllowed: true
     },
     {
       id: "disable-user",
       label: "Disable User",
-      style: "warning"
+      style: "warning",
+      requiredPermission: "users.manage",
+      isAllowed: true
+    },
+    {
+      id: "enable-user",
+      label: "Enable User",
+      style: "primary",
+      requiredPermission: "users.manage",
+      isAllowed: true
     }
   ]
 };
+
+export function getDemoUserAdminHistory(
+  propertyCode: PropertyCode,
+  userId: string
+): UserAdminHistoryList {
+  if (propertyCode === "caltrain" && userId === "ops-manager") {
+    return {
+      items: [
+        {
+          id: "user-history-ops-manager-1",
+          userId: "ops-manager",
+          action: "reset-password",
+          actorName: "Jordan Reyes",
+          summary: "Password reset sent on 2026-03-01",
+          createdAt: "2026-03-01T08:15:00Z"
+        }
+      ]
+    };
+  }
+
+  if (propertyCode === "caltrain" && userId === "reporting-admin") {
+    return {
+      items: [
+        {
+          id: "user-history-reporting-admin-1",
+          userId: "reporting-admin",
+          action: "resend-invite",
+          actorName: "Casey Morgan",
+          summary: "Invitation resent on 2026-03-05",
+          createdAt: "2026-03-05T17:20:00Z"
+        }
+      ]
+    };
+  }
+
+  return { items: [] };
+}
 
 const commuterReferenceData: ReferenceDataset = {
   delayReasons: ["Mechanical", "Signal delay", "Late crew", "Passenger loading"],
@@ -651,6 +869,288 @@ export const demoDelayEvents: Record<PropertyCode, DelayEventList> = {
   silverline: commuterDelayEvents
 };
 
+export const demoDelayCommonLocations: Record<PropertyCode, DelayCommonLocationList> = {
+  caltrain: {
+    items: [
+      { id: "loc-sfc", label: "San Francisco", usageCount: 18 },
+      { id: "loc-pao", label: "Palo Alto", usageCount: 11 },
+      { id: "loc-sjc", label: "San Jose", usageCount: 9 }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      { id: "loc-lnr", label: "Leander", usageCount: 8 },
+      { id: "loc-mlk", label: "MLK", usageCount: 5 }
+    ]
+  },
+  kcstreetcar: {
+    items: [{ id: "loc-main", label: "Main Street", usageCount: 10 }]
+  },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoDelayTemplates: Record<PropertyCode, DelayTemplateList> = {
+  caltrain: {
+    items: [
+      {
+        id: "delay-template-signal",
+        name: "Signal Hold",
+        category: "Signal delay",
+        minutes: 4,
+        notes: "Signal clearance held at interlocking.",
+        notableDelayType: "Interlocking failure",
+        specialMovementId: "movement-single-track"
+      },
+      {
+        id: "delay-template-boarding",
+        name: "Heavy Boarding",
+        category: "Passenger loading",
+        minutes: 3,
+        notes: "Heavy boarding volume at central station.",
+        notableDelayType: "Platform crowding",
+        specialMovementId: null
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "delay-template-signal",
+        name: "Signal Hold",
+        category: "Signal delay",
+        minutes: 4,
+        notes: "Signal clearance held at interlocking.",
+        notableDelayType: "Interlocking failure",
+        specialMovementId: "movement-single-track"
+      }
+    ]
+  },
+  kcstreetcar: { items: [] },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoSpecialMovements: Record<PropertyCode, SpecialMovementList> = {
+  caltrain: {
+    items: [
+      {
+        id: "movement-single-track",
+        label: "Single-track meet",
+        description: "Temporary meet requiring dispatch coordination."
+      },
+      {
+        id: "movement-yard-out",
+        label: "Yard departure",
+        description: "Late release from yard or shop movement."
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "movement-escort",
+        label: "Street escort",
+        description: "Manual escort through mixed-traffic segment."
+      }
+    ]
+  },
+  kcstreetcar: {
+    items: [
+      {
+        id: "movement-escort",
+        label: "Street escort",
+        description: "Manual escort through mixed-traffic segment."
+      }
+    ]
+  },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoDelayAdditionalInfo: Record<PropertyCode, Record<string, DelayAdditionalInfo>> = {
+  caltrain: {
+    "delay-1": {
+      delayId: "delay-1",
+      locationDetail: "CP Coast interlocking",
+      responsibleParty: "Signal Maintainer",
+      notableDelayType: "Interlocking failure",
+      specialMovementId: "movement-single-track",
+      workOrderId: "WO-1427",
+      mechanicalNotes: "",
+      passengerImpactSummary: "Peak riders held through two downstream stops."
+    },
+    "delay-2": {
+      delayId: "delay-2",
+      locationDetail: "Palo Alto northbound platform",
+      responsibleParty: "Station Operations",
+      notableDelayType: "Platform crowding",
+      specialMovementId: null,
+      workOrderId: null,
+      mechanicalNotes: "",
+      passengerImpactSummary: "Boarding queue extended onto concourse."
+    }
+  },
+  texrail: {},
+  tre: {},
+  trirail: {},
+  nmrx: {},
+  ctrail: {},
+  ace: {},
+  capmetro: {},
+  kcstreetcar: {
+    "street-delay-1": {
+      delayId: "street-delay-1",
+      locationDetail: "Downtown crossing gate",
+      responsibleParty: "Traffic Coordination",
+      notableDelayType: "Signal priority override",
+      specialMovementId: "movement-escort",
+      workOrderId: null,
+      mechanicalNotes: "",
+      passengerImpactSummary: "Minor platform crowding at next stop."
+    }
+  },
+  okcstreetcar: {},
+  octastreetcar: {},
+  metrolinkarrow: {},
+  silverline: {}
+};
+
+export const demoNotableDelayTypes: Record<PropertyCode, NotableDelayTypeList> = {
+  caltrain: {
+    items: [
+      {
+        id: "notable-interlocking",
+        label: "Interlocking failure",
+        category: "mechanical",
+        requiresWorkOrder: true
+      },
+      {
+        id: "notable-platform",
+        label: "Platform crowding",
+        category: "passenger",
+        requiresWorkOrder: false
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: { items: [] },
+  kcstreetcar: {
+    items: [
+      {
+        id: "notable-signal-priority",
+        label: "Signal priority override",
+        category: "operations",
+        requiresWorkOrder: false
+      }
+    ]
+  },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoDelayWorkOrders: Record<PropertyCode, Record<string, DelayWorkOrder>> = {
+  caltrain: {
+    "delay-1": {
+      delayId: "delay-1",
+      workOrderId: "WO-1427",
+      notableDelayType: "Interlocking failure",
+      assetId: "SIG-204",
+      repairType: "Signal diagnostics",
+      priority: "high",
+      status: "scheduled",
+      createdAt: "2026-03-06T06:21:00Z",
+      createdBy: "Dispatch Supervisor"
+    }
+  },
+  texrail: {},
+  tre: {},
+  trirail: {},
+  nmrx: {},
+  ctrail: {},
+  ace: {},
+  capmetro: {},
+  kcstreetcar: {},
+  okcstreetcar: {},
+  octastreetcar: {},
+  metrolinkarrow: {},
+  silverline: {}
+};
+
+export const demoDelayPropagationPreview: Record<PropertyCode, Record<string, DelayPropagationPreview>> = {
+  caltrain: {
+    "run-1001-2026-03-06": {
+      runId: "run-1001-2026-03-06",
+      sourceDelayIds: ["delay-1", "delay-2"],
+      totalProjectedDelayMinutes: 7,
+      impactedStopCount: 3,
+      requiresCmmsFollowup: true,
+      notableDelayTypes: ["Interlocking failure", "Platform crowding"],
+      downstreamStops: [
+        { stationCode: "STA", projectedDelayMinutes: 7, severity: "medium" },
+        { stationCode: "STB", projectedDelayMinutes: 6, severity: "medium" },
+        { stationCode: "STC", projectedDelayMinutes: 5, severity: "medium" }
+      ]
+    }
+  },
+  texrail: {},
+  tre: {},
+  trirail: {},
+  nmrx: {},
+  ctrail: {},
+  ace: {},
+  capmetro: {},
+  kcstreetcar: {
+    "streetcar-run-7001-2026-03-06": {
+      runId: "streetcar-run-7001-2026-03-06",
+      sourceDelayIds: ["street-delay-1"],
+      totalProjectedDelayMinutes: 2,
+      impactedStopCount: 2,
+      requiresCmmsFollowup: false,
+      notableDelayTypes: ["Signal priority override"],
+      downstreamStops: [
+        { stationCode: "ST01", projectedDelayMinutes: 2, severity: "low" },
+        { stationCode: "ST02", projectedDelayMinutes: 1, severity: "low" }
+      ]
+    }
+  },
+  okcstreetcar: {},
+  octastreetcar: {},
+  metrolinkarrow: {},
+  silverline: {}
+};
+
 export const demoFareEnforcement: Record<PropertyCode, FareEnforcementList> = {
   caltrain: {
     items: [
@@ -891,6 +1391,125 @@ export const demoCrewAssignments: Record<PropertyCode, CrewAssignmentList> = {
   silverline: commuterCrew
 };
 
+export const demoConsistTemplates: Record<PropertyCode, ConsistTemplateList> = {
+  caltrain: {
+    items: [
+      {
+        id: "consist-commuter-standard",
+        name: "Commuter Standard",
+        items: demoConsistEquipment.caltrain.items.map((item) => ({ ...item }))
+      },
+      {
+        id: "consist-commuter-short-turn",
+        name: "Short Turn",
+        items: [
+          {
+            id: "template-equip-1",
+            equipmentNumber: "CAB-911",
+            equipmentType: "Cab Car",
+            position: 1,
+            status: "active"
+          },
+          {
+            id: "template-equip-2",
+            equipmentNumber: "COACH-510",
+            equipmentType: "Coach",
+            position: 2,
+            status: "active"
+          },
+          {
+            id: "template-equip-3",
+            equipmentNumber: "LOCO-201",
+            equipmentType: "Locomotive",
+            position: 3,
+            status: "active"
+          }
+        ]
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "consist-capmetro-standard",
+        name: "Streetcar Standard",
+        items: [
+          {
+            id: "street-template-equip-1",
+            equipmentNumber: "SC-01",
+            equipmentType: "Streetcar Vehicle",
+            position: 1,
+            status: "active"
+          }
+        ]
+      }
+    ]
+  },
+  kcstreetcar: { items: [] },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoCrewTemplates: Record<PropertyCode, CrewTemplateList> = {
+  caltrain: {
+    items: [
+      {
+        id: "crew-commuter-standard",
+        name: "Standard Crew",
+        items: demoCrewAssignments.caltrain.items.map((item) => ({ ...item }))
+      },
+      {
+        id: "crew-commuter-relief",
+        name: "Relief Crew",
+        items: [
+          {
+            id: "template-crew-1",
+            employeeName: "Morgan Lee",
+            role: "Engineer",
+            onDutyTime: "05:55",
+            status: "assigned"
+          },
+          {
+            id: "template-crew-2",
+            employeeName: "Alex Carter",
+            role: "Conductor",
+            onDutyTime: "06:00",
+            status: "assigned"
+          }
+        ]
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: {
+    items: [
+      {
+        id: "crew-capmetro-standard",
+        name: "Streetcar Crew",
+        items: demoCrewAssignments.capmetro.items.map((item) => ({ ...item }))
+      }
+    ]
+  },
+  kcstreetcar: { items: [] },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
 const commuterPermissionGroups: PermissionGroupList = {
   items: [
     {
@@ -898,14 +1517,23 @@ const commuterPermissionGroups: PermissionGroupList = {
       name: "Operations Admin",
       description: "Full operational control across schedules, runs, delays, and crew.",
       members: 4,
-      permissions: ["schedules.write", "runs.approve", "delays.write", "crew.assign"]
+      permissions: [
+        "schedules.write",
+        "runs.approve",
+        "runs.write",
+        "stops.write",
+        "delays.write",
+        "consist.write",
+        "crew.assign",
+        "fare.write"
+      ]
     },
     {
       id: "dispatch",
       name: "Dispatcher",
       description: "Day-of-service editing for train runs and delays.",
       members: 7,
-      permissions: ["runs.write", "delays.write", "stops.write"]
+      permissions: ["runs.write", "delays.write", "stops.write", "consist.write"]
     }
   ]
 };
@@ -917,7 +1545,7 @@ const streetcarPermissionGroups: PermissionGroupList = {
       name: "Streetcar Operations",
       description: "Dispatch and service adjustments for streetcar operations.",
       members: 3,
-      permissions: ["runs.write", "delays.write", "crew.assign"]
+      permissions: ["runs.write", "delays.write", "consist.write", "crew.assign"]
     },
     {
       id: "streetcar-reporting",
@@ -974,6 +1602,137 @@ const streetcarReportConfig: ReportConfigList = {
   ]
 };
 
+const commuterReportPreferences: ReportPreferenceList = {
+  items: [
+    {
+      id: "report-pref-1",
+      reportName: "Daily OTP",
+      visibleColumns: ["trainNumber", "otpPercent", "lateTrains"],
+      sortOrder: "otpPercent desc",
+      filtersSummary: "Weekday service only"
+    },
+    {
+      id: "report-pref-2",
+      reportName: "Delay Detail",
+      visibleColumns: ["trainNumber", "delayType", "minutes"],
+      sortOrder: "minutes desc",
+      filtersSummary: "Exclude resolved delays"
+    }
+  ]
+};
+
+const streetcarReportPreferences: ReportPreferenceList = {
+  items: [
+    {
+      id: "street-report-pref-1",
+      reportName: "Streetcar Service Summary",
+      visibleColumns: ["line", "headway", "ridership"],
+      sortOrder: "headway asc",
+      filtersSummary: "Peak service only"
+    }
+  ]
+};
+
+const commuterScheduledReportEmailJobs: ScheduledReportEmailJobList = {
+  items: [
+    {
+      id: "report-email-1",
+      reportName: "Daily OTP",
+      recipientGroup: "Operations Leadership",
+      schedule: "06:15 daily",
+      format: "pdf",
+      enabled: true
+    },
+    {
+      id: "report-email-2",
+      reportName: "Delay Detail",
+      recipientGroup: "Dispatch",
+      schedule: "Every 30 min",
+      format: "xlsx",
+      enabled: true
+    }
+  ]
+};
+
+const streetcarScheduledReportEmailJobs: ScheduledReportEmailJobList = {
+  items: [
+    {
+      id: "street-report-email-1",
+      reportName: "Streetcar Service Summary",
+      recipientGroup: "Street Supervisors",
+      schedule: "07:00 daily",
+      format: "pdf",
+      enabled: true
+    }
+  ]
+};
+
+const commuterLiveReports: LiveReportCatalogList = {
+  items: [
+    {
+      id: "live-report-otp",
+      reportName: "Daily OTP Live",
+      provider: "power_bi",
+      audience: "Operations Leadership",
+      embedUrl: "https://app.powerbi.com/reportEmbed?reportId=daily-otp-live",
+      status: "available"
+    },
+    {
+      id: "live-report-dispatch",
+      reportName: "Dispatcher Delay Board",
+      provider: "paginated",
+      audience: "Dispatch",
+      embedUrl: "https://app.powerbi.com/reportEmbed?reportId=dispatch-delay-board",
+      status: "available"
+    }
+  ]
+};
+
+const streetcarLiveReports: LiveReportCatalogList = {
+  items: [
+    {
+      id: "street-live-headway",
+      reportName: "Street Headway Monitor",
+      provider: "power_bi",
+      audience: "Street Supervisors",
+      embedUrl: "https://app.powerbi.com/reportEmbed?reportId=street-headway-monitor",
+      status: "available"
+    }
+  ]
+};
+
+const commuterPassengerReportImports: PassengerReportImportList = {
+  items: [
+    {
+      id: "passenger-import-1",
+      importName: "Weekday passenger reconciliation",
+      sourceFileName: "caltrain-passenger-2026-03-06.csv",
+      importedAt: "2026-03-06T13:05:00Z",
+      importedBy: "Taylor Brooks",
+      operatingDate: "2026-03-06",
+      rowCount: 184,
+      status: "processed",
+      notes: "Matched to daily boarding feed with no rejected rows."
+    }
+  ]
+};
+
+const streetcarPassengerReportImports: PassengerReportImportList = {
+  items: [
+    {
+      id: "street-passenger-import-1",
+      importName: "Streetcar rider count import",
+      sourceFileName: "kcstreetcar-passenger-2026-03-06.csv",
+      importedAt: "2026-03-06T12:10:00Z",
+      importedBy: "Jordan Reyes",
+      operatingDate: "2026-03-06",
+      rowCount: 44,
+      status: "warning",
+      notes: "Two rows flagged for missing stop codes and held for review."
+    }
+  ]
+};
+
 export const demoPermissionGroups: Record<PropertyCode, PermissionGroupList> = {
   caltrain: commuterPermissionGroups,
   texrail: commuterPermissionGroups,
@@ -1004,6 +1763,122 @@ export const demoReportConfig: Record<PropertyCode, ReportConfigList> = {
   octastreetcar: streetcarReportConfig,
   metrolinkarrow: commuterReportConfig,
   silverline: commuterReportConfig
+};
+
+export const demoReportPreferences: Record<PropertyCode, ReportPreferenceList> = {
+  caltrain: commuterReportPreferences,
+  texrail: commuterReportPreferences,
+  tre: commuterReportPreferences,
+  trirail: commuterReportPreferences,
+  nmrx: commuterReportPreferences,
+  ctrail: commuterReportPreferences,
+  ace: commuterReportPreferences,
+  capmetro: commuterReportPreferences,
+  kcstreetcar: streetcarReportPreferences,
+  okcstreetcar: streetcarReportPreferences,
+  octastreetcar: streetcarReportPreferences,
+  metrolinkarrow: commuterReportPreferences,
+  silverline: commuterReportPreferences
+};
+
+export const demoScheduledReportEmailJobs: Record<PropertyCode, ScheduledReportEmailJobList> = {
+  caltrain: commuterScheduledReportEmailJobs,
+  texrail: commuterScheduledReportEmailJobs,
+  tre: commuterScheduledReportEmailJobs,
+  trirail: commuterScheduledReportEmailJobs,
+  nmrx: commuterScheduledReportEmailJobs,
+  ctrail: commuterScheduledReportEmailJobs,
+  ace: commuterScheduledReportEmailJobs,
+  capmetro: commuterScheduledReportEmailJobs,
+  kcstreetcar: streetcarScheduledReportEmailJobs,
+  okcstreetcar: streetcarScheduledReportEmailJobs,
+  octastreetcar: streetcarScheduledReportEmailJobs,
+  metrolinkarrow: commuterScheduledReportEmailJobs,
+  silverline: commuterScheduledReportEmailJobs
+};
+
+export const demoLiveReports: Record<PropertyCode, LiveReportCatalogList> = {
+  caltrain: commuterLiveReports,
+  texrail: commuterLiveReports,
+  tre: commuterLiveReports,
+  trirail: commuterLiveReports,
+  nmrx: commuterLiveReports,
+  ctrail: commuterLiveReports,
+  ace: commuterLiveReports,
+  capmetro: commuterLiveReports,
+  kcstreetcar: streetcarLiveReports,
+  okcstreetcar: streetcarLiveReports,
+  octastreetcar: streetcarLiveReports,
+  metrolinkarrow: commuterLiveReports,
+  silverline: commuterLiveReports
+};
+
+export const demoPassengerReportImports: Record<PropertyCode, PassengerReportImportList> = {
+  caltrain: commuterPassengerReportImports,
+  texrail: commuterPassengerReportImports,
+  tre: commuterPassengerReportImports,
+  trirail: commuterPassengerReportImports,
+  nmrx: commuterPassengerReportImports,
+  ctrail: commuterPassengerReportImports,
+  ace: commuterPassengerReportImports,
+  capmetro: commuterPassengerReportImports,
+  kcstreetcar: streetcarPassengerReportImports,
+  okcstreetcar: streetcarPassengerReportImports,
+  octastreetcar: streetcarPassengerReportImports,
+  metrolinkarrow: commuterPassengerReportImports,
+  silverline: commuterPassengerReportImports
+};
+
+const commuterReportDeliveries: ReportDeliveryRecordList = {
+  items: [
+    {
+      id: "report-delivery-1",
+      reportName: "Daily OTP",
+      format: "pdf",
+      deliveryMode: "email",
+      recipient: "operations.leadership@herzog.com",
+      status: "sent",
+      requestedAt: "2026-03-06T06:16:00Z",
+      requestedBy: "Taylor Brooks",
+      notes: "Morning leadership packet.",
+      retryCount: 0,
+      lastRetriedAt: null
+    }
+  ]
+};
+
+const streetcarReportDeliveries: ReportDeliveryRecordList = {
+  items: [
+    {
+      id: "street-report-delivery-1",
+      reportName: "Streetcar Service Summary",
+      format: "pdf",
+      deliveryMode: "download",
+      recipient: "Street Supervisors",
+      status: "generated",
+      requestedAt: "2026-03-06T07:05:00Z",
+      requestedBy: "Jordan Reyes",
+      notes: "Supervisor handoff packet.",
+      retryCount: 0,
+      lastRetriedAt: null
+    }
+  ]
+};
+
+export const demoReportDeliveries: Record<PropertyCode, ReportDeliveryRecordList> = {
+  caltrain: commuterReportDeliveries,
+  texrail: commuterReportDeliveries,
+  tre: commuterReportDeliveries,
+  trirail: commuterReportDeliveries,
+  nmrx: commuterReportDeliveries,
+  ctrail: commuterReportDeliveries,
+  ace: commuterReportDeliveries,
+  capmetro: commuterReportDeliveries,
+  kcstreetcar: streetcarReportDeliveries,
+  okcstreetcar: streetcarReportDeliveries,
+  octastreetcar: streetcarReportDeliveries,
+  metrolinkarrow: commuterReportDeliveries,
+  silverline: commuterReportDeliveries
 };
 
 const commuterJobProfiles: JobProfileList = {
@@ -1055,17 +1930,21 @@ const commuterAttendanceExceptions: AttendanceExceptionList = {
   items: [
     {
       id: "att-1",
-      employeeName: "Casey Morgan",
+      employeeId: "personnel-2",
+      employeeName: "Taylor Brooks",
       exceptionType: "absence",
       startDate: "2026-03-06",
+      endDate: "2026-03-07",
       status: "approved",
       notes: "Approved medical leave."
     },
     {
       id: "att-2",
+      employeeId: "personnel-2",
       employeeName: "Taylor Brooks",
       exceptionType: "tardy",
       startDate: "2026-03-06",
+      endDate: null,
       status: "open",
       notes: "Reported 12 minutes late due to traffic."
     }
@@ -1076,11 +1955,97 @@ const streetcarAttendanceExceptions: AttendanceExceptionList = {
   items: [
     {
       id: "street-att-1",
+      employeeId: "personnel-3",
       employeeName: "Jordan Reyes",
       exceptionType: "tardy",
       startDate: "2026-03-06",
+      endDate: "2026-03-06",
       status: "resolved",
       notes: "Late sign-on resolved with supervisor approval."
+    }
+  ]
+};
+
+const commuterAttendanceIssues: AttendanceIssueList = {
+  items: [
+    {
+      id: "att-1",
+      employeeId: "personnel-2",
+      employeeName: "Taylor Brooks",
+      issueType: "absence",
+      startDate: "2026-03-06",
+      endDate: "2026-03-07",
+      status: "approved",
+      notes: "Approved medical leave."
+    },
+    {
+      id: "att-2",
+      employeeId: "personnel-2",
+      employeeName: "Taylor Brooks",
+      issueType: "tardiness",
+      startDate: "2026-03-06",
+      endDate: null,
+      status: "open",
+      notes: "Reported 12 minutes late due to traffic."
+    },
+    {
+      id: "att-3",
+      employeeId: "personnel-2",
+      employeeName: "Taylor Brooks",
+      issueType: "absence",
+      startDate: "2026-02-24",
+      endDate: "2026-02-24",
+      status: "resolved",
+      notes: "Prior approved absence retained for history."
+    }
+  ]
+};
+
+const streetcarAttendanceIssues: AttendanceIssueList = {
+  items: [
+    {
+      id: "street-att-1",
+      employeeId: "personnel-3",
+      employeeName: "Jordan Reyes",
+      issueType: "tardiness",
+      startDate: "2026-03-06",
+      endDate: "2026-03-06",
+      status: "resolved",
+      notes: "Late sign-on resolved with supervisor approval."
+    }
+  ]
+};
+
+const commuterAttendanceNotificationRules: AttendanceNotificationRuleList = {
+  items: [
+    {
+      id: "attendance-rule-1",
+      issueType: "absence",
+      triggerStatus: "open",
+      recipientGroup: "Operations Leadership",
+      templateName: "Absence Open Alert",
+      enabled: true
+    },
+    {
+      id: "attendance-rule-2",
+      issueType: "tardiness",
+      triggerStatus: "approved",
+      recipientGroup: "Crew Management",
+      templateName: "Tardiness Supervisor Notice",
+      enabled: true
+    }
+  ]
+};
+
+const streetcarAttendanceNotificationRules: AttendanceNotificationRuleList = {
+  items: [
+    {
+      id: "street-attendance-rule-1",
+      issueType: "tardiness",
+      triggerStatus: "open",
+      recipientGroup: "Street Operations",
+      templateName: "Streetcar Tardiness Alert",
+      enabled: true
     }
   ]
 };
@@ -1116,6 +2081,48 @@ export const demoAttendanceExceptions: Record<PropertyCode, AttendanceExceptionL
   metrolinkarrow: commuterAttendanceExceptions,
   silverline: commuterAttendanceExceptions
 };
+
+export const demoAttendanceIssues: Record<PropertyCode, AttendanceIssueList> = {
+  caltrain: commuterAttendanceIssues,
+  texrail: commuterAttendanceIssues,
+  tre: commuterAttendanceIssues,
+  trirail: commuterAttendanceIssues,
+  nmrx: commuterAttendanceIssues,
+  ctrail: commuterAttendanceIssues,
+  ace: commuterAttendanceIssues,
+  capmetro: commuterAttendanceIssues,
+  kcstreetcar: streetcarAttendanceIssues,
+  okcstreetcar: streetcarAttendanceIssues,
+  octastreetcar: streetcarAttendanceIssues,
+  metrolinkarrow: commuterAttendanceIssues,
+  silverline: commuterAttendanceIssues
+};
+
+export const demoAttendanceNotificationRules: Record<PropertyCode, AttendanceNotificationRuleList> = {
+  caltrain: commuterAttendanceNotificationRules,
+  texrail: commuterAttendanceNotificationRules,
+  tre: commuterAttendanceNotificationRules,
+  trirail: commuterAttendanceNotificationRules,
+  nmrx: commuterAttendanceNotificationRules,
+  ctrail: commuterAttendanceNotificationRules,
+  ace: commuterAttendanceNotificationRules,
+  capmetro: commuterAttendanceNotificationRules,
+  kcstreetcar: streetcarAttendanceNotificationRules,
+  okcstreetcar: streetcarAttendanceNotificationRules,
+  octastreetcar: streetcarAttendanceNotificationRules,
+  metrolinkarrow: commuterAttendanceNotificationRules,
+  silverline: commuterAttendanceNotificationRules
+};
+
+export function getDemoAttendanceHistory(
+  propertyCode: PropertyCode,
+  employeeId: string
+): AttendanceHistoryList {
+  return {
+    employeeId,
+    items: demoAttendanceIssues[propertyCode].items.filter((item) => item.employeeId === employeeId)
+  };
+}
 
 const commuterFiles: FileServiceList = {
   items: [

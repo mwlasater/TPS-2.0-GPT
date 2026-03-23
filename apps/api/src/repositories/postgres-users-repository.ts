@@ -1,15 +1,35 @@
+import { randomUUID } from "node:crypto";
+
 import type {
   AttendanceException,
   AttendanceExceptionList,
   AttendanceExceptionUpdate,
+  AttendanceHistoryList,
+  AttendanceIssueList,
+  AttendanceIssueRecord,
+  AttendanceIssueUpdate,
+  AttendanceNotificationRule,
+  AttendanceNotificationRuleCreate,
+  AttendanceNotificationRuleDeleteResult,
+  AttendanceNotificationRuleList,
+  AttendanceNotificationRuleUpdate,
   JobProfile,
   JobProfileList,
   JobProfileUpdate,
   ManagedUser,
+  ManagedUserCreate,
   ManagedUserDetail,
   ManagedUserList,
+  UserAdminHistoryEntry,
+  UserAdminHistoryList,
+  PersonnelRecord,
+  PersonnelRecordList,
+  PersonnelStatusUpdate,
   PermissionGroup,
+  PermissionGroupCreate,
+  PermissionGroupDeleteResult,
   PermissionGroupList,
+  PermissionGroupUpdate,
   PropertyCode,
   UserAdminAction,
   UserPermissionGroupUpdate,
@@ -17,13 +37,26 @@ import type {
   UserAdminActionList
 } from "@tps/types";
 
-import { listAttendanceExceptions, listJobProfiles } from "../lib/baseline-data.js";
+import {
+  listAttendanceExceptions,
+  listAttendanceHistory,
+  listAttendanceIssues,
+  listAttendanceNotificationRules,
+  listJobProfiles,
+} from "../lib/baseline-data.js";
 import { listManagedUsers } from "../lib/managed-users.js";
+import { listPersonnelRecords } from "../lib/personnel-data.js";
 import { listPermissionGroups } from "../lib/permission-groups.js";
-import { getManagedUserDetail, listUserAdminActions } from "../lib/user-admin-data.js";
+import {
+  getManagedUserDetail,
+  getUserAdminActionSummary,
+  getUserAdminActionPermission,
+  listUserAdminActions
+} from "../lib/user-admin-data.js";
 
 import type { UserRepository } from "./contracts.js";
 import type { Queryable } from "./postgres-client.js";
+import { toIsoTimestamp } from "./time.js";
 
 interface ManagedUserRow {
   id: string;
@@ -60,11 +93,31 @@ interface JobProfileRow {
 
 interface AttendanceExceptionRow {
   id: string;
+  employee_id: string | null;
   employee_name: string;
   exception_type: AttendanceException["exceptionType"];
   start_date: string | Date;
+  end_date: string | Date | null;
   status: AttendanceException["status"];
   notes: string;
+}
+
+interface AttendanceNotificationRuleRow {
+  id: string;
+  issue_type: AttendanceNotificationRule["issueType"];
+  trigger_status: AttendanceNotificationRule["triggerStatus"];
+  recipient_group: string;
+  template_name: string;
+  enabled: boolean;
+}
+
+interface PersonnelRecordRow {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  status: PersonnelRecord["status"];
+  primary_role: string;
+  certifications: string[];
 }
 
 interface UserAdminActionRow {
@@ -73,16 +126,13 @@ interface UserAdminActionRow {
   style: UserAdminAction["style"];
 }
 
-function toIsoTimestamp(value: string | Date | null): string {
-  if (!value) {
-    return "";
-  }
-
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  return value;
+interface UserAdminHistoryRow {
+  id: string;
+  user_id: string;
+  action_name: string;
+  actor_name: string;
+  summary_text: string;
+  created_at: string | Date;
 }
 
 function toIsoDate(value: string | Date): string {
@@ -95,6 +145,27 @@ function toIsoDate(value: string | Date): string {
 
 export class PostgresUsersRepository implements UserRepository {
   constructor(private readonly db: Queryable) {}
+
+  private async recordUserAdminHistory(
+    userId: string,
+    action: string,
+    actorName: string,
+    summary: string
+  ): Promise<void> {
+    await this.db.query(
+      `
+        INSERT INTO shared.user_admin_history (
+          id,
+          user_id,
+          action_name,
+          actor_name,
+          summary_text
+        )
+        VALUES ($1, $2, $3, $4, $5)
+      `,
+      [randomUUID(), userId, action, actorName, summary]
+    );
+  }
 
   private async buildUserDetail(userId: string): Promise<ManagedUserDetail | null> {
     const detailResult = await this.db.query<ManagedUserDetailRow>(
@@ -189,6 +260,69 @@ export class PostgresUsersRepository implements UserRepository {
     };
   }
 
+  async createUser(
+    propertyCode: PropertyCode,
+    input: ManagedUserCreate,
+    actorName: string
+  ): Promise<ManagedUserDetail> {
+    const userId = `user-${randomUUID()}`;
+
+    await this.db.query("BEGIN");
+
+    try {
+      await this.db.query(
+        `
+          INSERT INTO shared.user_account (
+            id,
+            display_name,
+            email,
+            status,
+            role_label,
+            last_seen_at,
+            last_action_text
+          )
+          VALUES ($1, $2, $3, 'invited', $4, NULL, $5)
+        `,
+        [userId, input.displayName, input.email, input.roleLabel, "Invitation sent on 2026-03-20"]
+      );
+
+      await this.db.query(
+        `
+          INSERT INTO shared.user_property_access (user_id, railroad_code)
+          SELECT $1, UNNEST($2::TEXT[])
+        `,
+        [userId, input.propertyAccess]
+      );
+
+      if (input.groups.length > 0) {
+        await this.db.query(
+          `
+            INSERT INTO shared.user_permission_group (user_id, permission_group_id)
+            SELECT $1, pg.id
+            FROM shared.permission_group pg
+            WHERE pg.railroad_code = $2
+              AND pg.name = ANY($3::TEXT[])
+          `,
+          [userId, propertyCode, input.groups]
+        );
+      }
+
+      await this.recordUserAdminHistory(
+        userId,
+        "invite-user",
+        actorName,
+        "Invitation sent on 2026-03-20"
+      );
+
+      await this.db.query("COMMIT");
+    } catch (error) {
+      await this.db.query("ROLLBACK");
+      throw error;
+    }
+
+    return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
+  }
+
   async getUserDetail(userId: string, propertyCode: PropertyCode): Promise<ManagedUserDetail> {
     const accessResult = await this.db.query<{ user_id: string }>(
       `
@@ -207,10 +341,104 @@ export class PostgresUsersRepository implements UserRepository {
     return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
   }
 
+  async listUserAdminHistory(
+    userId: string,
+    propertyCode: PropertyCode
+  ): Promise<UserAdminHistoryList> {
+    const accessResult = await this.db.query<{ user_id: string }>(
+      `
+        SELECT user_id
+        FROM shared.user_property_access
+        WHERE user_id = $1
+          AND railroad_code = $2
+      `,
+      [userId, propertyCode]
+    );
+
+    if (!accessResult.rows[0]) {
+      return { items: [] };
+    }
+
+    const result = await this.db.query<UserAdminHistoryRow>(
+      `
+        SELECT
+          id,
+          user_id,
+          action_name,
+          actor_name,
+          summary_text,
+          created_at
+        FROM shared.user_admin_history
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+      `,
+      [userId]
+    );
+
+    return {
+      items: result.rows.map(
+        (row): UserAdminHistoryEntry => ({
+          id: row.id,
+          userId: row.user_id,
+          action: row.action_name,
+          actorName: row.actor_name,
+          summary: row.summary_text,
+          createdAt: toIsoTimestamp(row.created_at)
+        })
+      )
+    };
+  }
+
+  async executeUserAdminAction(
+    userId: string,
+    propertyCode: PropertyCode,
+    actionId: string,
+    actorName: string
+  ): Promise<ManagedUserDetail> {
+    const status =
+      actionId === "disable-user"
+        ? "disabled"
+        : actionId === "resend-invite"
+          ? "invited"
+          : actionId === "enable-user"
+            ? "active"
+            : null;
+    const lastAction =
+      actionId === "reset-password"
+        ? "Password reset sent on 2026-03-13"
+        : actionId === "resend-invite"
+          ? "Invitation resent on 2026-03-13"
+          : actionId === "disable-user"
+            ? "User disabled on 2026-03-13"
+            : actionId === "enable-user"
+              ? "User enabled on 2026-03-20"
+            : null;
+
+    if (!lastAction) {
+      throw new Error("user_admin_action.not_found");
+    }
+
+    await this.db.query(
+      `
+        UPDATE shared.user_account
+        SET
+          status = COALESCE($2, status),
+          last_action_text = $3
+        WHERE id = $1
+      `,
+      [userId, status, lastAction]
+    );
+
+    await this.recordUserAdminHistory(userId, actionId, actorName, getUserAdminActionSummary(actionId));
+
+    return (await this.getUserDetail(userId, propertyCode)) ?? getManagedUserDetail(userId, propertyCode);
+  }
+
   async updateUserPropertyAccess(
     userId: string,
     propertyCode: PropertyCode,
-    update: UserPropertyAccessUpdate
+    update: UserPropertyAccessUpdate,
+    actorName: string
   ): Promise<ManagedUserDetail> {
     await this.db.query("BEGIN");
 
@@ -222,6 +450,12 @@ export class PostgresUsersRepository implements UserRepository {
           SELECT $1, UNNEST($2::TEXT[])
         `,
         [userId, update.propertyAccess]
+      );
+      await this.recordUserAdminHistory(
+        userId,
+        "property-access-updated",
+        actorName,
+        `Property access updated to ${update.propertyAccess.join(", ")}`
       );
       await this.db.query("COMMIT");
     } catch (error) {
@@ -235,7 +469,8 @@ export class PostgresUsersRepository implements UserRepository {
   async updateUserPermissionGroups(
     userId: string,
     propertyCode: PropertyCode,
-    update: UserPermissionGroupUpdate
+    update: UserPermissionGroupUpdate,
+    actorName: string
   ): Promise<ManagedUserDetail> {
     await this.db.query(
       `
@@ -261,10 +496,20 @@ export class PostgresUsersRepository implements UserRepository {
       );
     }
 
+    await this.recordUserAdminHistory(
+      userId,
+      "permission-groups-updated",
+      actorName,
+      `Permission groups updated to ${update.groups.join(", ")}`
+    );
+
     return (await this.buildUserDetail(userId)) ?? getManagedUserDetail(userId, propertyCode);
   }
 
-  async listUserAdminActions(): Promise<UserAdminActionList> {
+  async listUserAdminActions(
+    _propertyCode: PropertyCode,
+    actorPermissions: string[]
+  ): Promise<UserAdminActionList> {
     const result = await this.db.query<UserAdminActionRow>(
       `
         SELECT
@@ -277,14 +522,16 @@ export class PostgresUsersRepository implements UserRepository {
     );
 
     if (!result.rows.length) {
-      return listUserAdminActions();
+      return listUserAdminActions(actorPermissions);
     }
 
     return {
       items: result.rows.map((row) => ({
         id: row.id,
         label: row.label,
-        style: row.style
+        style: row.style,
+        requiredPermission: getUserAdminActionPermission(row.id),
+        isAllowed: actorPermissions.includes(getUserAdminActionPermission(row.id))
       }))
     };
   }
@@ -322,6 +569,143 @@ export class PostgresUsersRepository implements UserRepository {
           permissions: row.permissions
         })
       )
+    };
+  }
+
+  async updatePermissionGroup(
+    propertyCode: PropertyCode,
+    groupId: string,
+    update: PermissionGroupUpdate
+  ): Promise<void> {
+    const result = await this.db.query(
+      `
+        UPDATE shared.permission_group
+        SET
+          description = $3,
+          permissions = $4
+        WHERE railroad_code = $1
+          AND id = $2::BIGINT
+      `,
+      [propertyCode, groupId, update.description, update.permissions]
+    );
+
+    if ((result as { rowCount?: number }).rowCount === 0) {
+      throw new Error("permission_group.not_found");
+    }
+  }
+
+  async createPermissionGroup(
+    propertyCode: PropertyCode,
+    input: PermissionGroupCreate
+  ): Promise<void> {
+    await this.db.query(
+      `
+        INSERT INTO shared.permission_group (
+          railroad_code,
+          name,
+          description,
+          permissions
+        )
+        VALUES ($1, $2, $3, $4)
+      `,
+      [propertyCode, input.name, input.description, input.permissions]
+    );
+  }
+
+  async deletePermissionGroup(
+    propertyCode: PropertyCode,
+    groupId: string
+  ): Promise<PermissionGroupDeleteResult> {
+    const result = await this.db.query(
+      `
+        DELETE FROM shared.permission_group
+        WHERE railroad_code = $1
+          AND id = $2::BIGINT
+      `,
+      [propertyCode, groupId]
+    );
+
+    if ((result as { rowCount?: number }).rowCount === 0) {
+      throw new Error("permission_group.not_found");
+    }
+
+    return {
+      deletedGroupId: groupId
+    };
+  }
+
+  async listPersonnelRecords(propertyCode: PropertyCode): Promise<PersonnelRecordList> {
+    const result = await this.db.query<PersonnelRecordRow>(
+      `
+        SELECT
+          id,
+          employee_id,
+          employee_name,
+          status,
+          primary_role,
+          certifications
+        FROM shared.personnel_record
+        WHERE railroad_code = $1
+        ORDER BY employee_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listPersonnelRecords(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): PersonnelRecord => ({
+          id: row.id,
+          employeeId: row.employee_id,
+          employeeName: row.employee_name,
+          status: row.status,
+          primaryRole: row.primary_role,
+          certifications: row.certifications
+        })
+      )
+    };
+  }
+
+  async updatePersonnelStatus(
+    propertyCode: PropertyCode,
+    personnelId: string,
+    update: PersonnelStatusUpdate
+  ): Promise<PersonnelRecord> {
+    const result = await this.db.query<PersonnelRecordRow>(
+      `
+        UPDATE shared.personnel_record
+        SET
+          status = $3,
+          primary_role = $4
+        WHERE railroad_code = $1
+          AND id = $2
+        RETURNING
+          id,
+          employee_id,
+          employee_name,
+          status,
+          primary_role,
+          certifications
+      `,
+      [propertyCode, personnelId, update.status, update.primaryRole]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("personnel_record.not_found");
+    }
+
+    return {
+      id: row.id,
+      employeeId: row.employee_id,
+      employeeName: row.employee_name,
+      status: row.status,
+      primaryRole: row.primary_role,
+      certifications: row.certifications
     };
   }
 
@@ -416,9 +800,11 @@ export class PostgresUsersRepository implements UserRepository {
       `
         SELECT
           id,
+          employee_id,
           employee_name,
           exception_type,
           start_date,
+          end_date,
           status,
           notes
         FROM shared.attendance_exception
@@ -432,17 +818,19 @@ export class PostgresUsersRepository implements UserRepository {
       return listAttendanceExceptions(propertyCode);
     }
 
-    return {
+      return {
       items: result.rows.map(
         (row): AttendanceException => ({
           id: row.id,
+          ...(row.employee_id ? { employeeId: row.employee_id } : {}),
           employeeName: row.employee_name,
           exceptionType: row.exception_type,
           startDate: toIsoDate(row.start_date),
-          status: row.status,
-          notes: row.notes
-        })
-      )
+            endDate: row.end_date ? toIsoDate(row.end_date) : null,
+            status: row.status,
+            notes: row.notes
+          })
+        )
     };
   }
 
@@ -456,7 +844,8 @@ export class PostgresUsersRepository implements UserRepository {
         UPDATE shared.attendance_exception
         SET
           status = $3,
-          notes = $4
+          notes = $4,
+          end_date = NULL
         WHERE railroad_code = $1
           AND id = $2
       `,
@@ -467,9 +856,11 @@ export class PostgresUsersRepository implements UserRepository {
       `
         SELECT
           id,
+          employee_id,
           employee_name,
           exception_type,
           start_date,
+          end_date,
           status,
           notes
         FROM shared.attendance_exception
@@ -486,11 +877,307 @@ export class PostgresUsersRepository implements UserRepository {
 
     return {
       id: row.id,
+      ...(row.employee_id ? { employeeId: row.employee_id } : {}),
       employeeName: row.employee_name,
       exceptionType: row.exception_type,
       startDate: toIsoDate(row.start_date),
+      endDate: row.end_date ? toIsoDate(row.end_date) : null,
       status: row.status,
       notes: row.notes
+    };
+  }
+
+  async listAttendanceIssues(propertyCode: PropertyCode): Promise<AttendanceIssueList> {
+    const result = await this.db.query<AttendanceExceptionRow>(
+      `
+        SELECT
+          id,
+          employee_id,
+          employee_name,
+          exception_type,
+          start_date,
+          end_date,
+          status,
+          notes
+        FROM shared.attendance_exception
+        WHERE railroad_code = $1
+        ORDER BY start_date DESC, employee_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listAttendanceIssues(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): AttendanceIssueRecord => ({
+          id: row.id,
+          employeeId: row.employee_id ?? "",
+          employeeName: row.employee_name,
+          issueType: row.exception_type === "tardy" ? "tardiness" : "absence",
+          startDate: toIsoDate(row.start_date),
+          endDate: row.end_date ? toIsoDate(row.end_date) : null,
+          status: row.status,
+          notes: row.notes
+        })
+      )
+    };
+  }
+
+  async listAttendanceHistory(
+    propertyCode: PropertyCode,
+    employeeId: string,
+    issueType?: AttendanceIssueRecord["issueType"]
+  ): Promise<AttendanceHistoryList> {
+    const result = await this.db.query<AttendanceExceptionRow>(
+      `
+        SELECT
+          id,
+          employee_id,
+          employee_name,
+          exception_type,
+          start_date,
+          end_date,
+          status,
+          notes
+        FROM shared.attendance_exception
+        WHERE railroad_code = $1
+          AND employee_id = $2
+          AND ($3::TEXT IS NULL OR exception_type = $3)
+        ORDER BY start_date DESC, employee_name
+      `,
+      [propertyCode, employeeId, issueType === "tardiness" ? "tardy" : issueType ?? null]
+    );
+
+    if (!result.rows.length) {
+      return listAttendanceHistory(propertyCode, employeeId, issueType);
+    }
+
+    return {
+      employeeId,
+      items: result.rows.map(
+        (row): AttendanceIssueRecord => ({
+          id: row.id,
+          employeeId: row.employee_id ?? employeeId,
+          employeeName: row.employee_name,
+          issueType: row.exception_type === "tardy" ? "tardiness" : "absence",
+          startDate: toIsoDate(row.start_date),
+          endDate: row.end_date ? toIsoDate(row.end_date) : null,
+          status: row.status,
+          notes: row.notes
+        })
+      )
+    };
+  }
+
+  async updateAttendanceIssue(
+    propertyCode: PropertyCode,
+    issueId: string,
+    update: AttendanceIssueUpdate
+  ): Promise<AttendanceIssueRecord> {
+    await this.db.query(
+      `
+        UPDATE shared.attendance_exception
+        SET
+          status = $3,
+          notes = $4,
+          end_date = $5
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, issueId, update.status, update.notes, update.endDate]
+    );
+
+    const result = await this.db.query<AttendanceExceptionRow>(
+      `
+        SELECT
+          id,
+          employee_id,
+          employee_name,
+          exception_type,
+          start_date,
+          end_date,
+          status,
+          notes
+        FROM shared.attendance_exception
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, issueId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("attendance_issue.not_found");
+    }
+
+    return {
+      id: row.id,
+      employeeId: row.employee_id ?? "",
+      employeeName: row.employee_name,
+      issueType: row.exception_type === "tardy" ? "tardiness" : "absence",
+      startDate: toIsoDate(row.start_date),
+      endDate: row.end_date ? toIsoDate(row.end_date) : null,
+      status: row.status,
+      notes: row.notes
+    };
+  }
+
+  async listAttendanceNotificationRules(
+    propertyCode: PropertyCode
+  ): Promise<AttendanceNotificationRuleList> {
+    const result = await this.db.query<AttendanceNotificationRuleRow>(
+      `
+        SELECT
+          id,
+          issue_type,
+          trigger_status,
+          recipient_group,
+          template_name,
+          enabled
+        FROM shared.attendance_notification_rule
+        WHERE railroad_code = $1
+        ORDER BY issue_type, template_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listAttendanceNotificationRules(propertyCode);
+    }
+
+    return {
+      items: result.rows.map((row) => ({
+        id: row.id,
+        issueType: row.issue_type,
+        triggerStatus: row.trigger_status,
+        recipientGroup: row.recipient_group,
+        templateName: row.template_name,
+        enabled: row.enabled
+      }))
+    };
+  }
+
+  async createAttendanceNotificationRule(
+    propertyCode: PropertyCode,
+    input: AttendanceNotificationRuleCreate
+  ): Promise<AttendanceNotificationRule> {
+    const id = randomUUID();
+    await this.db.query(
+      `
+        INSERT INTO shared.attendance_notification_rule (
+          id,
+          railroad_code,
+          issue_type,
+          trigger_status,
+          recipient_group,
+          template_name,
+          enabled
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `,
+      [
+        id,
+        propertyCode,
+        input.issueType,
+        input.triggerStatus,
+        input.recipientGroup,
+        input.templateName,
+        input.enabled
+      ]
+    );
+
+    return {
+      id,
+      issueType: input.issueType,
+      triggerStatus: input.triggerStatus,
+      recipientGroup: input.recipientGroup,
+      templateName: input.templateName,
+      enabled: input.enabled
+    };
+  }
+
+  async updateAttendanceNotificationRule(
+    propertyCode: PropertyCode,
+    ruleId: string,
+    update: AttendanceNotificationRuleUpdate
+  ): Promise<AttendanceNotificationRule> {
+    await this.db.query(
+      `
+        UPDATE shared.attendance_notification_rule
+        SET
+          trigger_status = $3,
+          recipient_group = $4,
+          template_name = $5,
+          enabled = $6
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [
+        propertyCode,
+        ruleId,
+        update.triggerStatus,
+        update.recipientGroup,
+        update.templateName,
+        update.enabled
+      ]
+    );
+
+    const result = await this.db.query<AttendanceNotificationRuleRow>(
+      `
+        SELECT
+          id,
+          issue_type,
+          trigger_status,
+          recipient_group,
+          template_name,
+          enabled
+        FROM shared.attendance_notification_rule
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, ruleId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("attendance_notification_rule.not_found");
+    }
+
+    return {
+      id: row.id,
+      issueType: row.issue_type,
+      triggerStatus: row.trigger_status,
+      recipientGroup: row.recipient_group,
+      templateName: row.template_name,
+      enabled: row.enabled
+    };
+  }
+
+  async deleteAttendanceNotificationRule(
+    propertyCode: PropertyCode,
+    ruleId: string
+  ): Promise<AttendanceNotificationRuleDeleteResult> {
+    const result = await this.db.query<{ id: string }>(
+      `
+        DELETE FROM shared.attendance_notification_rule
+        WHERE railroad_code = $1
+          AND id = $2
+        RETURNING id
+      `,
+      [propertyCode, ruleId]
+    );
+
+    if (!result.rows[0]) {
+      throw new Error("attendance_notification_rule.not_found");
+    }
+
+    return {
+      deletedRuleId: ruleId
     };
   }
 }

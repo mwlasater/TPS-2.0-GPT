@@ -16,7 +16,23 @@ describe("seed service", () => {
       "0006_reference_admin_actions",
       "0007_fare_enforcement_locks",
       "0008_train_run_approval_history",
-      "0009_fare_enforcement_counts"
+      "0009_fare_enforcement_counts",
+      "0010_delay_management",
+      "0011_resource_templates",
+      "0012_delay_templates",
+      "0013_personnel_directory",
+      "0014_user_enable_action",
+      "0015_user_admin_history",
+      "0016_local_dev_user",
+      "0017_train_run_status_history",
+      "0018_attendance_workflows",
+      "0019_reporting_workflows",
+      "0020_reporting_delay_extensions",
+      "0021_report_delivery_history",
+      "0022_fare_enforcement_history",
+      "0023_live_report_workflows",
+      "0024_platform_runtime_integrations",
+      "0025_power_bi_embed_external_ids"
     ]);
   });
 });

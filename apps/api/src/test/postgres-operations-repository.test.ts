@@ -2,6 +2,19 @@ import { describe, expect, it, vi } from "vitest";
 
 import { PostgresOperationsRepository } from "../repositories/postgres-operations-repository.js";
 
+const readyApprovalRows = {
+  rows: [
+    {
+      stop_count: 3,
+      consist_count: 3,
+      crew_count: 3,
+      inactive_consist_count: 0,
+      pending_relief_count: 0,
+      incomplete_delay_metadata_count: 0
+    }
+  ]
+};
+
 describe("PostgresOperationsRepository", () => {
   it("maps schedule rows into train schedules", async () => {
     const query = vi.fn().mockResolvedValueOnce({
@@ -35,7 +48,7 @@ describe("PostgresOperationsRepository", () => {
   });
 
   it("maps run rows into train runs", async () => {
-    const query = vi.fn().mockResolvedValueOnce({
+    const query = vi.fn().mockResolvedValue(readyApprovalRows).mockResolvedValueOnce({
       rows: [
         {
           id: "caltrain-run-1",
@@ -75,16 +88,144 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
-  it("maps approval updates into train runs", async () => {
-    const query = vi.fn().mockResolvedValueOnce({
-      rows: [
+  it("maps initialized train runs into created and skipped results", async () => {
+    const query = vi.fn()
+      .mockResolvedValue(readyApprovalRows)
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "run_caltrain_ct_101_2026_03_07",
+            schedule_id: "ct-101",
+            train_number: "101",
+            operating_date: "2026-03-07",
+            status: "scheduled",
+            delay_minutes: 0,
+            crew_assigned: 0,
+            is_approved: false,
+            approved_at: null,
+            stop_count: 0,
+            consist_count: 0,
+            crew_count: 0
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [{ id: "existing-run" }] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const result = await repository.initializeTrainRuns("caltrain", {
+      operatingDate: "2026-03-07",
+      scheduleIds: ["ct-101", "ct-102"]
+    });
+
+    expect(result).toEqual({
+      createdRuns: [
         {
-          stop_count: 3,
-          consist_count: 3,
-          crew_count: 3
+          id: "run_caltrain_ct_101_2026_03_07",
+          scheduleId: "ct-101",
+          trainNumber: "101",
+          operatingDate: "2026-03-07",
+          status: "scheduled",
+          delayMinutes: 0,
+          crewAssigned: 0,
+          isApproved: false,
+          approvedAt: null,
+          approvalBlockers: [
+            "Crew assignment required before approval.",
+            "Consist assignment required before approval.",
+            "Station stop records required before approval."
+          ]
         }
+      ],
+      skippedScheduleIds: ["ct-102"]
+    });
+  });
+
+  it("maps reset train runs into cleared run state", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "caltrain-run-1",
+            schedule_id: "ct-101",
+            train_number: "101",
+            operating_date: "2026-03-06",
+            status: "scheduled",
+            delay_minutes: 0,
+            crew_assigned: 0,
+            is_approved: false,
+            approved_at: null,
+            stop_count: 3,
+            consist_count: 0,
+            crew_count: 0
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            stop_count: 3,
+            consist_count: 0,
+            crew_count: 0,
+            inactive_consist_count: 0,
+            pending_relief_count: 0,
+            incomplete_delay_metadata_count: 0
+          }
+        ]
+      });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const run = await repository.resetTrainRun("caltrain", "caltrain-run-1");
+
+    expect(run).toEqual({
+      id: "caltrain-run-1",
+      scheduleId: "ct-101",
+      trainNumber: "101",
+      operatingDate: "2026-03-06",
+      status: "scheduled",
+      delayMinutes: 0,
+      crewAssigned: 0,
+      isApproved: false,
+      approvedAt: null,
+      approvalBlockers: [
+        "Crew assignment required before approval.",
+        "Consist assignment required before approval."
       ]
-    }).mockResolvedValueOnce({
+    });
+  });
+
+  it("maps deleted train runs into delete results", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: "caltrain-run-1" }] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const result = await repository.deleteTrainRun("caltrain", "caltrain-run-1");
+
+    expect(result).toEqual({
+      deletedRunId: "caltrain-run-1"
+    });
+  });
+
+  it("maps approval updates into train runs", async () => {
+    const query = vi.fn()
+      .mockResolvedValue(readyApprovalRows)
+      .mockResolvedValueOnce(readyApprovalRows)
+      .mockResolvedValueOnce({
       rows: [
         {
           id: "caltrain-run-1",
@@ -101,9 +242,10 @@ describe("PostgresOperationsRepository", () => {
           crew_count: 3
         }
       ]
-    }).mockResolvedValueOnce({
+      })
+      .mockResolvedValueOnce({
       rows: []
-    });
+      });
 
     const repository = new PostgresOperationsRepository({ query });
     const run = await repository.updateTrainRunApproval("caltrain", "caltrain-run-1", {
@@ -126,7 +268,7 @@ describe("PostgresOperationsRepository", () => {
   });
 
   it("maps unapproval updates into train runs", async () => {
-    const query = vi.fn().mockResolvedValueOnce({
+    const query = vi.fn().mockResolvedValue(readyApprovalRows).mockResolvedValueOnce({
       rows: [
         {
           id: "capmetro-run-1",
@@ -143,9 +285,10 @@ describe("PostgresOperationsRepository", () => {
           crew_count: 2
         }
       ]
-    }).mockResolvedValueOnce({
+      })
+      .mockResolvedValueOnce({
       rows: []
-    });
+      });
 
     const repository = new PostgresOperationsRepository({ query });
     const run = await repository.updateTrainRunApproval(
@@ -196,9 +339,7 @@ describe("PostgresOperationsRepository", () => {
   it("maps batch approval results into updated and blocked runs", async () => {
     const query = vi
       .fn()
-      .mockResolvedValueOnce({
-        rows: [{ stop_count: 3, consist_count: 3, crew_count: 3 }]
-      })
+      .mockResolvedValueOnce(readyApprovalRows)
       .mockResolvedValueOnce({
         rows: [
           {
@@ -218,11 +359,30 @@ describe("PostgresOperationsRepository", () => {
         ]
       })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce(readyApprovalRows)
       .mockResolvedValueOnce({
-        rows: [{ stop_count: 0, consist_count: 0, crew_count: 0 }]
+        rows: [
+          {
+            stop_count: 0,
+            consist_count: 0,
+            crew_count: 0,
+            inactive_consist_count: 0,
+            pending_relief_count: 0,
+            incomplete_delay_metadata_count: 0
+          }
+        ]
       })
       .mockResolvedValueOnce({
-        rows: [{ stop_count: 0, consist_count: 0, crew_count: 0 }]
+        rows: [
+          {
+            stop_count: 0,
+            consist_count: 0,
+            crew_count: 0,
+            inactive_consist_count: 0,
+            pending_relief_count: 0,
+            incomplete_delay_metadata_count: 0
+          }
+        ]
       });
 
     const repository = new PostgresOperationsRepository({ query });
@@ -484,6 +644,475 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("derives train run impacts from persisted stops, delays, and passenger notes", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "caltrain-run-1",
+            schedule_id: "ct-101",
+            train_number: "101",
+            operating_date: "2026-03-06",
+            status: "delayed",
+            delay_minutes: 7,
+            crew_assigned: 3,
+            is_approved: false,
+            approved_at: null,
+            stop_count: 2,
+            consist_count: 1,
+            crew_count: 2
+          }
+        ]
+      })
+      .mockResolvedValueOnce(readyApprovalRows)
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "stop-1",
+            station_code: "SFC",
+            stop_sequence: 1,
+            scheduled_time: "06:05",
+            actual_time: "06:07",
+            boardings: 45,
+            alightings: 3
+          },
+          {
+            id: "stop-2",
+            station_code: "22ND",
+            stop_sequence: 2,
+            scheduled_time: "06:18",
+            actual_time: null,
+            boardings: 27,
+            alightings: 5
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "delay-1",
+            category: "Signal delay",
+            minutes: 4,
+            notes: "Signal clearance held at interlocking.",
+            reported_at: new Date("2026-03-06T06:19:00Z")
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            delay_id: "delay-1",
+            location_detail: "South approach",
+            responsible_party: "Dispatch",
+            notable_delay_type: "Interlocking failure",
+            special_movement_id: null,
+            work_order_id: null,
+            mechanical_notes: "",
+            passenger_impact_summary: "Peak riders held through two downstream stops."
+          }
+        ]
+      });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const impact = await repository.getTrainRunImpactSummary("caltrain", "caltrain-run-1");
+
+    expect(impact).toMatchObject({
+      runId: "caltrain-run-1",
+      totalDelayMinutes: 4,
+      impactedStationCount: 2,
+      passengerImpactSummaries: ["Peak riders held through two downstream stops."],
+      downstreamStations: [
+        expect.objectContaining({
+          stationCode: "SFC"
+        }),
+        expect.objectContaining({
+          stationCode: "22ND"
+        })
+      ]
+    });
+  });
+
+  it("maps train run status rows and records status updates", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            train_run_id: "caltrain-run-1",
+            status: "delayed",
+            status_comment: "Dispatch is monitoring cascading impacts.",
+            status_updated_at: new Date("2026-03-20T17:00:00Z"),
+            status_updated_by: "Local Development User"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            train_run_id: "caltrain-run-1",
+            status: "delayed",
+            status_comment: "Dispatch is monitoring cascading impacts.",
+            status_updated_at: new Date("2026-03-20T17:00:00Z"),
+            status_updated_by: "Local Development User"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const initial = await repository.getTrainRunStatus("caltrain", "caltrain-run-1");
+    const updated = await repository.updateTrainRunStatus("caltrain", "caltrain-run-1", {
+      status: "delayed",
+      comment: "Dispatch is monitoring cascading impacts."
+    }, "Local Development User");
+
+    expect(initial).toMatchObject({
+      runId: "caltrain-run-1",
+      status: "delayed"
+    });
+    expect(updated).toMatchObject({
+      runId: "caltrain-run-1",
+      comment: "Dispatch is monitoring cascading impacts."
+    });
+  });
+
+  it("maps created delay rows into delay events", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "delay-new-1",
+            category: "Mechanical",
+            minutes: 2,
+            notes: "Door recycle at platform.",
+            reported_at: new Date("2026-03-06T06:30:00Z")
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "delay-new-2",
+            category: "Late crew",
+            minutes: 1,
+            notes: "Relief handoff behind schedule.",
+            reported_at: new Date("2026-03-06T06:33:00Z")
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [{ delay_minutes: 7 }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const delays = await repository.createDelayEvents("caltrain", "caltrain-run-1", {
+      delays: [
+        {
+          category: "Mechanical",
+          minutes: 2,
+          notes: "Door recycle at platform.",
+          reportedAt: "2026-03-06T06:30:00Z"
+        },
+        {
+          category: "Late crew",
+          minutes: 1,
+          notes: "Relief handoff behind schedule.",
+          reportedAt: "2026-03-06T06:33:00Z"
+        }
+      ]
+    });
+
+    expect(delays).toEqual({
+      items: [
+        {
+          id: "delay-new-1",
+          category: "Mechanical",
+          minutes: 2,
+          notes: "Door recycle at platform.",
+          reportedAt: "2026-03-06T06:30:00.000Z"
+        },
+        {
+          id: "delay-new-2",
+          category: "Late crew",
+          minutes: 1,
+          notes: "Relief handoff behind schedule.",
+          reportedAt: "2026-03-06T06:33:00.000Z"
+        }
+      ]
+    });
+  });
+
+  it("maps template-created delay rows into delay events", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "delay-template-signal",
+            template_name: "Signal Hold",
+            category: "Signal delay",
+            minutes: 4,
+            notes: "Signal clearance held at interlocking.",
+            notable_delay_type: "Interlocking failure",
+            special_movement_id: "movement-single-track"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "delay-new-template",
+            category: "Signal delay",
+            minutes: 4,
+            notes: "Signal clearance held at interlocking.",
+            reported_at: new Date("2026-03-06T06:28:00Z")
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [{ delay_minutes: 11 }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            delay_id: "delay-new-template",
+            location_detail: "",
+            responsible_party: "",
+            notable_delay_type: "Interlocking failure",
+            special_movement_id: "movement-single-track",
+            work_order_id: null,
+            mechanical_notes: "",
+            passenger_impact_summary: ""
+          }
+        ]
+      });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const delay = await repository.createDelayFromTemplate("caltrain", "caltrain-run-1", {
+      templateId: "delay-template-signal",
+      reportedAt: "2026-03-06T06:28:00Z"
+    });
+
+    expect(delay).toEqual({
+      id: "delay-new-template",
+      category: "Signal delay",
+      minutes: 4,
+      notes: "Signal clearance held at interlocking.",
+      reportedAt: "2026-03-06T06:28:00.000Z"
+    });
+  });
+
+  it("maps deleted delay rows into delete results", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({ rows: [{ id: "delay-1" }] })
+      .mockResolvedValueOnce({ rows: [{ delay_minutes: 3 }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const result = await repository.deleteDelayEvent("caltrain", "caltrain-run-1", "delay-1");
+
+    expect(result).toEqual({
+      deletedId: "delay-1",
+      runId: "caltrain-run-1",
+      delayMinutes: 3
+    });
+  });
+
+  it("maps delay common locations into records", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "loc-sfc",
+          location_label: "San Francisco",
+          usage_count: 18
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const locations = await repository.listDelayCommonLocations("caltrain");
+
+    expect(locations).toEqual({
+      items: [
+        {
+          id: "loc-sfc",
+          label: "San Francisco",
+          usageCount: 18
+        }
+      ]
+    });
+  });
+
+  it("updates delay common locations", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    await expect(
+      repository.updateDelayCommonLocation("caltrain", "loc-sfc", {
+        label: "San Francisco Terminal",
+        usageCount: 21
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it("maps delay template rows into records", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "delay-template-signal",
+          template_name: "Signal Hold",
+          category: "Signal delay",
+          minutes: 4,
+          notes: "Signal clearance held at interlocking.",
+          notable_delay_type: "Interlocking failure",
+          special_movement_id: "movement-single-track"
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const templates = await repository.listDelayTemplates("caltrain");
+
+    expect(templates).toEqual({
+      items: [
+        {
+          id: "delay-template-signal",
+          name: "Signal Hold",
+          category: "Signal delay",
+          minutes: 4,
+          notes: "Signal clearance held at interlocking.",
+          notableDelayType: "Interlocking failure",
+          specialMovementId: "movement-single-track"
+        }
+      ]
+    });
+  });
+
+  it("maps special movements into records", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "movement-single-track",
+          movement_label: "Single-track meet",
+          description: "Temporary meet requiring dispatch coordination."
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const movements = await repository.listSpecialMovements("caltrain");
+
+    expect(movements).toEqual({
+      items: [
+        {
+          id: "movement-single-track",
+          label: "Single-track meet",
+          description: "Temporary meet requiring dispatch coordination."
+        }
+      ]
+    });
+  });
+
+  it("updates delay templates", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    await expect(
+      repository.updateDelayTemplate("caltrain", "delay-template-signal", {
+        name: "Signal Hold Updated",
+        category: "Signal delay",
+        minutes: 5,
+        notes: "Signal clearance held at interlocking. Supervisor review added.",
+        notableDelayType: "Interlocking failure",
+        specialMovementId: "movement-single-track"
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it("updates special movements", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    await expect(
+      repository.updateSpecialMovement("caltrain", "movement-single-track", {
+        label: "Single-track meet Updated",
+        description: "Temporary meet requiring dispatch coordination. Updated for admin workflow."
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it("maps delay additional info into records", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          delay_id: "delay-1",
+          location_detail: "CP Coast interlocking",
+          responsible_party: "Signal Maintainer",
+          notable_delay_type: "Interlocking failure",
+          special_movement_id: "movement-single-track",
+          work_order_id: "WO-1427",
+          mechanical_notes: "",
+          passenger_impact_summary: "Peak riders held through two downstream stops."
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const additionalInfo = await repository.getDelayAdditionalInfo("caltrain", "delay-1");
+
+    expect(additionalInfo).toEqual({
+      delayId: "delay-1",
+      locationDetail: "CP Coast interlocking",
+      responsibleParty: "Signal Maintainer",
+      notableDelayType: "Interlocking failure",
+      specialMovementId: "movement-single-track",
+      workOrderId: "WO-1427",
+      mechanicalNotes: "",
+      passengerImpactSummary: "Peak riders held through two downstream stops."
+    });
+  });
+
+  it("maps updated delay additional info into records", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          delay_id: "delay-1",
+          location_detail: "South approach to Palo Alto",
+          responsible_party: "Dispatch",
+          notable_delay_type: "Traffic interference",
+          special_movement_id: "movement-single-track",
+          work_order_id: "WO-2001",
+          mechanical_notes: "No equipment fault observed.",
+          passenger_impact_summary: "Crowding pushed to next two stops."
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const additionalInfo = await repository.updateDelayAdditionalInfo("caltrain", "delay-1", {
+      locationDetail: "South approach to Palo Alto",
+      responsibleParty: "Dispatch",
+      notableDelayType: "Traffic interference",
+      specialMovementId: "movement-single-track",
+      workOrderId: "WO-2001",
+      mechanicalNotes: "No equipment fault observed.",
+      passengerImpactSummary: "Crowding pushed to next two stops."
+    });
+
+    expect(additionalInfo).toEqual({
+      delayId: "delay-1",
+      locationDetail: "South approach to Palo Alto",
+      responsibleParty: "Dispatch",
+      notableDelayType: "Traffic interference",
+      specialMovementId: "movement-single-track",
+      workOrderId: "WO-2001",
+      mechanicalNotes: "No equipment fault observed.",
+      passengerImpactSummary: "Crowding pushed to next two stops."
+    });
+  });
+
   it("maps consist rows into consist equipment", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [
@@ -511,6 +1140,59 @@ describe("PostgresOperationsRepository", () => {
           equipmentType: "Cab Car",
           position: 1,
           status: "active"
+        }
+      ]
+    });
+  });
+
+  it("maps consist template rows into consist templates", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          template_id: "consist-commuter-standard",
+          template_name: "Commuter Standard",
+          item_id: "template-equip-1",
+          equipment_number: "CAB-901",
+          equipment_type: "Cab Car",
+          position_index: 1,
+          status: "active"
+        },
+        {
+          template_id: "consist-commuter-standard",
+          template_name: "Commuter Standard",
+          item_id: "template-equip-2",
+          equipment_number: "COACH-442",
+          equipment_type: "Coach",
+          position_index: 2,
+          status: "active"
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const templates = await repository.listConsistTemplates("caltrain");
+
+    expect(templates).toEqual({
+      items: [
+        {
+          id: "consist-commuter-standard",
+          name: "Commuter Standard",
+          items: [
+            {
+              id: "template-equip-1",
+              equipmentNumber: "CAB-901",
+              equipmentType: "Cab Car",
+              position: 1,
+              status: "active"
+            },
+            {
+              id: "template-equip-2",
+              equipmentNumber: "COACH-442",
+              equipmentType: "Coach",
+              position: 2,
+              status: "active"
+            }
+          ]
         }
       ]
     });
@@ -551,6 +1233,55 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
+  it("maps consist swaps into consist equipment", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            template_id: "consist-commuter-short-turn",
+            template_name: "Short Turn",
+            item_id: "template-equip-1",
+            equipment_number: "CAB-911",
+            equipment_type: "Cab Car",
+            position_index: 1,
+            status: "active"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "consist-generated-1",
+            equipment_number: "CAB-911",
+            equipment_type: "Cab Car",
+            position_index: 1,
+            status: "active"
+          }
+        ]
+      });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const consist = await repository.swapConsistEquipment("caltrain", "caltrain-run-1", {
+      templateId: "consist-commuter-short-turn"
+    });
+
+    expect(consist).toEqual({
+      items: [
+        {
+          id: "consist-generated-1",
+          equipmentNumber: "CAB-911",
+          equipmentType: "Cab Car",
+          position: 1,
+          status: "active"
+        }
+      ]
+    });
+  });
+
   it("maps crew rows into crew assignments", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [
@@ -578,6 +1309,59 @@ describe("PostgresOperationsRepository", () => {
           role: "Engineer",
           onDutyTime: "05:30",
           status: "assigned"
+        }
+      ]
+    });
+  });
+
+  it("maps crew template rows into crew templates", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          template_id: "crew-commuter-standard",
+          template_name: "Standard Crew",
+          item_id: "template-crew-1",
+          employee_name: "Jordan Reyes",
+          role_name: "Engineer",
+          on_duty_time: "05:30",
+          status: "assigned"
+        },
+        {
+          template_id: "crew-commuter-standard",
+          template_name: "Standard Crew",
+          item_id: "template-crew-2",
+          employee_name: "Taylor Brooks",
+          role_name: "Conductor",
+          on_duty_time: "05:35",
+          status: "assigned"
+        }
+      ]
+    });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const templates = await repository.listCrewTemplates("caltrain");
+
+    expect(templates).toEqual({
+      items: [
+        {
+          id: "crew-commuter-standard",
+          name: "Standard Crew",
+          items: [
+            {
+              id: "template-crew-1",
+              employeeName: "Jordan Reyes",
+              role: "Engineer",
+              onDutyTime: "05:30",
+              status: "assigned"
+            },
+            {
+              id: "template-crew-2",
+              employeeName: "Taylor Brooks",
+              role: "Conductor",
+              onDutyTime: "05:35",
+              status: "assigned"
+            }
+          ]
         }
       ]
     });
@@ -616,6 +1400,55 @@ describe("PostgresOperationsRepository", () => {
       role: "Engineer",
       onDutyTime: "05:45",
       status: "pending_relief"
+    });
+  });
+
+  it("maps crew swaps into crew assignments", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ is_approved: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            template_id: "crew-commuter-relief",
+            template_name: "Relief Crew",
+            item_id: "template-crew-1",
+            employee_name: "Morgan Lee",
+            role_name: "Engineer",
+            on_duty_time: "05:55",
+            status: "assigned"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "crew-generated-1",
+            employee_name: "Morgan Lee",
+            role_name: "Engineer",
+            on_duty_time: "05:55",
+            status: "assigned"
+          }
+        ]
+      });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const crew = await repository.swapCrewAssignments("caltrain", "caltrain-run-1", {
+      templateId: "crew-commuter-relief"
+    });
+
+    expect(crew).toEqual({
+      items: [
+        {
+          id: "crew-generated-1",
+          employeeName: "Morgan Lee",
+          role: "Engineer",
+          onDutyTime: "05:55",
+          status: "assigned"
+        }
+      ]
     });
   });
 
@@ -699,25 +1532,61 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
-  it("maps created fare enforcement rows into records", async () => {
+  it("maps fare enforcement history rows into entries", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [
         {
-          id: "fare-new-1",
-          train_run_id: "caltrain-run-1",
-          inspector_name: "Morgan Lee",
-          first_location: "SFC",
-          second_location: "SJC",
-          activity_count: 8,
-          amtrak_transfers: 1,
-          amtrak_tickets: 2,
-          upass_count: 3,
-          tickets_sold: 4,
-          notes: "Midday inspection sweep.",
-          captured_at: new Date("2026-03-06T09:00:00Z")
+          id: "fare-history-1",
+          fare_record_id: "fare-1",
+          action: "updated",
+          actor_name: "Morgan Lee",
+          notes: "Fare enforcement record updated.",
+          created_at: new Date("2026-03-06T09:15:00Z")
         }
       ]
     });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const history = await repository.listFareEnforcementHistory("caltrain", "fare-1");
+
+    expect(history).toEqual({
+      items: [
+        {
+          id: "fare-history-1",
+          recordId: "fare-1",
+          action: "updated",
+          actorName: "Morgan Lee",
+          notes: "Fare enforcement record updated.",
+          createdAt: "2026-03-06T09:15:00.000Z"
+        }
+      ]
+    });
+  });
+
+  it("maps created fare enforcement rows into records", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "fare-new-1",
+            train_run_id: "caltrain-run-1",
+            inspector_name: "Morgan Lee",
+            first_location: "SFC",
+            second_location: "SJC",
+            activity_count: 8,
+            amtrak_transfers: 1,
+            amtrak_tickets: 2,
+            upass_count: 3,
+            tickets_sold: 4,
+            notes: "Midday inspection sweep.",
+            captured_at: new Date("2026-03-06T09:00:00Z")
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
 
     const repository = new PostgresOperationsRepository({ query });
     const record = await repository.createFareEnforcement("caltrain", {
@@ -748,5 +1617,35 @@ describe("PostgresOperationsRepository", () => {
       notes: "Midday inspection sweep.",
       capturedAt: "2026-03-06T09:00:00.000Z"
     });
+    expect(query).toHaveBeenNthCalledWith(1, "BEGIN");
+    expect(query).toHaveBeenNthCalledWith(3, expect.stringContaining("INSERT INTO shared.fare_enforcement_history"), expect.any(Array));
+    expect(query).toHaveBeenNthCalledWith(4, "COMMIT");
+  });
+
+  it("returns deleted fare enforcement identifiers", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "fare-1",
+            train_run_id: "caltrain-run-1"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const result = await repository.deleteFareEnforcement("caltrain", "fare-1", "Morgan Lee");
+
+    expect(result).toEqual({
+      deletedRecordId: "fare-1",
+      runId: "caltrain-run-1"
+    });
+    expect(query).toHaveBeenNthCalledWith(1, "BEGIN");
+    expect(query).toHaveBeenNthCalledWith(3, expect.stringContaining("INSERT INTO shared.fare_enforcement_history"), expect.any(Array));
+    expect(query).toHaveBeenNthCalledWith(4, "COMMIT");
   });
 });

@@ -68,6 +68,62 @@ export class PostgresPropertyRepository implements PropertyRepository {
     };
   }
 
+  async updateReferenceData(
+    propertyCode: PropertyCode,
+    update: ReferenceDataset
+  ): Promise<ReferenceDataset> {
+    await this.db.query("BEGIN");
+
+    try {
+      await this.db.query("DELETE FROM shared.reference_delay_reason WHERE railroad_code = $1", [
+        propertyCode
+      ]);
+      await this.db.query("DELETE FROM shared.reference_crew_role WHERE railroad_code = $1", [
+        propertyCode
+      ]);
+      await this.db.query("DELETE FROM shared.reference_station_code WHERE railroad_code = $1", [
+        propertyCode
+      ]);
+
+      for (const reason of update.delayReasons) {
+        await this.db.query(
+          `
+            INSERT INTO shared.reference_delay_reason (railroad_code, reason_text)
+            VALUES ($1, $2)
+          `,
+          [propertyCode, reason]
+        );
+      }
+
+      for (const role of update.crewRoles) {
+        await this.db.query(
+          `
+            INSERT INTO shared.reference_crew_role (railroad_code, role_name)
+            VALUES ($1, $2)
+          `,
+          [propertyCode, role]
+        );
+      }
+
+      for (const stationCode of update.stationCodes) {
+        await this.db.query(
+          `
+            INSERT INTO shared.reference_station_code (railroad_code, station_code)
+            VALUES ($1, $2)
+          `,
+          [propertyCode, stationCode]
+        );
+      }
+
+      await this.db.query("COMMIT");
+    } catch (error) {
+      await this.db.query("ROLLBACK");
+      throw error;
+    }
+
+    return this.getReferenceData(propertyCode);
+  }
+
   async getSettings(propertyCode: PropertyCode): Promise<PropertySettings> {
     const result = await this.db.query<PropertySettingsRow>(
       `

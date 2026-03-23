@@ -1,15 +1,51 @@
 import {
+  attendanceIssueUpdateSchema,
+  attendanceNotificationRuleCreateSchema,
+  attendanceNotificationRuleUpdateSchema,
   attendanceExceptionUpdateSchema,
+  cmmsSyncRequestSchema,
+  delayCommonLocationUpdateSchema,
+  delayTemplateUpdateSchema,
+  fileServiceRequestSchema,
   jobProfileUpdateSchema,
+  liveReportExecutionRequestSchema,
   notificationUpdateSchema,
-  reportConfigUpdateSchema
+  passengerReportImportCreateSchema,
+  permissionGroupCreateSchema,
+  permissionGroupUpdateSchema,
+  reportDeliveryRequestSchema,
+  reportDeliveryStatusUpdateSchema,
+  reportPreferenceUpdateSchema,
+  personnelStatusUpdateSchema,
+  reportConfigUpdateSchema,
+  scheduledReportEmailJobCreateSchema,
+  scheduledReportEmailJobUpdateSchema,
+  specialMovementUpdateSchema
 } from "@tps/validation";
 import type { FastifyInstance } from "fastify";
 import type {
+  AttendanceIssueUpdate,
+  AttendanceNotificationRuleCreate,
+  AttendanceNotificationRuleUpdate,
   AttendanceExceptionUpdate,
+  CmmsSyncRequest,
+  DelayCommonLocationUpdate,
+  DelayTemplateUpdate,
+  FileServiceRequest,
   JobProfileUpdate,
+  LiveReportExecutionRequest,
   NotificationUpdate,
-  ReportConfigUpdate
+  PassengerReportImportCreate,
+  PermissionGroupCreate,
+  PermissionGroupUpdate,
+  PersonnelStatusUpdate,
+  ReportConfigUpdate,
+  ReportDeliveryRequest,
+  ReportDeliveryStatusUpdate,
+  ReportPreferenceUpdate,
+  ScheduledReportEmailJobCreate,
+  ScheduledReportEmailJobUpdate,
+  SpecialMovementUpdate
 } from "@tps/types";
 
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
@@ -19,6 +55,50 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => app.dataAccess.users.listPermissionGroups(request.property)
+  );
+
+  app.post(
+    "/permission-groups",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "admin.permissions.write");
+      const payload = permissionGroupCreateSchema.parse(request.body) as PermissionGroupCreate;
+      await app.dataAccess.users.createPermissionGroup(request.property, payload);
+      return { ok: true };
+    }
+  );
+
+  app.put(
+    "/permission-groups/:groupId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "admin.permissions.write");
+      const payload = permissionGroupUpdateSchema.parse(request.body) as PermissionGroupUpdate;
+      await app.dataAccess.users.updatePermissionGroup(
+        request.property,
+        (request.params as { groupId: string }).groupId,
+        payload
+      );
+      return { ok: true };
+    }
+  );
+
+  app.delete(
+    "/permission-groups/:groupId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "admin.permissions.write");
+      return app.dataAccess.users.deletePermissionGroup(
+        request.property,
+        (request.params as { groupId: string }).groupId
+      );
+    }
   );
 
   app.get(
@@ -35,10 +115,311 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "reports.schedule");
       const payload = reportConfigUpdateSchema.parse(request.body) as ReportConfigUpdate;
       return app.dataAccess.platform.updateReportConfig(
         request.property,
         (request.params as { reportId: string }).reportId,
+        payload
+      );
+    }
+  );
+
+  app.get(
+    "/reports/preferences",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listReportPreferences(request.property)
+  );
+
+  app.post(
+    "/reports/preferences/:preferenceId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = reportPreferenceUpdateSchema.parse(request.body) as ReportPreferenceUpdate;
+      return app.dataAccess.platform.updateReportPreference(
+        request.property,
+        (request.params as { preferenceId: string }).preferenceId,
+        payload
+      );
+    }
+  );
+
+  app.get(
+    "/reports/live",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listLiveReports(request.property)
+  );
+
+  app.get(
+    "/reports/live/executions",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listLiveReportExecutions(request.property)
+  );
+
+  app.post(
+    "/reports/live/:reportId/execute",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = liveReportExecutionRequestSchema.parse(
+        request.body
+      ) as LiveReportExecutionRequest;
+      return app.dataAccess.platform.executeLiveReport(
+        request.property,
+        (request.params as { reportId: string }).reportId,
+        payload,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.get(
+    "/reports/passenger-report",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listPassengerReportImports(request.property)
+  );
+
+  app.get(
+    "/reports/deliveries",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listReportDeliveries(request.property)
+  );
+
+  app.post(
+    "/reports/deliveries",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = reportDeliveryRequestSchema.parse(request.body) as ReportDeliveryRequest;
+      return app.dataAccess.platform.createReportDelivery(
+        request.property,
+        payload,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.put(
+    "/reports/deliveries/:deliveryId/status",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = reportDeliveryStatusUpdateSchema.parse(
+        request.body
+      ) as ReportDeliveryStatusUpdate;
+      return app.dataAccess.platform.updateReportDeliveryStatus(
+        request.property,
+        (request.params as { deliveryId: string }).deliveryId,
+        payload
+      );
+    }
+  );
+
+  app.post(
+    "/reports/deliveries/:deliveryId/retry",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      return app.dataAccess.platform.retryReportDelivery(
+        request.property,
+        (request.params as { deliveryId: string }).deliveryId,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.get(
+    "/files",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listFiles(request.property)
+  );
+
+  app.post(
+    "/files",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "notifications.write");
+      const payload = fileServiceRequestSchema.parse(request.body) as FileServiceRequest;
+      return app.dataAccess.platform.createFileRequest(
+        request.property,
+        payload,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.get(
+    "/power-bi",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listPowerBiEmbeds(request.property)
+  );
+
+  app.get(
+    "/power-bi/sessions",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listPowerBiSessions(request.property)
+  );
+
+  app.post(
+    "/power-bi/:reportId/session",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      return app.dataAccess.platform.createPowerBiSession(
+        request.property,
+        (request.params as { reportId: string }).reportId,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.get(
+    "/cmms/sync",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listCmmsSync(request.property)
+  );
+
+  app.post(
+    "/cmms/sync",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "notifications.write");
+      const payload = cmmsSyncRequestSchema.parse(request.body) as CmmsSyncRequest;
+      return app.dataAccess.platform.createCmmsSync(
+        request.property,
+        payload,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.post(
+    "/reports/passenger-report",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = passengerReportImportCreateSchema.parse(
+        request.body
+      ) as PassengerReportImportCreate;
+      await app.dataAccess.platform.createPassengerReportImport(
+        request.property,
+        payload,
+        request.user.displayName
+      );
+      return { ok: true };
+    }
+  );
+
+  app.get(
+    "/reports/scheduled-emails",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listScheduledReportEmailJobs(request.property)
+  );
+
+  app.post(
+    "/reports/scheduled-emails",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = scheduledReportEmailJobCreateSchema.parse(
+        request.body
+      ) as ScheduledReportEmailJobCreate;
+      return app.dataAccess.platform.createScheduledReportEmailJob(request.property, payload);
+    }
+  );
+
+  app.put(
+    "/reports/scheduled-emails/:jobId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = scheduledReportEmailJobUpdateSchema.parse(
+        request.body
+      ) as ScheduledReportEmailJobUpdate;
+      return app.dataAccess.platform.updateScheduledReportEmailJob(
+        request.property,
+        (request.params as { jobId: string }).jobId,
+        payload
+      );
+    }
+  );
+
+  app.delete(
+    "/reports/scheduled-emails/:jobId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      return app.dataAccess.platform.deleteScheduledReportEmailJob(
+        request.property,
+        (request.params as { jobId: string }).jobId
+      );
+    }
+  );
+
+  app.get(
+    "/personnel",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.users.listPersonnelRecords(request.property)
+  );
+
+  app.put(
+    "/personnel/:personnelId/status",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "staffing.write");
+      const payload = personnelStatusUpdateSchema.parse(request.body) as PersonnelStatusUpdate;
+      return app.dataAccess.users.updatePersonnelStatus(
+        request.property,
+        (request.params as { personnelId: string }).personnelId,
         payload
       );
     }
@@ -58,11 +439,103 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "staffing.write");
       const payload = jobProfileUpdateSchema.parse(request.body) as JobProfileUpdate;
       return app.dataAccess.users.updateJobProfile(
         request.property,
         (request.params as { profileId: string }).profileId,
         payload
+      );
+    }
+  );
+
+  app.get(
+    "/attendance-issues",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.users.listAttendanceIssues(request.property)
+  );
+
+  app.get(
+    "/attendance-history/:employeeId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) =>
+      app.dataAccess.users.listAttendanceHistory(
+        request.property,
+        (request.params as { employeeId: string }).employeeId,
+        (request.query as { issueType?: "absence" | "tardiness" }).issueType
+      )
+  );
+
+  app.put(
+    "/attendance-issues/:issueId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "staffing.write");
+      const payload = attendanceIssueUpdateSchema.parse(request.body) as AttendanceIssueUpdate;
+      return app.dataAccess.users.updateAttendanceIssue(
+        request.property,
+        (request.params as { issueId: string }).issueId,
+        payload
+      );
+    }
+  );
+
+  app.get(
+    "/attendance-notifications",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.users.listAttendanceNotificationRules(request.property)
+  );
+
+  app.post(
+    "/attendance-notifications",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "staffing.write");
+      const payload = attendanceNotificationRuleCreateSchema.parse(
+        request.body
+      ) as AttendanceNotificationRuleCreate;
+      return app.dataAccess.users.createAttendanceNotificationRule(request.property, payload);
+    }
+  );
+
+  app.put(
+    "/attendance-notifications/:ruleId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "staffing.write");
+      const payload = attendanceNotificationRuleUpdateSchema.parse(
+        request.body
+      ) as AttendanceNotificationRuleUpdate;
+      return app.dataAccess.users.updateAttendanceNotificationRule(
+        request.property,
+        (request.params as { ruleId: string }).ruleId,
+        payload
+      );
+    }
+  );
+
+  app.delete(
+    "/attendance-notifications/:ruleId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "staffing.write");
+      return app.dataAccess.users.deleteAttendanceNotificationRule(
+        request.property,
+        (request.params as { ruleId: string }).ruleId
       );
     }
   );
@@ -81,6 +554,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "staffing.write");
       const payload = attendanceExceptionUpdateSchema.parse(request.body) as AttendanceExceptionUpdate;
       return app.dataAccess.users.updateAttendanceException(
         request.property,
@@ -91,11 +565,77 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   );
 
   app.get(
-    "/files",
+    "/delay-common-locations",
     {
       preHandler: [app.authenticate, app.requireProperty]
     },
-    async (request) => app.dataAccess.platform.listFiles(request.property)
+    async (request) => app.dataAccess.operations.listDelayCommonLocations(request.property)
+  );
+
+  app.put(
+    "/delay-common-locations/:locationId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = delayCommonLocationUpdateSchema.parse(
+        request.body
+      ) as DelayCommonLocationUpdate;
+      await app.dataAccess.operations.updateDelayCommonLocation(
+        request.property,
+        (request.params as { locationId: string }).locationId,
+        payload
+      );
+      return { ok: true };
+    }
+  );
+
+  app.get(
+    "/delay-templates",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listDelayTemplates(request.property)
+  );
+
+  app.put(
+    "/delay-templates/:templateId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = delayTemplateUpdateSchema.parse(request.body) as DelayTemplateUpdate;
+      await app.dataAccess.operations.updateDelayTemplate(
+        request.property,
+        (request.params as { templateId: string }).templateId,
+        payload
+      );
+      return { ok: true };
+    }
+  );
+
+  app.get(
+    "/special-movements",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listSpecialMovements(request.property)
+  );
+
+  app.put(
+    "/special-movements/:movementId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      const payload = specialMovementUpdateSchema.parse(request.body) as SpecialMovementUpdate;
+      await app.dataAccess.operations.updateSpecialMovement(
+        request.property,
+        (request.params as { movementId: string }).movementId,
+        payload
+      );
+      return { ok: true };
+    }
   );
 
   app.get(
@@ -112,6 +652,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => {
+      await app.requirePermission(request, "notifications.write");
       const payload = notificationUpdateSchema.parse(request.body) as NotificationUpdate;
       return app.dataAccess.platform.updateNotification(
         request.property,
@@ -121,11 +662,4 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     }
   );
 
-  app.get(
-    "/power-bi",
-    {
-      preHandler: [app.authenticate, app.requireProperty]
-    },
-    async (request) => app.dataAccess.platform.listPowerBiEmbeds(request.property)
-  );
 }

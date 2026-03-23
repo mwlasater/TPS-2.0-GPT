@@ -1,60 +1,119 @@
 import type {
   ConsistEquipmentList,
+  ConsistTemplateList,
   ConsistEquipmentUpdate,
   CrewAssignmentList,
+  CrewTemplateList,
   CrewAssignmentUpdate,
+  DelayAdditionalInfo,
+  DelayAdditionalInfoDeleteResult,
+  DelayAdditionalInfoUpdate,
+  DelayPropagationPreview,
+  DelayWorkOrder,
+  DelayWorkOrderCreate,
+  DelayEventBatchCreate,
+  DelayCommonLocationList,
+  DelayEventDeleteResult,
   DelayEventList,
+  DelayTemplateList,
   DelayEventUpdate,
   FareEnforcementCreate,
+  FareEnforcementHistoryList,
   FareEnforcementDashboard,
   FareEnforcementList,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
+  NotableDelayTypeList,
   PropertyCode,
   ReferenceDataset,
+  SpecialMovementList,
   StationStop,
   StationStopList,
   StationStopUpdate,
   TrainRun,
+  TrainRunDeleteResult,
+  TrainRunInitializeRequest,
+  TrainRunInitializeResult,
   TrainRunBatchApprovalResult,
   TrainRunBatchApprovalUpdate,
   TrainRunApprovalHistoryEntry,
   TrainRunApprovalHistoryList,
   TrainRunApprovalUpdate,
+  TrainRunEventHistoryList,
+  TrainRunImpactSummary,
   TrainRunList,
+  TrainRunStatusRecord,
+  TrainRunStatusUpdate,
+  TrainScheduleApprovalSummary,
   TrainScheduleList
 } from "@tps/types";
 import { useEffect, useState } from "react";
 
 import {
+  createDelayWorkOrder,
+  createDelayEvents,
+  createDelayFromTemplate,
+  deleteDelayAdditionalInfo,
+  deleteDelayEvent,
+  deleteTrainRun,
+  fetchConsistTemplates,
+  fetchDelayAdditionalInfo,
+  fetchDelayCommonLocations,
+  fetchDelayPropagationPreview,
+  fetchDelayTemplates,
+  fetchDelayWorkOrder,
   fetchConsistEquipment,
+  fetchCrewTemplates,
   createFareEnforcement,
+  deleteFareEnforcementRecord,
   fetchCrewAssignments,
   fetchDelayEvents,
   fetchFareEnforcement,
+  fetchFareEnforcementHistory,
   fetchFareEnforcementDashboard,
   fetchFareEnforcementSummary,
+  fetchNotableDelayTypes,
   fetchReferenceData,
+  fetchSpecialMovements,
   fetchStationStops,
   fetchTrainRuns,
   fetchTrainSchedules,
   fetchTrainRunApprovalHistory,
+  fetchTrainRunEventHistory,
+  fetchTrainRunImpactSummary,
+  fetchTrainRunStatus,
   fetchTrainScheduleApprovalHistory,
+  fetchTrainScheduleApprovalSummary,
+  initializeTrainRuns,
+  resetTrainRun,
+  swapConsistEquipment,
+  swapCrewAssignments,
   updateConsistEquipment,
   updateCrewAssignment,
+  updateDelayAdditionalInfo,
   updateDelayEvent,
   updateFareEnforcement,
   updateStationStop,
   updateTrainRunApprovalBatch,
-  updateTrainRunApproval
+  updateTrainRunApproval,
+  updateTrainRunStatus
 } from "../lib/api.js";
 import {
   demoConsistEquipment,
+  demoConsistTemplates,
   demoCrewAssignments,
+  demoCrewTemplates,
+  demoDelayAdditionalInfo,
+  demoDelayCommonLocations,
   demoDelayEvents,
+  demoDelayPropagationPreview,
+  demoDelayTemplates,
+  demoDelayWorkOrders,
   demoFareEnforcement,
   demoFareEnforcementSummary,
+  demoNotableDelayTypes,
   demoReferenceData,
+  demoSpecialMovements,
   demoStationStops,
   demoTrainRuns,
   demoTrainRunApprovalHistory,
@@ -134,6 +193,155 @@ function summarizeFareRun(
   };
 }
 
+function parseClockToMinutes(value: string): number {
+  const [hoursRaw = "0", minutesRaw = "0"] = value.split(":");
+  const hours = Number(hoursRaw);
+  const minutes = Number(minutesRaw);
+  return hours * 60 + minutes;
+}
+
+function formatMinutesAsClock(totalMinutes: number): string {
+  const normalized = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const hours = Math.floor(normalized / 60);
+  const minutes = normalized % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function getEmptyImpactSummary(runId: string | null): TrainRunImpactSummary {
+  return {
+    runId: runId ?? "",
+    totalDelayMinutes: 0,
+    impactedStationCount: 0,
+    maxProjectedDelayMinutes: 0,
+    affectedPassengers: 0,
+    estimatedRecoveryTime: null,
+    passengerImpactSummaries: ["No downstream passenger impacts are currently projected."],
+    downstreamStations: []
+  };
+}
+
+function deriveImpactSummary(
+  run: TrainRun | undefined,
+  stationStops: StationStopList,
+  delayEvents: DelayEventList,
+  delayAdditionalInfo: Record<string, DelayAdditionalInfo>
+): TrainRunImpactSummary {
+  if (!run) {
+    return getEmptyImpactSummary(null);
+  }
+
+  const totalDelayMinutes =
+    delayEvents.items.reduce((total, delay) => total + delay.minutes, 0) || run.delayMinutes;
+  const downstreamStations = stationStops.items.map((stop, index) => {
+    const scheduledMinutes = parseClockToMinutes(stop.scheduledTime);
+    const actualDelayMinutes = stop.actualTime
+      ? Math.max(parseClockToMinutes(stop.actualTime) - scheduledMinutes, 0)
+      : 0;
+    const projectedDelayMinutes = Math.max(totalDelayMinutes - index, actualDelayMinutes, 0);
+
+    return {
+      stationCode: stop.stationCode,
+      scheduledTime: stop.scheduledTime,
+      projectedTime: formatMinutesAsClock(scheduledMinutes + projectedDelayMinutes),
+      projectedDelayMinutes,
+      boardings: stop.boardings,
+      alightings: stop.alightings,
+      passengerLoadDelta: stop.boardings - stop.alightings
+    };
+  });
+  const impactedStations = downstreamStations.filter((station) => station.projectedDelayMinutes > 0);
+  const passengerImpactSummaries = Array.from(
+    new Set(
+      Object.values(delayAdditionalInfo)
+        .map((item) => item.passengerImpactSummary.trim())
+        .filter((summary) => summary.length > 0)
+    )
+  );
+
+  if (!passengerImpactSummaries.length) {
+    const affectedPassengers = impactedStations.reduce(
+      (total, station) => total + station.boardings + station.alightings,
+      0
+    );
+    passengerImpactSummaries.push(
+      affectedPassengers > 0
+        ? `${affectedPassengers} passenger movements are exposed across ${impactedStations.length} downstream stop(s).`
+        : "No downstream passenger impacts are currently projected."
+    );
+  }
+
+  return {
+    runId: run.id,
+    totalDelayMinutes,
+    impactedStationCount: impactedStations.length,
+    maxProjectedDelayMinutes: impactedStations.reduce(
+      (max, station) => Math.max(max, station.projectedDelayMinutes),
+      0
+    ),
+    affectedPassengers: impactedStations.reduce(
+      (total, station) => total + station.boardings + station.alightings,
+      0
+    ),
+    estimatedRecoveryTime:
+      downstreamStations.find((station) => station.projectedDelayMinutes === 0)?.scheduledTime ??
+      impactedStations.at(-1)?.projectedTime ??
+      null,
+    passengerImpactSummaries,
+    downstreamStations
+  };
+}
+
+function getEmptyScheduleApprovalSummary(scheduleId: string | null): TrainScheduleApprovalSummary {
+  return {
+    scheduleId: scheduleId ?? "",
+    totalRuns: 0,
+    approvedCount: 0,
+    readyCount: 0,
+    blockedCount: 0,
+    totalDelayMinutes: 0,
+    readyRunIds: [],
+    approvedRunIds: [],
+    blockedRuns: []
+  };
+}
+
+function deriveScheduleApprovalSummary(
+  runs: TrainRunList,
+  scheduleId: string | null,
+  selectedImpactSummary: TrainRunImpactSummary
+): TrainScheduleApprovalSummary {
+  if (!scheduleId) {
+    return getEmptyScheduleApprovalSummary(null);
+  }
+
+  const scheduleRuns = runs.items.filter((run) => run.scheduleId === scheduleId);
+
+  return {
+    scheduleId,
+    totalRuns: scheduleRuns.length,
+    approvedCount: scheduleRuns.filter((run) => run.isApproved).length,
+    readyCount: scheduleRuns.filter((run) => !run.isApproved && run.approvalBlockers.length === 0).length,
+    blockedCount: scheduleRuns.filter((run) => !run.isApproved && run.approvalBlockers.length > 0).length,
+    totalDelayMinutes: scheduleRuns.reduce((total, run) => total + run.delayMinutes, 0),
+    readyRunIds: scheduleRuns
+      .filter((run) => !run.isApproved && run.approvalBlockers.length === 0)
+      .map((run) => run.id),
+    approvedRunIds: scheduleRuns.filter((run) => run.isApproved).map((run) => run.id),
+    blockedRuns: scheduleRuns
+      .filter((run) => !run.isApproved && run.approvalBlockers.length > 0)
+      .map((run) => ({
+        runId: run.id,
+        trainNumber: run.trainNumber,
+        delayMinutes: run.delayMinutes,
+        maxProjectedDelayMinutes:
+          selectedImpactSummary.runId === run.id
+            ? selectedImpactSummary.maxProjectedDelayMinutes
+            : run.delayMinutes,
+        blockers: run.approvalBlockers
+      }))
+  };
+}
+
 interface OperationsDataState {
   referenceData: ReferenceDataset;
   schedules: TrainScheduleList;
@@ -141,12 +349,26 @@ interface OperationsDataState {
   selectedRunId: string | null;
   approvalHistory: TrainRunApprovalHistoryList;
   scheduleApprovalHistory: TrainRunApprovalHistoryList;
+  eventHistory: TrainRunEventHistoryList;
+  impactSummary: TrainRunImpactSummary;
+  scheduleApprovalSummary: TrainScheduleApprovalSummary;
+  trainRunStatus: TrainRunStatusRecord;
+  delayAdditionalInfo: Record<string, DelayAdditionalInfo>;
+  delayPropagationPreview: DelayPropagationPreview;
+  delayCommonLocations: DelayCommonLocationList;
+  notableDelayTypes: NotableDelayTypeList;
+  delayWorkOrders: Record<string, DelayWorkOrder>;
+  delayTemplates: DelayTemplateList;
+  specialMovements: SpecialMovementList;
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
+  fareHistory: FareEnforcementHistoryList;
   fareDashboard: FareEnforcementDashboard;
   fareSummary: FareEnforcementSummaryList;
   consist: ConsistEquipmentList;
+  consistTemplates: ConsistTemplateList;
   crew: CrewAssignmentList;
+  crewTemplates: CrewTemplateList;
   stationStops: StationStopList;
   source: "api" | "fallback";
   isLoading: boolean;
@@ -156,6 +378,15 @@ interface OperationsDataState {
   saveBatchRunApproval: (
     update: TrainRunBatchApprovalUpdate
   ) => Promise<TrainRunBatchApprovalResult | undefined>;
+  initializeRuns: (
+    request: TrainRunInitializeRequest
+  ) => Promise<TrainRunInitializeResult | undefined>;
+  saveRunStatus: (
+    runId: string,
+    update: TrainRunStatusUpdate
+  ) => Promise<TrainRunStatusRecord | undefined>;
+  resetRun: (runId: string) => Promise<TrainRun | undefined>;
+  deleteRun: (runId: string) => Promise<TrainRunDeleteResult | undefined>;
   saveStop: (
     runId: string,
     stopId: string,
@@ -166,6 +397,30 @@ interface OperationsDataState {
     delayId: string,
     update: DelayEventUpdate
   ) => Promise<DelayEventList["items"][number] | undefined>;
+  createDelayBatch: (
+    runId: string,
+    input: DelayEventBatchCreate
+  ) => Promise<DelayEventList | undefined>;
+  createDelayTemplate: (
+    runId: string,
+    templateId: string,
+    reportedAt: string
+  ) => Promise<DelayEventList["items"][number] | undefined>;
+  createWorkOrder: (
+    delayId: string,
+    input: DelayWorkOrderCreate
+  ) => Promise<DelayWorkOrder | undefined>;
+  saveDelayAdditionalInfo: (
+    delayId: string,
+    update: DelayAdditionalInfoUpdate
+  ) => Promise<DelayAdditionalInfo | undefined>;
+  clearDelayAdditionalInfo: (
+    delayId: string
+  ) => Promise<DelayAdditionalInfoDeleteResult | undefined>;
+  deleteDelay: (
+    runId: string,
+    delayId: string
+  ) => Promise<DelayEventDeleteResult | undefined>;
   saveConsist: (
     runId: string,
     equipmentId: string,
@@ -176,6 +431,11 @@ interface OperationsDataState {
     assignmentId: string,
     update: CrewAssignmentUpdate
   ) => Promise<CrewAssignmentList["items"][number] | undefined>;
+  swapConsist: (
+    runId: string,
+    templateId: string
+  ) => Promise<ConsistEquipmentList | undefined>;
+  swapCrew: (runId: string, templateId: string) => Promise<CrewAssignmentList | undefined>;
   saveFare: (
     recordId: string,
     update: FareEnforcementUpdate
@@ -183,6 +443,8 @@ interface OperationsDataState {
   createFare: (
     input: FareEnforcementCreate
   ) => Promise<FareEnforcementList["items"][number] | undefined>;
+  loadFareHistory: (recordId: string | null) => Promise<void>;
+  deleteFare: (recordId: string) => Promise<{ deletedRecordId: string; runId: string } | undefined>;
 }
 
 export function useOperationsData(propertyCode: PropertyCode): OperationsDataState {
@@ -196,10 +458,53 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       propertyCode,
       demoTrainRuns[propertyCode].items[0]?.id ?? null
     ),
+    eventHistory: { items: [] },
+    impactSummary: deriveImpactSummary(
+      demoTrainRuns[propertyCode].items[0],
+      demoStationStops[propertyCode],
+      demoDelayEvents[propertyCode],
+      demoDelayAdditionalInfo[propertyCode]
+    ),
+    scheduleApprovalSummary: deriveScheduleApprovalSummary(
+      demoTrainRuns[propertyCode],
+      demoTrainRuns[propertyCode].items[0]?.scheduleId ?? null,
+      deriveImpactSummary(
+        demoTrainRuns[propertyCode].items[0],
+        demoStationStops[propertyCode],
+        demoDelayEvents[propertyCode],
+        demoDelayAdditionalInfo[propertyCode]
+      )
+    ),
+    trainRunStatus: {
+      runId: demoTrainRuns[propertyCode].items[0]?.id ?? "",
+      status: demoTrainRuns[propertyCode].items[0]?.status ?? "scheduled",
+      comment: "",
+      updatedAt: null,
+      updatedBy: null
+    },
+    delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
+    delayPropagationPreview:
+      demoDelayPropagationPreview[propertyCode][demoTrainRuns[propertyCode].items[0]?.id ?? ""] ?? {
+        runId: demoTrainRuns[propertyCode].items[0]?.id ?? "",
+        sourceDelayIds: [],
+        totalProjectedDelayMinutes: 0,
+        impactedStopCount: 0,
+        requiresCmmsFollowup: false,
+        notableDelayTypes: [],
+        downstreamStops: []
+      },
+    delayCommonLocations: demoDelayCommonLocations[propertyCode],
+    notableDelayTypes: demoNotableDelayTypes[propertyCode],
+    delayWorkOrders: demoDelayWorkOrders[propertyCode],
+    delayTemplates: demoDelayTemplates[propertyCode],
+    specialMovements: demoSpecialMovements[propertyCode],
     consist: demoConsistEquipment[propertyCode],
+    consistTemplates: demoConsistTemplates[propertyCode],
     crew: demoCrewAssignments[propertyCode],
+    crewTemplates: demoCrewTemplates[propertyCode],
     delayEvents: demoDelayEvents[propertyCode],
     fareEnforcement: demoFareEnforcement[propertyCode],
+    fareHistory: { items: [] },
     fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
     fareSummary: demoFareEnforcementSummary[propertyCode],
     stationStops: demoStationStops[propertyCode],
@@ -209,12 +514,26 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     selectRun: async () => undefined,
     saveRunApproval: async () => undefined,
     saveBatchRunApproval: async () => undefined,
+    initializeRuns: async () => undefined,
+    saveRunStatus: async () => undefined,
+    resetRun: async () => undefined,
+    deleteRun: async () => undefined,
+    saveDelayAdditionalInfo: async () => undefined,
+    clearDelayAdditionalInfo: async () => undefined,
     saveStop: async () => undefined,
     saveDelay: async () => undefined,
+    createDelayBatch: async () => undefined,
+    createDelayTemplate: async () => undefined,
+    createWorkOrder: async () => undefined,
+    deleteDelay: async () => undefined,
     saveConsist: async () => undefined,
     saveCrew: async () => undefined,
+    swapConsist: async () => undefined,
+    swapCrew: async () => undefined,
     saveFare: async () => undefined,
-    createFare: async () => undefined
+    createFare: async () => undefined,
+    loadFareHistory: async () => undefined,
+    deleteFare: async () => undefined
   });
 
   useEffect(() => {
@@ -233,10 +552,53 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         propertyCode,
         demoTrainRuns[propertyCode].items[0]?.id ?? null
       ),
+      eventHistory: { items: [] },
+      impactSummary: deriveImpactSummary(
+        demoTrainRuns[propertyCode].items[0],
+        demoStationStops[propertyCode],
+        demoDelayEvents[propertyCode],
+        demoDelayAdditionalInfo[propertyCode]
+      ),
+      scheduleApprovalSummary: deriveScheduleApprovalSummary(
+        demoTrainRuns[propertyCode],
+        demoTrainRuns[propertyCode].items[0]?.scheduleId ?? null,
+        deriveImpactSummary(
+          demoTrainRuns[propertyCode].items[0],
+          demoStationStops[propertyCode],
+          demoDelayEvents[propertyCode],
+          demoDelayAdditionalInfo[propertyCode]
+        )
+      ),
+      trainRunStatus: {
+        runId: demoTrainRuns[propertyCode].items[0]?.id ?? "",
+        status: demoTrainRuns[propertyCode].items[0]?.status ?? "scheduled",
+        comment: "",
+        updatedAt: null,
+        updatedBy: null
+      },
+      delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
+      delayPropagationPreview:
+        demoDelayPropagationPreview[propertyCode][demoTrainRuns[propertyCode].items[0]?.id ?? ""] ?? {
+          runId: demoTrainRuns[propertyCode].items[0]?.id ?? "",
+          sourceDelayIds: [],
+          totalProjectedDelayMinutes: 0,
+          impactedStopCount: 0,
+          requiresCmmsFollowup: false,
+          notableDelayTypes: [],
+          downstreamStops: []
+        },
+      delayCommonLocations: demoDelayCommonLocations[propertyCode],
+      notableDelayTypes: demoNotableDelayTypes[propertyCode],
+      delayWorkOrders: demoDelayWorkOrders[propertyCode],
+      delayTemplates: demoDelayTemplates[propertyCode],
+      specialMovements: demoSpecialMovements[propertyCode],
       consist: demoConsistEquipment[propertyCode],
+      consistTemplates: demoConsistTemplates[propertyCode],
       crew: demoCrewAssignments[propertyCode],
+      crewTemplates: demoCrewTemplates[propertyCode],
       delayEvents: demoDelayEvents[propertyCode],
       fareEnforcement: demoFareEnforcement[propertyCode],
+      fareHistory: { items: [] },
       fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
       fareSummary: demoFareEnforcementSummary[propertyCode],
       stationStops: demoStationStops[propertyCode],
@@ -246,23 +608,54 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       selectRun: state.selectRun,
       saveRunApproval: state.saveRunApproval,
       saveBatchRunApproval: state.saveBatchRunApproval,
+      initializeRuns: state.initializeRuns,
+      saveRunStatus: state.saveRunStatus,
+      resetRun: state.resetRun,
+      deleteRun: state.deleteRun,
+      saveDelayAdditionalInfo: state.saveDelayAdditionalInfo,
+      clearDelayAdditionalInfo: state.clearDelayAdditionalInfo,
       saveStop: state.saveStop,
       saveDelay: state.saveDelay,
+      createDelayBatch: state.createDelayBatch,
+      createDelayTemplate: state.createDelayTemplate,
+      createWorkOrder: state.createWorkOrder,
+      deleteDelay: state.deleteDelay,
       saveConsist: state.saveConsist,
       saveCrew: state.saveCrew,
+      swapConsist: state.swapConsist,
+      swapCrew: state.swapCrew,
       saveFare: state.saveFare,
-      createFare: state.createFare
+      createFare: state.createFare,
+      loadFareHistory: state.loadFareHistory,
+      deleteFare: state.deleteFare
     });
 
     void Promise.all([
       fetchReferenceData(propertyCode),
+      fetchDelayCommonLocations(propertyCode),
+      fetchDelayTemplates(propertyCode),
+      fetchNotableDelayTypes(propertyCode),
+      fetchSpecialMovements(propertyCode),
+      fetchConsistTemplates(propertyCode),
+      fetchCrewTemplates(propertyCode),
       fetchTrainSchedules(propertyCode),
       fetchTrainRuns(propertyCode)
     ])
-      .then(async ([referenceData, schedules, runs]) => {
+      .then(
+        async ([
+          referenceData,
+          delayCommonLocations,
+          delayTemplates,
+          notableDelayTypes,
+          specialMovements,
+          consistTemplates,
+          crewTemplates,
+          schedules,
+          runs
+        ]) => {
         const selectedRunId = runs.items[0]?.id ?? null;
         const selectedScheduleId = runs.items.find((run) => run.id === selectedRunId)?.scheduleId;
-        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, fareSummary, fareDashboard] = selectedRunId
+        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, fareSummary, fareDashboard, impactSummary, scheduleApprovalSummary, trainRunStatus, eventHistory, delayPropagationPreview] = selectedRunId
           ? await Promise.all([
               fetchStationStops(propertyCode, selectedRunId),
               fetchDelayEvents(propertyCode, selectedRunId),
@@ -274,7 +667,14 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
                 ? fetchTrainScheduleApprovalHistory(propertyCode, selectedScheduleId)
                 : Promise.resolve(getFallbackApprovalHistory(propertyCode, selectedRunId)),
               fetchFareEnforcementSummary(propertyCode),
-              fetchFareEnforcementDashboard(propertyCode)
+              fetchFareEnforcementDashboard(propertyCode),
+              fetchTrainRunImpactSummary(propertyCode, selectedRunId),
+              selectedScheduleId
+                ? fetchTrainScheduleApprovalSummary(propertyCode, selectedScheduleId)
+                : Promise.resolve(getEmptyScheduleApprovalSummary(null)),
+              fetchTrainRunStatus(propertyCode, selectedRunId),
+              fetchTrainRunEventHistory(propertyCode, selectedRunId),
+              fetchDelayPropagationPreview(propertyCode, selectedRunId)
             ])
           : [
               demoStationStops[propertyCode],
@@ -285,21 +685,75 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               getFallbackApprovalHistory(propertyCode, selectedRunId),
               getFallbackApprovalHistory(propertyCode, selectedRunId),
               demoFareEnforcementSummary[propertyCode],
-              getFallbackFareDashboard(propertyCode, runs)
+              getFallbackFareDashboard(propertyCode, runs),
+              getEmptyImpactSummary(selectedRunId),
+              getEmptyScheduleApprovalSummary(null),
+              {
+                runId: selectedRunId ?? "",
+                status: runs.items[0]?.status ?? "scheduled",
+                comment: "",
+                updatedAt: null,
+                updatedBy: null
+              },
+              { items: [] },
+              demoDelayPropagationPreview[propertyCode][selectedRunId ?? ""] ?? {
+                runId: selectedRunId ?? "",
+                sourceDelayIds: [],
+                totalProjectedDelayMinutes: 0,
+                impactedStopCount: 0,
+                requiresCmmsFollowup: false,
+                notableDelayTypes: [],
+                downstreamStops: []
+              }
             ];
+        const fareHistory =
+          fareEnforcement.items[0] && selectedRunId
+            ? await fetchFareEnforcementHistory(propertyCode, fareEnforcement.items[0].id)
+            : { items: [] };
+        const delayAdditionalInfo = Object.fromEntries(
+          await Promise.all(
+            delayEvents.items.map(async (delay) => [
+              delay.id,
+              await fetchDelayAdditionalInfo(propertyCode, delay.id)
+            ])
+          )
+        );
+
+        const delayWorkOrders = Object.fromEntries(
+          await Promise.all(
+            delayEvents.items.map(async (delay) => [
+              delay.id,
+              (await fetchDelayWorkOrder(propertyCode, delay.id)) ?? demoDelayWorkOrders[propertyCode][delay.id]
+            ])
+          )
+        );
 
         if (isMounted) {
           setState({
             referenceData,
+            delayCommonLocations,
+            notableDelayTypes,
+            specialMovements,
             schedules,
             runs,
             selectedRunId,
             approvalHistory,
             scheduleApprovalHistory,
+            impactSummary,
+            scheduleApprovalSummary,
+            trainRunStatus,
+            eventHistory,
+            delayAdditionalInfo,
+            delayPropagationPreview,
+            delayWorkOrders,
             consist,
+            consistTemplates,
             crew,
+            crewTemplates,
+            delayTemplates,
             delayEvents,
             fareEnforcement,
+            fareHistory,
             fareDashboard,
             fareSummary,
             stationStops,
@@ -309,15 +763,30 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             selectRun: state.selectRun,
             saveRunApproval: state.saveRunApproval,
             saveBatchRunApproval: state.saveBatchRunApproval,
+            initializeRuns: state.initializeRuns,
+            saveRunStatus: state.saveRunStatus,
+            resetRun: state.resetRun,
+            deleteRun: state.deleteRun,
+            saveDelayAdditionalInfo: state.saveDelayAdditionalInfo,
+            clearDelayAdditionalInfo: state.clearDelayAdditionalInfo,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
+            createDelayBatch: state.createDelayBatch,
+            createDelayTemplate: state.createDelayTemplate,
+            createWorkOrder: state.createWorkOrder,
+            deleteDelay: state.deleteDelay,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
+            swapConsist: state.swapConsist,
+            swapCrew: state.swapCrew,
             saveFare: state.saveFare,
-            createFare: state.createFare
+            createFare: state.createFare,
+            loadFareHistory: state.loadFareHistory,
+            deleteFare: state.deleteFare
           });
         }
-      })
+      }
+      )
       .catch(() => {
         if (isMounted) {
           setState({
@@ -333,10 +802,53 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               propertyCode,
               demoTrainRuns[propertyCode].items[0]?.id ?? null
             ),
+            eventHistory: { items: [] },
+            impactSummary: deriveImpactSummary(
+              demoTrainRuns[propertyCode].items[0],
+              demoStationStops[propertyCode],
+              demoDelayEvents[propertyCode],
+              demoDelayAdditionalInfo[propertyCode]
+            ),
+            scheduleApprovalSummary: deriveScheduleApprovalSummary(
+              demoTrainRuns[propertyCode],
+              demoTrainRuns[propertyCode].items[0]?.scheduleId ?? null,
+              deriveImpactSummary(
+                demoTrainRuns[propertyCode].items[0],
+                demoStationStops[propertyCode],
+                demoDelayEvents[propertyCode],
+                demoDelayAdditionalInfo[propertyCode]
+              )
+            ),
+            trainRunStatus: {
+              runId: demoTrainRuns[propertyCode].items[0]?.id ?? "",
+              status: demoTrainRuns[propertyCode].items[0]?.status ?? "scheduled",
+              comment: "",
+              updatedAt: null,
+              updatedBy: null
+            },
+            delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
+            delayPropagationPreview:
+              demoDelayPropagationPreview[propertyCode][demoTrainRuns[propertyCode].items[0]?.id ?? ""] ?? {
+                runId: demoTrainRuns[propertyCode].items[0]?.id ?? "",
+                sourceDelayIds: [],
+                totalProjectedDelayMinutes: 0,
+                impactedStopCount: 0,
+                requiresCmmsFollowup: false,
+                notableDelayTypes: [],
+                downstreamStops: []
+              },
+            delayCommonLocations: demoDelayCommonLocations[propertyCode],
+            notableDelayTypes: demoNotableDelayTypes[propertyCode],
+            delayWorkOrders: demoDelayWorkOrders[propertyCode],
+            delayTemplates: demoDelayTemplates[propertyCode],
+            specialMovements: demoSpecialMovements[propertyCode],
             consist: demoConsistEquipment[propertyCode],
+            consistTemplates: demoConsistTemplates[propertyCode],
             crew: demoCrewAssignments[propertyCode],
+            crewTemplates: demoCrewTemplates[propertyCode],
             delayEvents: demoDelayEvents[propertyCode],
             fareEnforcement: demoFareEnforcement[propertyCode],
+            fareHistory: { items: [] },
             fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
             fareSummary: demoFareEnforcementSummary[propertyCode],
             stationStops: demoStationStops[propertyCode],
@@ -346,12 +858,26 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             selectRun: state.selectRun,
             saveRunApproval: state.saveRunApproval,
             saveBatchRunApproval: state.saveBatchRunApproval,
+            initializeRuns: state.initializeRuns,
+            saveRunStatus: state.saveRunStatus,
+            resetRun: state.resetRun,
+            deleteRun: state.deleteRun,
+            saveDelayAdditionalInfo: state.saveDelayAdditionalInfo,
+            clearDelayAdditionalInfo: state.clearDelayAdditionalInfo,
             saveStop: state.saveStop,
             saveDelay: state.saveDelay,
+            createDelayBatch: state.createDelayBatch,
+            createDelayTemplate: state.createDelayTemplate,
+            createWorkOrder: state.createWorkOrder,
+            deleteDelay: state.deleteDelay,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
+            swapConsist: state.swapConsist,
+            swapCrew: state.swapCrew,
             saveFare: state.saveFare,
-            createFare: state.createFare
+            createFare: state.createFare,
+            loadFareHistory: state.loadFareHistory,
+            deleteFare: state.deleteFare
           });
         }
       });
@@ -370,7 +896,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
 
     try {
       const scheduleId = state.runs.items.find((run) => run.id === runId)?.scheduleId;
-      const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory] = await Promise.all([
+      const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, impactSummary, scheduleApprovalSummary, trainRunStatus, eventHistory, delayPropagationPreview] = await Promise.all([
         fetchStationStops(propertyCode, runId),
         fetchDelayEvents(propertyCode, runId),
         fetchConsistEquipment(propertyCode, runId),
@@ -379,8 +905,34 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         fetchTrainRunApprovalHistory(propertyCode, runId),
         scheduleId
           ? fetchTrainScheduleApprovalHistory(propertyCode, scheduleId)
-          : Promise.resolve(getFallbackApprovalHistory(propertyCode, runId))
+          : Promise.resolve(getFallbackApprovalHistory(propertyCode, runId)),
+        fetchTrainRunImpactSummary(propertyCode, runId),
+        scheduleId
+          ? fetchTrainScheduleApprovalSummary(propertyCode, scheduleId)
+          : Promise.resolve(getEmptyScheduleApprovalSummary(null)),
+        fetchTrainRunStatus(propertyCode, runId),
+        fetchTrainRunEventHistory(propertyCode, runId),
+        fetchDelayPropagationPreview(propertyCode, runId)
       ]);
+      const fareHistory = fareEnforcement.items[0]
+        ? await fetchFareEnforcementHistory(propertyCode, fareEnforcement.items[0].id)
+        : { items: [] };
+      const delayAdditionalInfo = Object.fromEntries(
+        await Promise.all(
+          delayEvents.items.map(async (delay) => [
+            delay.id,
+            await fetchDelayAdditionalInfo(propertyCode, delay.id)
+          ])
+        )
+      );
+      const delayWorkOrders = Object.fromEntries(
+        await Promise.all(
+          delayEvents.items.map(async (delay) => [
+            delay.id,
+            (await fetchDelayWorkOrder(propertyCode, delay.id)) ?? demoDelayWorkOrders[propertyCode][delay.id]
+          ])
+        )
+      );
 
       setState((current) => ({
         ...current,
@@ -390,8 +942,16 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         consist,
         crew,
         fareEnforcement,
+        fareHistory,
         approvalHistory,
         scheduleApprovalHistory,
+        eventHistory,
+        impactSummary,
+        scheduleApprovalSummary,
+        trainRunStatus,
+        delayAdditionalInfo,
+        delayPropagationPreview,
+        delayWorkOrders,
         source: "api",
         isLoading: false
       }));
@@ -401,11 +961,51 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         selectedRunId: runId,
         stationStops: demoStationStops[propertyCode],
         delayEvents: demoDelayEvents[propertyCode],
+        delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
+        delayPropagationPreview:
+          demoDelayPropagationPreview[propertyCode][runId] ?? {
+            runId,
+            sourceDelayIds: [],
+            totalProjectedDelayMinutes: 0,
+            impactedStopCount: 0,
+            requiresCmmsFollowup: false,
+            notableDelayTypes: [],
+            downstreamStops: []
+          },
+        notableDelayTypes: demoNotableDelayTypes[propertyCode],
+        delayWorkOrders: demoDelayWorkOrders[propertyCode],
+        delayTemplates: demoDelayTemplates[propertyCode],
         consist: demoConsistEquipment[propertyCode],
         crew: demoCrewAssignments[propertyCode],
         fareEnforcement: demoFareEnforcement[propertyCode],
+        fareHistory: { items: [] },
         approvalHistory: getFallbackApprovalHistory(propertyCode, runId),
         scheduleApprovalHistory: getFallbackApprovalHistory(propertyCode, runId),
+        eventHistory: { items: [] },
+        impactSummary: deriveImpactSummary(
+          demoTrainRuns[propertyCode].items.find((run) => run.id === runId),
+          demoStationStops[propertyCode],
+          demoDelayEvents[propertyCode],
+          demoDelayAdditionalInfo[propertyCode]
+        ),
+        scheduleApprovalSummary: deriveScheduleApprovalSummary(
+          demoTrainRuns[propertyCode],
+          demoTrainRuns[propertyCode].items.find((run) => run.id === runId)?.scheduleId ?? null,
+          deriveImpactSummary(
+            demoTrainRuns[propertyCode].items.find((run) => run.id === runId),
+            demoStationStops[propertyCode],
+            demoDelayEvents[propertyCode],
+            demoDelayAdditionalInfo[propertyCode]
+          )
+        ),
+        trainRunStatus: {
+          runId,
+          status:
+            demoTrainRuns[propertyCode].items.find((run) => run.id === runId)?.status ?? "scheduled",
+          comment: "",
+          updatedAt: null,
+          updatedBy: null
+        },
         fareDashboard: getFallbackFareDashboard(propertyCode, demoTrainRuns[propertyCode]),
         fareSummary: demoFareEnforcementSummary[propertyCode],
         source: "fallback",
@@ -512,6 +1112,137 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     }
   }
 
+  async function initializeRunsForDate(request: TrainRunInitializeRequest) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const result = await initializeTrainRuns(propertyCode, request);
+      setState((current) => {
+        const existingIds = new Set(current.runs.items.map((item) => item.id));
+
+        return {
+          ...current,
+          runs: {
+            items: [
+              ...result.createdRuns.filter((item) => !existingIds.has(item.id)),
+              ...current.runs.items
+            ]
+          },
+          selectedRunId: result.createdRuns[0]?.id ?? current.selectedRunId,
+          isSaving: false
+        };
+      });
+
+      if (result.createdRuns[0]) {
+        await selectRun(result.createdRuns[0].id);
+      }
+
+      return result;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function saveRunStatus(runId: string, update: TrainRunStatusUpdate) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const [record, eventHistory] = await Promise.all([
+        updateTrainRunStatus(propertyCode, runId, update),
+        fetchTrainRunEventHistory(propertyCode, runId)
+      ]);
+      setState((current) => ({
+        ...current,
+        trainRunStatus: record,
+        eventHistory,
+        runs: {
+          items: current.runs.items.map((item) =>
+            item.id === runId ? { ...item, status: update.status } : item
+          )
+        },
+        isSaving: false
+      }));
+      return record;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function resetRun(runId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const run = await resetTrainRun(propertyCode, runId);
+      setState((current) => ({
+        ...current,
+        runs: {
+          items: current.runs.items.map((item) => (item.id === runId ? run : item))
+        },
+        delayEvents: {
+          items: []
+        },
+        delayAdditionalInfo: {},
+        consist: {
+          items: []
+        },
+        crew: {
+          items: []
+        },
+        fareEnforcement: {
+          items: []
+        },
+        isSaving: false
+      }));
+      return run;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function removeRun(runId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const result = await deleteTrainRun(propertyCode, runId);
+      setState((current) => {
+        const nextRuns = current.runs.items.filter((item) => item.id !== runId);
+        const nextSelectedRunId = current.selectedRunId === runId ? nextRuns[0]?.id ?? null : current.selectedRunId;
+
+        return {
+          ...current,
+          runs: {
+            items: nextRuns
+          },
+          selectedRunId: nextSelectedRunId,
+          approvalHistory:
+            current.selectedRunId === runId ? { items: [] } : current.approvalHistory,
+          scheduleApprovalHistory:
+            current.selectedRunId === runId ? { items: [] } : current.scheduleApprovalHistory,
+          delayEvents:
+            current.selectedRunId === runId ? { items: [] } : current.delayEvents,
+          delayAdditionalInfo:
+            current.selectedRunId === runId ? {} : current.delayAdditionalInfo,
+          consist:
+            current.selectedRunId === runId ? { items: [] } : current.consist,
+          crew:
+            current.selectedRunId === runId ? { items: [] } : current.crew,
+          stationStops:
+            current.selectedRunId === runId ? { items: [] } : current.stationStops,
+          fareEnforcement:
+            current.selectedRunId === runId ? { items: [] } : current.fareEnforcement,
+          isSaving: false
+        };
+      });
+      return result;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
   async function saveStop(runId: string, stopId: string, update: StationStopUpdate) {
     setState((current) => ({ ...current, isSaving: true }));
 
@@ -556,6 +1287,232 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         isSaving: false
       }));
       return delay;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function saveDelayMetadata(delayId: string, update: DelayAdditionalInfoUpdate) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const next = await updateDelayAdditionalInfo(propertyCode, delayId, update);
+      setState((current) => ({
+        ...current,
+        delayAdditionalInfo: {
+          ...current.delayAdditionalInfo,
+          [delayId]: next
+        },
+        isSaving: false
+      }));
+      return next;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function createWorkOrder(delayId: string, input: DelayWorkOrderCreate) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const workOrder = await createDelayWorkOrder(propertyCode, delayId, input);
+      const [delayAdditionalInfo, delayPropagationPreview] = state.selectedRunId
+        ? await Promise.all([
+            fetchDelayAdditionalInfo(propertyCode, delayId),
+            fetchDelayPropagationPreview(propertyCode, state.selectedRunId)
+          ])
+        : [await fetchDelayAdditionalInfo(propertyCode, delayId), state.delayPropagationPreview];
+
+      setState((current) => ({
+        ...current,
+        delayAdditionalInfo: {
+          ...current.delayAdditionalInfo,
+          [delayId]: delayAdditionalInfo
+        },
+        delayWorkOrders: {
+          ...current.delayWorkOrders,
+          [delayId]: workOrder
+        },
+        delayPropagationPreview,
+        isSaving: false
+      }));
+      return workOrder;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function clearDelayMetadata(delayId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const result = await deleteDelayAdditionalInfo(propertyCode, delayId);
+
+      if (state.selectedRunId) {
+        const [delayAdditionalInfo, eventHistory, impactSummary] = await Promise.all([
+          Promise.resolve(
+            Object.fromEntries(
+              Object.entries(state.delayAdditionalInfo).filter(([id]) => id !== delayId)
+            )
+          ),
+          fetchTrainRunEventHistory(propertyCode, state.selectedRunId),
+          fetchTrainRunImpactSummary(propertyCode, state.selectedRunId)
+        ]);
+
+        setState((current) => ({
+          ...current,
+          delayAdditionalInfo,
+          delayWorkOrders: Object.fromEntries(
+            Object.entries(current.delayWorkOrders).filter(([id]) => id !== delayId)
+          ),
+          eventHistory,
+          impactSummary,
+          delayPropagationPreview: current.selectedRunId === state.selectedRunId
+            ? current.delayPropagationPreview
+            : current.delayPropagationPreview,
+          isSaving: false
+        }));
+      } else {
+        setState((current) => ({ ...current, isSaving: false }));
+      }
+
+      return result;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function createDelayBatch(runId: string, input: DelayEventBatchCreate) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const created = await createDelayEvents(propertyCode, runId, input);
+      setState((current) => {
+        const nextItems = [...created.items, ...current.delayEvents.items];
+        const nextDelayMinutes = nextItems.reduce((total, candidate) => total + candidate.minutes, 0);
+
+        return {
+          ...current,
+          delayEvents: {
+            items: nextItems
+          },
+          delayAdditionalInfo: {
+            ...current.delayAdditionalInfo,
+            ...Object.fromEntries(
+              created.items.map((delay) => [
+                delay.id,
+                {
+                  delayId: delay.id,
+                  locationDetail: "",
+                  responsibleParty: "",
+                  notableDelayType: "",
+                  specialMovementId: null,
+                  workOrderId: null,
+                  mechanicalNotes: "",
+                  passengerImpactSummary: ""
+                }
+              ])
+            )
+          },
+          delayWorkOrders: current.delayWorkOrders,
+          runs: {
+            items: current.runs.items.map((item) =>
+              item.id === runId
+                ? {
+                    ...item,
+                    delayMinutes: nextDelayMinutes,
+                    status: nextDelayMinutes > 0 ? "delayed" : item.status
+                  }
+                : item
+            )
+          },
+          isSaving: false
+        };
+      });
+      return created;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function createDelayTemplate(runId: string, templateId: string, reportedAt: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const delay = await createDelayFromTemplate(propertyCode, runId, {
+        templateId,
+        reportedAt
+      });
+      const additionalInfo = await fetchDelayAdditionalInfo(propertyCode, delay.id);
+      setState((current) => {
+        const nextItems = [delay, ...current.delayEvents.items];
+        const nextDelayMinutes = nextItems.reduce((total, candidate) => total + candidate.minutes, 0);
+
+        return {
+          ...current,
+          delayEvents: {
+            items: nextItems
+          },
+          delayAdditionalInfo: {
+            ...current.delayAdditionalInfo,
+            [delay.id]: additionalInfo
+          },
+          runs: {
+            items: current.runs.items.map((item) =>
+              item.id === runId
+                ? {
+                    ...item,
+                    delayMinutes: nextDelayMinutes,
+                    status: nextDelayMinutes > 0 ? "delayed" : item.status
+                  }
+                : item
+            )
+          },
+          isSaving: false
+        };
+      });
+      return delay;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function removeDelay(runId: string, delayId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const result = await deleteDelayEvent(propertyCode, runId, delayId);
+      setState((current) => ({
+        ...current,
+        delayEvents: {
+          items: current.delayEvents.items.filter((item) => item.id !== delayId)
+        },
+        delayAdditionalInfo: Object.fromEntries(
+          Object.entries(current.delayAdditionalInfo).filter(([id]) => id !== delayId)
+        ),
+        delayWorkOrders: Object.fromEntries(
+          Object.entries(current.delayWorkOrders).filter(([id]) => id !== delayId)
+        ),
+        runs: {
+          items: current.runs.items.map((item) =>
+            item.id === runId
+              ? {
+                  ...item,
+                  delayMinutes: result.delayMinutes,
+                  status: result.delayMinutes > 0 ? "delayed" : "in_progress"
+                }
+              : item
+          )
+        },
+        isSaving: false
+      }));
+      return result;
     } catch (error) {
       setState((current) => ({ ...current, isSaving: false }));
       throw error;
@@ -610,9 +1567,10 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     setState((current) => ({ ...current, isSaving: true }));
 
     try {
-      const [record, fareDashboard] = await Promise.all([
+      const [record, fareDashboard, fareHistory] = await Promise.all([
         updateFareEnforcement(propertyCode, recordId, update),
-        fetchFareEnforcementDashboard(propertyCode)
+        fetchFareEnforcementDashboard(propertyCode),
+        fetchFareEnforcementHistory(propertyCode, recordId)
       ]);
       setState((current) => {
         const nextItems = current.fareEnforcement.items.map((item) => (item.id === recordId ? record : item));
@@ -622,6 +1580,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
           fareEnforcement: {
             items: nextItems
           },
+          fareHistory,
           fareDashboard,
           fareSummary: {
             items: current.fareSummary.items.map((item) =>
@@ -646,6 +1605,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         createFareEnforcement(propertyCode, input),
         fetchFareEnforcementDashboard(propertyCode)
       ]);
+      const fareHistory = await fetchFareEnforcementHistory(propertyCode, record.id);
       setState((current) => {
         const nextFareItems =
           current.selectedRunId === record.runId
@@ -663,6 +1623,12 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
           fareEnforcement: {
             items: nextFareItems
           },
+          fareHistory:
+            current.selectedRunId === record.runId
+              ? {
+                  items: fareHistory.items.filter((item) => item.recordId === record.id)
+                }
+              : current.fareHistory,
           fareDashboard,
           fareSummary: {
             items: existingSummary
@@ -681,16 +1647,128 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     }
   }
 
+  async function loadFareHistory(recordId: string | null) {
+    if (!recordId) {
+      setState((current) => ({
+        ...current,
+        fareHistory: { items: [] }
+      }));
+      return;
+    }
+
+    try {
+      const fareHistory = await fetchFareEnforcementHistory(propertyCode, recordId);
+      setState((current) => ({
+        ...current,
+        fareHistory
+      }));
+    } catch {
+      setState((current) => ({
+        ...current,
+        fareHistory: { items: [] }
+      }));
+    }
+  }
+
+  async function deleteFare(recordId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const [result, fareDashboard] = await Promise.all([
+        deleteFareEnforcementRecord(propertyCode, recordId),
+        fetchFareEnforcementDashboard(propertyCode)
+      ]);
+      setState((current) => {
+        const nextItems = current.fareEnforcement.items.filter((item) => item.id !== recordId);
+        const nextRunItems = nextItems.filter((item) => item.runId === result.runId);
+        const nextSummaryItem = nextRunItems.length
+          ? summarizeFareRun(nextRunItems, result.runId)
+          : null;
+
+        return {
+          ...current,
+          fareEnforcement: {
+            items: nextItems
+          },
+          fareHistory: {
+            items: []
+          },
+          fareDashboard,
+          fareSummary: {
+            items: nextSummaryItem
+              ? current.fareSummary.items.map((item) =>
+                  item.runId === result.runId ? nextSummaryItem : item
+                )
+              : current.fareSummary.items.filter((item) => item.runId !== result.runId)
+          },
+          isSaving: false
+        };
+      });
+      return result;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function swapConsist(runId: string, templateId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const consist = await swapConsistEquipment(propertyCode, runId, { templateId });
+      setState((current) => ({
+        ...current,
+        consist,
+        isSaving: false
+      }));
+      return consist;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
+  async function swapCrew(runId: string, templateId: string) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const crew = await swapCrewAssignments(propertyCode, runId, { templateId });
+      setState((current) => ({
+        ...current,
+        crew,
+        isSaving: false
+      }));
+      return crew;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
   return {
     ...state,
     selectRun,
     saveRunApproval,
     saveBatchRunApproval,
+    initializeRuns: initializeRunsForDate,
+    saveRunStatus,
+    resetRun,
+    deleteRun: removeRun,
     saveStop,
     saveDelay,
+    saveDelayAdditionalInfo: saveDelayMetadata,
+    clearDelayAdditionalInfo: clearDelayMetadata,
+    createDelayBatch,
+    createDelayTemplate,
+    createWorkOrder,
+    deleteDelay: removeDelay,
     saveConsist,
     saveCrew,
+    swapConsist,
+    swapCrew,
     saveFare,
-    createFare
+    createFare,
+    loadFareHistory,
+    deleteFare
   };
 }

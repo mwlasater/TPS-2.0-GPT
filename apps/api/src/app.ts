@@ -6,7 +6,10 @@ import Fastify from "fastify";
 import { ZodError } from "zod";
 
 import { createErrorResponse } from "./lib/errors.js";
+import { getUserIdentityFromClaims, verifyJwtToken } from "./lib/jwt-auth.js";
+import { ensurePropertyPermission } from "./lib/permissions.js";
 import { ensurePropertyAccess } from "./lib/tenant-access.js";
+import { loadPersistedUserAuthorization } from "./lib/user-session-auth.js";
 import { registerBootstrapRoutes } from "./routes/bootstrap.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerAdminRoutes } from "./routes/admin.js";
@@ -17,6 +20,7 @@ import { registerSettingsRoutes } from "./routes/settings.js";
 import { registerUserRoutes } from "./routes/users.js";
 import { createDataAccess } from "./repositories/create-data-access.js";
 import type { DataAccess } from "./repositories/contracts.js";
+import { getPostgresPool } from "./repositories/postgres-client.js";
 
 class HttpError extends Error {
   statusCode: number;
@@ -33,6 +37,10 @@ declare module "fastify" {
     dataAccess: DataAccess;
     authenticate: (request: import("fastify").FastifyRequest) => Promise<void>;
     requireProperty: (request: import("fastify").FastifyRequest) => Promise<void>;
+    requirePermission: (
+      request: import("fastify").FastifyRequest,
+      permission: string
+    ) => Promise<void>;
   }
 
   interface FastifyRequest {
@@ -43,10 +51,6 @@ declare module "fastify" {
 
 export function buildApp(env: NodeJS.ProcessEnv = process.env) {
   const config = loadConfig(env);
-
-  if (config.NODE_ENV === "production") {
-    throw new Error("auth.production_verification_missing");
-  }
 
   const app = Fastify({
     logger:
@@ -74,17 +78,63 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
       throw new HttpError(401, "auth.required");
     }
 
-    const devSession = createDevelopmentSession(
-      token,
-      config.JWT_DEV_TOKEN,
-      (config.userPropertyAccess["local-dev-user"] ?? []) as PropertyCode[]
-    );
+    let identity: Pick<UserSession, "id" | "email" | "displayName">;
 
-    if (!devSession) {
-      throw new HttpError(401, "auth.invalid");
+    try {
+      identity =
+        config.JWT_AUTH_MODE === "development"
+          ? (() => {
+              const session = createDevelopmentSession(
+                token,
+                config.JWT_DEV_TOKEN,
+                [],
+                {}
+              );
+
+              if (!session) {
+                throw new HttpError(401, "auth.invalid");
+              }
+
+              return {
+                id: session.id,
+                email: session.email,
+                displayName: session.displayName
+              };
+            })()
+          : getUserIdentityFromClaims(
+              await verifyJwtToken(token, {
+                audience: config.JWT_AUDIENCE,
+                issuer: config.JWT_ISSUER,
+                jwksUri: config.JWT_JWKS_URI,
+                clockToleranceSeconds: config.JWT_CLOCK_TOLERANCE_SECONDS
+              })
+            );
+    } catch (error) {
+      if (error instanceof HttpError) {
+        throw error;
+      }
+
+      const message = error instanceof Error ? error.message : "auth.invalid";
+      throw new HttpError(401, message.startsWith("auth.") ? message : "auth.invalid");
     }
 
-    request.user = devSession;
+    const authorizationContext =
+      config.DATA_ACCESS_MODE === "postgres"
+        ? await loadPersistedUserAuthorization(getPostgresPool(config), identity.id)
+        : {
+            allowedProperties: (config.userPropertyAccess[identity.id] ?? []) as PropertyCode[],
+            propertyPermissions: (config.userPropertyPermissions[identity.id] ?? {}) as Partial<
+              Record<PropertyCode, string[]>
+            >
+          };
+
+    request.user = {
+      id: identity.id,
+      email: identity.email,
+      displayName: identity.displayName,
+      allowedProperties: authorizationContext.allowedProperties,
+      propertyPermissions: authorizationContext.propertyPermissions
+    };
   });
 
   app.decorate("requireProperty", async (request) => {
@@ -100,6 +150,15 @@ export function buildApp(env: NodeJS.ProcessEnv = process.env) {
         throw new HttpError(400, message);
       }
 
+      throw new HttpError(403, message);
+    }
+  });
+
+  app.decorate("requirePermission", async (request, permission) => {
+    try {
+      ensurePropertyPermission(request.user, request.property, permission);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "permission.forbidden";
       throw new HttpError(403, message);
     }
   });

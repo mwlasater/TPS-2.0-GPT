@@ -5,7 +5,7 @@ import type {
   TrainRunApprovalUpdate
 } from "@tps/types";
 
-const historyCatalog: Partial<Record<PropertyCode, TrainRunApprovalHistoryEntry[]>> = {
+const initialHistoryCatalog: Partial<Record<PropertyCode, TrainRunApprovalHistoryEntry[]>> = {
   caltrain: [
     {
       id: "approval-caltrain-1",
@@ -27,6 +27,20 @@ const historyCatalog: Partial<Record<PropertyCode, TrainRunApprovalHistoryEntry[
     }
   ]
 };
+
+const historyCatalog: Partial<Record<PropertyCode, TrainRunApprovalHistoryEntry[]>> =
+  cloneHistoryCatalog(initialHistoryCatalog);
+
+function cloneHistoryCatalog(
+  source: Partial<Record<PropertyCode, TrainRunApprovalHistoryEntry[]>>
+): Partial<Record<PropertyCode, TrainRunApprovalHistoryEntry[]>> {
+  return Object.fromEntries(
+    Object.entries(source).map(([propertyCode, items]) => [
+      propertyCode,
+      items.map((item) => ({ ...item }))
+    ])
+  ) as Partial<Record<PropertyCode, TrainRunApprovalHistoryEntry[]>>;
+}
 
 export function listTrainRunApprovalHistory(
   propertyCode: PropertyCode,
@@ -68,4 +82,20 @@ export function recordTrainRunApprovalHistory(
   historyCatalog[propertyCode]!.unshift(entry);
 
   return entry;
+}
+
+export function deleteTrainRunApprovalHistory(propertyCode: PropertyCode, runId: string): void {
+  if (!historyCatalog[propertyCode]) {
+    return;
+  }
+
+  historyCatalog[propertyCode] = historyCatalog[propertyCode]!.filter((entry) => entry.runId !== runId);
+}
+
+export function resetApprovalHistoryData(): void {
+  for (const propertyCode of Object.keys(historyCatalog) as PropertyCode[]) {
+    delete historyCatalog[propertyCode];
+  }
+
+  Object.assign(historyCatalog, cloneHistoryCatalog(initialHistoryCatalog));
 }

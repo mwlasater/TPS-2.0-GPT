@@ -9,6 +9,7 @@
     "lint": "eslint src --ext .ts",
     "migrate": "tsx src/db/migrate.ts up",
     "migrate:status": "tsx src/db/migrate.ts status",
+    "migrate:validate": "tsx src/db/validate-migration.ts",
     "seed": "tsx src/db/seed.ts up",
     "seed:status": "tsx src/db/seed.ts status",
     "start": "node dist/server.js",

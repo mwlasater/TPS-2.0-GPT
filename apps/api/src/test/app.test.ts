@@ -1,6 +1,25 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import crypto from "node:crypto";
+
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "../app.js";
+import { resetManagedUsers } from "../lib/managed-users.js";
+import { resetApprovalHistoryData } from "../lib/approval-history-data.js";
+import { resetBaselineData } from "../lib/baseline-data.js";
+import { resetUserAdminHistoryData } from "../lib/user-admin-history-data.js";
+import { resetFareEnforcementData } from "../lib/fare-enforcement-data.js";
+import { resetOperationsData } from "../lib/operations-data.js";
+import { resetPersonnelData } from "../lib/personnel-data.js";
+import { resetPermissionGroups } from "../lib/permission-groups.js";
+import { resetPlatformData } from "../lib/platform-data.js";
+import { resetReferenceData } from "../lib/reference-data.js";
+import { resetReportConfigData } from "../lib/report-config.js";
+import { resetRunDetailData } from "../lib/run-detail-data.js";
+import { resetRunResourceData } from "../lib/run-resource-data.js";
+import { resetTrainRunEventHistoryData } from "../lib/train-run-event-history-data.js";
+import { resetTrainRunStatusData } from "../lib/train-run-status-data.js";
+import { resetUserAdminData } from "../lib/user-admin-data.js";
+import { resetJwkCache } from "../lib/jwt-auth.js";
 
 const env = {
   NODE_ENV: "test",
@@ -10,18 +29,48 @@ const env = {
   API_PREFIX: "/api/v1",
   WEB_ORIGIN: "http://localhost:5173",
   DATABASE_URL: "postgres://tps:tps@localhost:5432/tps",
+  JWT_AUTH_MODE: "development",
   JWT_AUDIENCE: "tps-2.0",
   JWT_ISSUER: "https://login.microsoftonline.com/example/v2.0",
+  JWT_JWKS_URI: "",
+  JWT_CLOCK_TOLERANCE_SECONDS: "30",
   JWT_DEV_TOKEN: "local-dev-token",
   PROPERTY_CODES: "caltrain,capmetro,tre",
-  USER_PROPERTY_ACCESS: "local-dev-user:caltrain|capmetro"
+  USER_PROPERTY_ACCESS: "local-dev-user:caltrain|capmetro",
+  USER_PROPERTY_PERMISSIONS:
+    "local-dev-user@caltrain:schedules.write|runs.approve|runs.write|stops.write|delays.write|consist.write|crew.assign|fare.write|users.invite|users.manage|users.access.write|admin.permissions.write|reports.schedule|notifications.write|staffing.write,local-dev-user@capmetro:schedules.write|runs.approve|runs.write|stops.write|delays.write|consist.write|crew.assign|fare.write|users.invite|users.manage|users.access.write|admin.permissions.write|reports.schedule|notifications.write|staffing.write"
 };
 
 describe("app contracts", () => {
   const app = buildApp(env);
 
+  function resetMockState() {
+    resetApprovalHistoryData();
+    resetFareEnforcementData();
+    resetOperationsData();
+    resetPersonnelData();
+    resetPermissionGroups();
+    resetPlatformData();
+    resetReferenceData();
+    resetReportConfigData();
+    resetRunDetailData();
+    resetRunResourceData();
+    resetTrainRunEventHistoryData();
+    resetTrainRunStatusData();
+    resetManagedUsers();
+    resetBaselineData();
+    resetUserAdminData();
+    resetUserAdminHistoryData();
+    resetJwkCache();
+  }
+
   beforeAll(async () => {
+    resetMockState();
     await app.ready();
+  });
+
+  beforeEach(() => {
+    resetMockState();
   });
 
   afterAll(async () => {
@@ -47,7 +96,17 @@ describe("app contracts", () => {
         ...env,
         NODE_ENV: "production"
       })
-    ).toThrow("auth.dev_token_forbidden");
+    ).toThrow("auth.dev_mode_forbidden");
+  });
+
+  it("rejects jwks mode when the JWKS URI is missing", () => {
+    expect(() =>
+      buildApp({
+        ...env,
+        JWT_AUTH_MODE: "jwks",
+        JWT_JWKS_URI: ""
+      })
+    ).toThrow("auth.jwks_uri_required");
   });
 
   it("rejects missing property headers on protected routes", async () => {
@@ -93,10 +152,106 @@ describe("app contracts", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       user: {
-        id: "local-dev-user"
+        id: "local-dev-user",
+        propertyPermissions: {
+          caltrain: expect.arrayContaining([
+            "schedules.write",
+            "runs.approve",
+            "runs.write",
+            "stops.write",
+            "delays.write",
+            "consist.write",
+            "crew.assign",
+            "fare.write",
+            "users.invite",
+            "users.manage",
+            "users.access.write",
+            "admin.permissions.write",
+            "reports.schedule",
+            "notifications.write",
+            "staffing.write"
+          ])
+        }
       },
       defaultProperty: "caltrain"
     });
+  });
+
+  it("accepts jwks-backed JWTs and derives the authenticated user from claims", async () => {
+    const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
+      modulusLength: 2048
+    });
+    const publicJwk = publicKey.export({
+      format: "jwk"
+    }) as crypto.JsonWebKey;
+    const encode = (value: unknown) =>
+      Buffer.from(JSON.stringify(value)).toString("base64url");
+    const header = {
+      alg: "RS256",
+      typ: "JWT",
+      kid: "test-key"
+    };
+    const payload = {
+      aud: env.JWT_AUDIENCE,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iss: env.JWT_ISSUER,
+      name: "Entra Operator",
+      oid: "entra-user-1",
+      preferred_username: "operator@herzog.com"
+    };
+    const signingInput = `${encode(header)}.${encode(payload)}`;
+    const signature = crypto.sign("RSA-SHA256", Buffer.from(signingInput), privateKey)
+      .toString("base64url");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        keys: [
+          {
+            ...publicJwk,
+            alg: "RS256",
+            kid: "test-key",
+            use: "sig"
+          }
+        ]
+      })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const jwksApp = buildApp({
+      ...env,
+      JWT_AUTH_MODE: "jwks",
+      JWT_JWKS_URI: "https://auth.example/.well-known/jwks.json",
+      USER_PROPERTY_ACCESS: "entra-user-1:caltrain",
+      USER_PROPERTY_PERMISSIONS: "entra-user-1@caltrain:runs.write|delays.write"
+    });
+
+    await jwksApp.ready();
+
+    const response = await jwksApp.inject({
+      method: "GET",
+      url: "/api/v1/auth/session",
+      headers: {
+        authorization: `Bearer ${signingInput}.${signature}`
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      user: {
+        id: "entra-user-1",
+        email: "operator@herzog.com",
+        displayName: "Entra Operator",
+        propertyPermissions: {
+          caltrain: ["runs.write", "delays.write"]
+        }
+      },
+      defaultProperty: "caltrain"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("https://auth.example/.well-known/jwks.json");
+
+    await jwksApp.close();
+    vi.unstubAllGlobals();
   });
 
   it("returns property settings for authorized property context", async () => {
@@ -216,6 +371,142 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns reporting preferences and scheduled email jobs for authorized property context", async () => {
+    const preferencesResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/reports/preferences",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const emailJobsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/reports/scheduled-emails",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(preferencesResponse.statusCode).toBe(200);
+    expect(emailJobsResponse.statusCode).toBe(200);
+    expect(preferencesResponse.json().items[0]).toMatchObject({
+      reportName: "Daily OTP"
+    });
+    expect(emailJobsResponse.json().items[0]).toMatchObject({
+      reportName: "Daily OTP"
+    });
+  });
+
+  it("updates permission groups for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/permission-groups/ops-admin",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        description: "Expanded operational admin coverage.",
+        permissions: ["schedules.write", "runs.approve", "reports.schedule"]
+      }
+    });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/permission-groups",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json().items.find((group: { id: string }) => group.id === "ops-admin")).toMatchObject({
+      description: "Expanded operational admin coverage.",
+      permissions: ["schedules.write", "runs.approve", "reports.schedule"]
+    });
+  });
+
+  it("creates and deletes permission groups for authorized property context", async () => {
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/permission-groups",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        name: "Service Review",
+        description: "Review-focused access for service and incident oversight.",
+        permissions: ["reports.view", "reports.schedule", "delays.write"]
+      }
+    });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/permission-groups",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const createdGroup = listResponse.json().items.find((group: { name: string }) => group.name === "Service Review");
+
+    const deleteResponse = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/permission-groups/${createdGroup.id}`,
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(createResponse.statusCode).toBe(200);
+    expect(createdGroup).toMatchObject({
+      name: "Service Review",
+      permissions: ["reports.view", "reports.schedule", "delays.write"]
+    });
+    expect(deleteResponse.statusCode).toBe(200);
+    expect(deleteResponse.json()).toMatchObject({
+      deletedGroupId: createdGroup.id
+    });
+  });
+
+  it("rejects permission group writes without admin permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:users.manage"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "POST",
+      url: "/api/v1/permission-groups",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        name: "Service Review",
+        description: "Review-focused access for service and incident oversight.",
+        permissions: ["reports.view", "reports.schedule", "delays.write"]
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
+  });
+
   it("updates report configuration for authorized property context", async () => {
     const response = await app.inject({
       method: "PUT",
@@ -239,6 +530,36 @@ describe("app contracts", () => {
     });
   });
 
+  it("rejects report configuration updates without report scheduling permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:users.manage"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/report-config/report-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        audience: "Dispatch Leadership",
+        embedEnabled: false,
+        schedule: "07:00 daily"
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
+  });
+
   it("rejects invalid report configuration payloads", async () => {
     const response = await app.inject({
       method: "PUT",
@@ -257,6 +578,158 @@ describe("app contracts", () => {
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({
       error: "validation.failed"
+    });
+  });
+
+  it("updates report preferences and scheduled email jobs for authorized property context", async () => {
+    const preferenceResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/reports/preferences/report-pref-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        visibleColumns: ["trainNumber", "otpPercent"],
+        sortOrder: "reportName asc",
+        filtersSummary: "Leadership default"
+      }
+    });
+
+    const createJobResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/reports/scheduled-emails",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        reportName: "Daily OTP",
+        recipientGroup: "Operations Leadership",
+        schedule: "12:00 daily",
+        format: "pdf",
+        enabled: true
+      }
+    });
+
+    expect(preferenceResponse.statusCode).toBe(200);
+    expect(preferenceResponse.json()).toMatchObject({
+      sortOrder: "reportName asc"
+    });
+    expect(createJobResponse.statusCode).toBe(200);
+    expect(createJobResponse.json()).toMatchObject({
+      reportName: "Daily OTP",
+      schedule: "12:00 daily"
+    });
+  });
+
+  it("creates and lists report delivery requests for authorized property context", async () => {
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/reports/deliveries",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        reportName: "Delay Detail",
+        format: "xlsx",
+        deliveryMode: "email",
+        recipient: "dispatch.leadership@herzog.com",
+        notes: "On-demand review packet."
+      }
+    });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/reports/deliveries",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(createResponse.statusCode).toBe(200);
+    expect(createResponse.json()).toMatchObject({
+      reportName: "Delay Detail",
+      deliveryMode: "email",
+      status: "sent"
+    });
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json().items[0]).toMatchObject({
+      reportName: expect.any(String),
+      deliveryMode: expect.any(String)
+    });
+  });
+
+  it("executes live reports and updates delivery status for authorized property context", async () => {
+    const executeResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/reports/live/live-report-otp/execute",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        format: "pdf",
+        deliveryMode: "download",
+        recipient: "Operations Leadership",
+        filtersSummary: "Current operating day",
+        notes: "Generated leadership packet."
+      }
+    });
+
+    const executionsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/reports/live/executions",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const updateDeliveryResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/reports/deliveries/report-delivery-1/status",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        status: "queued",
+        notes: "Held for dispatch review."
+      }
+    });
+
+    const retryDeliveryResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/reports/deliveries/report-delivery-1/retry",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(executeResponse.statusCode).toBe(200);
+    expect(executeResponse.json()).toMatchObject({
+      reportName: "Daily OTP Live",
+      deliveryMode: "download",
+      status: "generated"
+    });
+    expect(executionsResponse.statusCode).toBe(200);
+    expect(executionsResponse.json().items[0]).toMatchObject({
+      reportId: "live-report-otp",
+      status: expect.any(String)
+    });
+    expect(updateDeliveryResponse.statusCode).toBe(200);
+    expect(updateDeliveryResponse.json()).toMatchObject({
+      id: "report-delivery-1",
+      status: "queued"
+    });
+    expect(retryDeliveryResponse.statusCode).toBe(200);
+    expect(retryDeliveryResponse.json()).toMatchObject({
+      id: "report-delivery-1",
+      retryCount: 1
     });
   });
 
@@ -286,6 +759,84 @@ describe("app contracts", () => {
     });
     expect(attendanceResponse.json().items[0]).toMatchObject({
       exceptionType: "absence"
+    });
+  });
+
+  it("returns attendance issues, history, and notification rules for authorized property context", async () => {
+    const issuesResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/attendance-issues",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const historyResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/attendance-history/personnel-2",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const rulesResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/attendance-notifications",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(issuesResponse.statusCode).toBe(200);
+    expect(historyResponse.statusCode).toBe(200);
+    expect(rulesResponse.statusCode).toBe(200);
+    expect(issuesResponse.json().items[0]).toMatchObject({
+      issueType: "absence"
+    });
+    expect(historyResponse.json()).toMatchObject({
+      employeeId: "personnel-2"
+    });
+    expect(rulesResponse.json().items[0]).toMatchObject({
+      issueType: "absence"
+    });
+  });
+
+  it("returns and updates personnel records for authorized property context", async () => {
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/personnel",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const updateResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/personnel/personnel-1/status",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        status: "on_leave",
+        primaryRole: "Engineer"
+      }
+    });
+
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json().items[0]).toMatchObject({
+      employeeName: "Jordan Reyes",
+      primaryRole: "Engineer"
+    });
+    expect(updateResponse.statusCode).toBe(200);
+    expect(updateResponse.json()).toMatchObject({
+      id: "personnel-1",
+      status: "on_leave",
+      primaryRole: "Engineer"
     });
   });
 
@@ -354,6 +905,49 @@ describe("app contracts", () => {
     });
   });
 
+  it("updates attendance issues and attendance notification rules for authorized property context", async () => {
+    const issueResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/attendance-issues/att-2",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        status: "resolved",
+        notes: "Supervisor review completed.",
+        endDate: "2026-03-06"
+      }
+    });
+
+    const createRuleResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/attendance-notifications",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        issueType: "absence",
+        triggerStatus: "open",
+        recipientGroup: "Dispatch Leadership",
+        templateName: "Attendance Escalation",
+        enabled: true
+      }
+    });
+
+    expect(issueResponse.statusCode).toBe(200);
+    expect(issueResponse.json()).toMatchObject({
+      status: "resolved",
+      endDate: "2026-03-06"
+    });
+    expect(createRuleResponse.statusCode).toBe(200);
+    expect(createRuleResponse.json()).toMatchObject({
+      issueType: "absence",
+      recipientGroup: "Dispatch Leadership"
+    });
+  });
+
   it("rejects invalid attendance exception payloads", async () => {
     const response = await app.inject({
       method: "PUT",
@@ -413,6 +1007,92 @@ describe("app contracts", () => {
     });
     expect(powerBiResponse.json().items[0]).toMatchObject({
       reportName: "Daily OTP"
+    });
+  });
+
+  it("creates file requests and Power BI sessions for authorized property context", async () => {
+    const fileResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/files",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        fileName: "caltrain-operations-export.csv",
+        category: "operations",
+        action: "download"
+      }
+    });
+
+    const sessionResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/power-bi/bi-1/session",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/power-bi/sessions",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(fileResponse.statusCode).toBe(200);
+    expect(fileResponse.json()).toMatchObject({
+      fileName: "caltrain-operations-export.csv",
+      category: "operations",
+      status: "available"
+    });
+    expect(sessionResponse.statusCode).toBe(200);
+    expect(sessionResponse.json()).toMatchObject({
+      reportId: "bi-1",
+      reportName: "Daily OTP"
+    });
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json().items[0]).toMatchObject({
+      reportId: "bi-1"
+    });
+  });
+
+  it("creates and lists CMMS sync jobs for authorized property context", async () => {
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/cmms/sync",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        workOrderId: "WO-1427",
+        assetId: "LOCO-120",
+        notes: "Sync locomotive fault work order to CMMS."
+      }
+    });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/cmms/sync",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(createResponse.statusCode).toBe(200);
+    expect(createResponse.json()).toMatchObject({
+      workOrderId: "WO-1427",
+      assetId: "LOCO-120",
+      status: "synced"
+    });
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json().items[0]).toMatchObject({
+      workOrderId: "WO-1427"
     });
   });
 
@@ -508,6 +1188,159 @@ describe("app contracts", () => {
     expect(actionsResponse.json().items[0]).toMatchObject({
       label: "Reset Password"
     });
+    expect(
+      actionsResponse.json().items.some((action: { id: string }) => action.id === "enable-user")
+    ).toBe(true);
+    expect(
+      actionsResponse.json().items.find((action: { id: string }) => action.id === "reset-password")
+    ).toMatchObject({
+      requiredPermission: "users.manage",
+      isAllowed: true
+    });
+  });
+
+  it("returns managed user admin history for authorized property context", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/users/ops-manager/history",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().items[0]).toMatchObject({
+      userId: "ops-manager",
+      action: "reset-password",
+      actorName: "Jordan Reyes"
+    });
+  });
+
+  it("creates managed users for the current property scope", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        displayName: "Morgan Lee",
+        email: "morgan.lee@herzog.com",
+        roleLabel: "Operations Analyst",
+        propertyAccess: ["caltrain"],
+        groups: ["Reporting Admin"]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      displayName: "Morgan Lee",
+      email: "morgan.lee@herzog.com",
+      status: "invited",
+      propertyAccess: ["caltrain"],
+      groups: ["Reporting Admin"],
+      lastAction: "Invitation sent on 2026-03-20"
+    });
+  });
+
+  it("records audit history for managed user invite and admin actions", async () => {
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        displayName: "Morgan Lee",
+        email: "morgan.lee@herzog.com",
+        roleLabel: "Operations Analyst",
+        propertyAccess: ["caltrain"],
+        groups: ["Reporting Admin"]
+      }
+    });
+
+    const createdUserId = createResponse.json().id as string;
+
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/users/${createdUserId}/actions/resend-invite`,
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const historyResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/users/${createdUserId}/history`,
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(historyResponse.statusCode).toBe(200);
+    expect(historyResponse.json().items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: "invite-user",
+          actorName: "Local Development User"
+        }),
+        expect.objectContaining({
+          action: "resend-invite",
+          actorName: "Local Development User"
+        })
+      ])
+    );
+  });
+
+  it("executes managed user admin actions", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/ops-manager/actions/disable-user",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: "ops-manager",
+      status: "disabled",
+      lastAction: "User disabled on 2026-03-13"
+    });
+  });
+
+  it("enables disabled managed users", async () => {
+    const disableResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/ops-manager/actions/disable-user",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const enableResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/ops-manager/actions/enable-user",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(disableResponse.statusCode).toBe(200);
+    expect(enableResponse.statusCode).toBe(200);
+    expect(enableResponse.json()).toMatchObject({
+      id: "ops-manager",
+      status: "active",
+      lastAction: "User enabled on 2026-03-20"
+    });
   });
 
   it("updates managed user property access", async () => {
@@ -588,6 +1421,91 @@ describe("app contracts", () => {
     });
   });
 
+  it("rejects managed user creation without invite permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:users.manage"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        displayName: "Morgan Lee",
+        email: "morgan.lee@herzog.com",
+        roleLabel: "Operations Analyst",
+        propertyAccess: ["caltrain"],
+        groups: ["Reporting Admin"]
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
+  });
+
+  it("rejects managed user actions without manage permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:users.invite"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "POST",
+      url: "/api/v1/users/ops-manager/actions/disable-user",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
+  });
+
+  it("rejects user access edits without access-write permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:users.manage|users.invite"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/users/ops-manager/property-access",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        propertyAccess: ["caltrain", "capmetro"]
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
+  });
+
   it("returns reference data for authorized property context", async () => {
     const response = await app.inject({
       method: "GET",
@@ -601,6 +1519,29 @@ describe("app contracts", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       delayReasons: expect.arrayContaining(["Mechanical"])
+    });
+  });
+
+  it("updates reference data for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/reference-data",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        delayReasons: ["Mechanical", "Signal delay", "Weather hold"],
+        crewRoles: ["Engineer", "Conductor", "Road Foreman"],
+        stationCodes: ["STA", "STB", "STX"]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      delayReasons: ["Mechanical", "Signal delay", "Weather hold"],
+      crewRoles: ["Engineer", "Conductor", "Road Foreman"],
+      stationCodes: ["STA", "STB", "STX"]
     });
   });
 
@@ -635,6 +1576,69 @@ describe("app contracts", () => {
     });
   });
 
+  it("initializes daily train runs for the selected schedules", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/initialize",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        operatingDate: "2026-03-07",
+        scheduleIds: ["ct-101"]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      createdRuns: [
+        {
+          scheduleId: "ct-101",
+          operatingDate: "2026-03-07",
+          isApproved: false
+        }
+      ],
+      skippedScheduleIds: []
+    });
+  });
+
+  it("resets editable train runs and clears operational data", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/reset",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: "caltrain-run-1",
+      status: "scheduled",
+      delayMinutes: 0,
+      crewAssigned: 0,
+      isApproved: false
+    });
+  });
+
+  it("deletes editable train runs", async () => {
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/train-runs/caltrain-run-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      deletedRunId: "caltrain-run-1"
+    });
+  });
+
   it("returns run detail stops and delays for authorized property context", async () => {
     const stopsResponse = await app.inject({
       method: "GET",
@@ -664,6 +1668,291 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns delay metadata catalogs and additional info", async () => {
+    const commonLocations = await app.inject({
+      method: "GET",
+      url: "/api/v1/delays/common-locations",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const specialMovements = await app.inject({
+      method: "GET",
+      url: "/api/v1/delays/special-movements",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const additionalInfo = await app.inject({
+      method: "GET",
+      url: "/api/v1/delays/delay-1/additional-info",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(commonLocations.statusCode).toBe(200);
+    expect(commonLocations.json().items[0]).toMatchObject({
+      label: "San Francisco"
+    });
+    expect(specialMovements.statusCode).toBe(200);
+    expect(specialMovements.json().items[0]).toMatchObject({
+      label: "Single-track meet"
+    });
+    expect(additionalInfo.statusCode).toBe(200);
+    expect(additionalInfo.json()).toMatchObject({
+      delayId: "delay-1",
+      responsibleParty: "Signal Maintainer"
+    });
+  });
+
+  it("returns delay templates for authorized property context", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/delays/templates",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().items[0]).toMatchObject({
+      id: "delay-template-signal",
+      name: "Signal Hold",
+      category: "Signal delay"
+    });
+  });
+
+  it("updates admin delay catalogs for authorized property context", async () => {
+    const commonLocationResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/delay-common-locations/loc-sfc",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        label: "San Francisco Terminal",
+        usageCount: 21
+      }
+    });
+
+    const templateResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/delay-templates/delay-template-signal",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        name: "Signal Hold Updated",
+        category: "Signal delay",
+        minutes: 5,
+        notes: "Signal clearance held at interlocking. Supervisor review added.",
+        notableDelayType: "Interlocking failure",
+        specialMovementId: "movement-single-track"
+      }
+    });
+
+    const movementResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/special-movements/movement-single-track",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        label: "Single-track meet Updated",
+        description: "Temporary meet requiring dispatch coordination. Updated for admin workflow."
+      }
+    });
+
+    expect(commonLocationResponse.statusCode).toBe(200);
+    expect(templateResponse.statusCode).toBe(200);
+    expect(movementResponse.statusCode).toBe(200);
+    expect(commonLocationResponse.json()).toMatchObject({ ok: true });
+    expect(templateResponse.json()).toMatchObject({ ok: true });
+    expect(movementResponse.json()).toMatchObject({ ok: true });
+  });
+
+  it("updates delay additional info for authorized property context", async () => {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/delays/delay-1/additional-info",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        locationDetail: "South approach to Palo Alto",
+        responsibleParty: "Dispatch",
+        notableDelayType: "Traffic interference",
+        specialMovementId: "movement-single-track",
+        workOrderId: "WO-2001",
+        mechanicalNotes: "No equipment fault observed.",
+        passengerImpactSummary: "Crowding pushed to next two stops."
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      delayId: "delay-1",
+      responsibleParty: "Dispatch",
+      workOrderId: "WO-2001"
+    });
+  });
+
+  it("rejects delay metadata updates without delay write permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:stops.write"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/delays/delay-1/additional-info",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        locationDetail: "South approach to Palo Alto",
+        responsibleParty: "Dispatch",
+        notableDelayType: "Traffic interference",
+        specialMovementId: "movement-single-track",
+        workOrderId: "WO-2001",
+        mechanicalNotes: "No equipment fault observed.",
+        passengerImpactSummary: "Crowding pushed to next two stops."
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
+  });
+
+  it("creates multiple delay events for editable train runs", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/train-runs/caltrain-run-1/delays/batch",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        delays: [
+          {
+            category: "Mechanical",
+            minutes: 2,
+            notes: "Door recycle at platform.",
+            reportedAt: "2026-03-06T06:30:00Z"
+          },
+          {
+            category: "Late crew",
+            minutes: 1,
+            notes: "Relief handoff behind schedule.",
+            reportedAt: "2026-03-06T06:33:00Z"
+          }
+        ]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      items: [
+        {
+          category: "Mechanical",
+          minutes: 2
+        },
+        {
+          category: "Late crew",
+          minutes: 1
+        }
+      ]
+    });
+  });
+
+  it("creates delay events from templates for editable train runs", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/train-runs/caltrain-run-1/delays/template",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        templateId: "delay-template-signal",
+        reportedAt: "2026-03-06T06:28:00Z"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      category: "Signal delay",
+      minutes: 4,
+      notes: "Signal clearance held at interlocking."
+    });
+  });
+
+  it("deletes delay events for editable train runs", async () => {
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/train-runs/caltrain-run-1/delays/delay-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      deletedId: "delay-1",
+      runId: "caltrain-run-1"
+    });
+  });
+
+  it("rejects delay event writes without delay write permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:stops.write"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/delays/delay-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        category: "Signal",
+        minutes: 12,
+        notes: "Dispatcher hold",
+        reportedAt: "2026-03-06T06:18:00Z"
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
+  });
+
   it("updates station stops for editable train runs", async () => {
     const response = await app.inject({
       method: "PUT",
@@ -685,6 +1974,36 @@ describe("app contracts", () => {
       actualTime: "06:07",
       boardings: 45
     });
+  });
+
+  it("rejects station stop updates without stop write permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:delays.write"
+    });
+
+    await restrictedApp.ready();
+
+    const response = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/stops/stop-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        actualTime: "06:07",
+        boardings: 45,
+        alightings: 3
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
   });
 
   it("updates consist and crew assignments for editable train runs", async () => {
@@ -728,6 +2047,59 @@ describe("app contracts", () => {
     });
   });
 
+  it("rejects consist and crew writes without the matching resource permissions", async () => {
+    const noConsistApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:crew.assign"
+    });
+    const noCrewApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:consist.write"
+    });
+
+    await noConsistApp.ready();
+    await noCrewApp.ready();
+
+    const consistResponse = await noConsistApp.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/consist/equip-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        position: 1,
+        status: "spare"
+      }
+    });
+
+    const crewResponse = await noCrewApp.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/crew/crew-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        role: "Engineer",
+        onDutyTime: "05:45",
+        status: "pending_relief"
+      }
+    });
+
+    expect(consistResponse.statusCode).toBe(403);
+    expect(consistResponse.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+    expect(crewResponse.statusCode).toBe(403);
+    expect(crewResponse.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await noConsistApp.close();
+    await noCrewApp.close();
+  });
+
   it("approves train runs for authorized property context", async () => {
     const response = await app.inject({
       method: "PUT",
@@ -749,6 +2121,52 @@ describe("app contracts", () => {
       isApproved: true,
       approvalBlockers: []
     });
+  });
+
+  it("rejects schedule initialization and run approval without the matching permissions", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:runs.write"
+    });
+
+    await restrictedApp.ready();
+
+    const initializeResponse = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/initialize",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        operatingDate: "2026-03-07",
+        scheduleIds: ["schedule-caltrain-101"]
+      }
+    });
+
+    const approvalResponse = await restrictedApp.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/approval",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        isApproved: true,
+        notes: "Ready for dispatch closeout."
+      }
+    });
+
+    expect(initializeResponse.statusCode).toBe(403);
+    expect(initializeResponse.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+    expect(approvalResponse.statusCode).toBe(403);
+    expect(approvalResponse.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
   });
 
   it("reopens approved train runs for authorized property context", async () => {
@@ -809,6 +2227,19 @@ describe("app contracts", () => {
   });
 
   it("returns schedule approval history for a train schedule", async () => {
+    const approvalResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/approval",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        isApproved: true,
+        notes: "Ready for schedule closeout."
+      }
+    });
+
     const response = await app.inject({
       method: "GET",
       url: "/api/v1/train-schedules/ct-101/approval-history",
@@ -818,6 +2249,7 @@ describe("app contracts", () => {
       }
     });
 
+    expect(approvalResponse.statusCode).toBe(200);
     expect(response.statusCode).toBe(200);
     expect(response.json().items[0]).toMatchObject({
       runId: "caltrain-run-1",
@@ -897,6 +2329,223 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns run impacts and schedule approval summaries for authorized property context", async () => {
+    const impactResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/impacts",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const summaryResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-schedules/ct-101/approval-summary",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(impactResponse.statusCode).toBe(200);
+    expect(impactResponse.json()).toMatchObject({
+      runId: "caltrain-run-1",
+      totalDelayMinutes: expect.any(Number),
+      impactedStationCount: expect.any(Number),
+      downstreamStations: expect.arrayContaining([
+        expect.objectContaining({
+          stationCode: "STA"
+        })
+      ])
+    });
+    expect(summaryResponse.statusCode).toBe(200);
+    expect(summaryResponse.json()).toMatchObject({
+      scheduleId: "ct-101",
+      totalRuns: 1,
+      blockedRuns: []
+    });
+  });
+
+  it("returns and updates train run status plus operational event history", async () => {
+    const statusResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/status",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const updateResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/status",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        status: "delayed",
+        comment: "Dispatch is monitoring cascading impacts."
+      }
+    });
+
+    const historyResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/events",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(statusResponse.statusCode).toBe(200);
+    expect(statusResponse.json()).toMatchObject({
+      runId: "caltrain-run-1",
+      status: expect.any(String)
+    });
+    expect(updateResponse.statusCode).toBe(200);
+    expect(updateResponse.json()).toMatchObject({
+      runId: "caltrain-run-1",
+      status: "delayed",
+      comment: "Dispatch is monitoring cascading impacts."
+    });
+    expect(historyResponse.statusCode).toBe(200);
+    expect(historyResponse.json().items[0]).toMatchObject({
+      action: "status-updated"
+    });
+  });
+
+  it("clears delay additional information for authorized property context", async () => {
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/delays/delay-1/additional-info",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      delayId: "delay-1"
+    });
+  });
+
+  it("records delay creation and work-order creation in run event history", async () => {
+    const createDelayResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/train-runs/caltrain-run-1/delays/template",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        templateId: "delay-template-signal",
+        reportedAt: "2026-03-06T06:28:00Z"
+      }
+    });
+
+    const createdDelayId = createDelayResponse.json().id as string;
+
+    const workOrderResponse = await app.inject({
+      method: "POST",
+      url: `/api/v1/delays/${createdDelayId}/work-order`,
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        notableDelayType: "Interlocking failure",
+        assetId: "SIG-204",
+        repairType: "Signal diagnostics",
+        priority: "high"
+      }
+    });
+
+    const historyResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/train-runs/caltrain-run-1/events",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(createDelayResponse.statusCode).toBe(200);
+    expect(workOrderResponse.statusCode).toBe(200);
+    expect(historyResponse.statusCode).toBe(200);
+    expect(historyResponse.json().items.map((item: { action: string }) => item.action)).toEqual(
+      expect.arrayContaining(["delay-created", "delay-work-order-created"])
+    );
+  });
+
+  it("returns consist and crew templates for authorized property context", async () => {
+    const consistResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/consist/templates",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const crewResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/crew/templates",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(consistResponse.statusCode).toBe(200);
+    expect(crewResponse.statusCode).toBe(200);
+    expect(consistResponse.json().items[0]).toMatchObject({
+      id: "consist-commuter-standard",
+      name: "Commuter Standard"
+    });
+    expect(crewResponse.json().items[0]).toMatchObject({
+      id: "crew-commuter-standard",
+      name: "Standard Crew"
+    });
+  });
+
+  it("swaps consist and crew templates for editable train runs", async () => {
+    const consistResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/train-runs/caltrain-run-1/consist/swap",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        templateId: "consist-commuter-short-turn"
+      }
+    });
+
+    const crewResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/train-runs/caltrain-run-1/crew/swap",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        templateId: "crew-commuter-relief"
+      }
+    });
+
+    expect(consistResponse.statusCode).toBe(200);
+    expect(crewResponse.statusCode).toBe(200);
+    expect(consistResponse.json().items[0]).toMatchObject({
+      equipmentNumber: "CAB-911"
+    });
+    expect(crewResponse.json().items[0]).toMatchObject({
+      employeeName: "Morgan Lee"
+    });
+  });
+
   it("returns and updates fare enforcement for authorized property context", async () => {
     const createResponse = await app.inject({
       method: "POST",
@@ -968,6 +2617,24 @@ describe("app contracts", () => {
       }
     });
 
+    const historyResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/fare-enforcement/fare-caltrain-1/history",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const deleteResponse = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/fare-enforcement/${createResponse.json().id as string}`,
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
     expect(createResponse.statusCode).toBe(200);
     expect(createResponse.json()).toMatchObject({
       runId: "caltrain-run-1",
@@ -976,7 +2643,9 @@ describe("app contracts", () => {
       ticketsSold: 4
     });
     expect(summaryResponse.statusCode).toBe(200);
-    expect(summaryResponse.json().items[0]).toMatchObject({
+    expect(
+      summaryResponse.json().items.find((item: { runId: string }) => item.runId === "caltrain-run-1")
+    ).toMatchObject({
       runId: "caltrain-run-1",
       activityCount: 24,
       amtrakTransfers: 3,
@@ -1013,9 +2682,83 @@ describe("app contracts", () => {
       amtrakTransfers: 3,
       ticketsSold: 5
     });
+    expect(historyResponse.statusCode).toBe(200);
+    expect(historyResponse.json().items[0]).toMatchObject({
+      recordId: "fare-caltrain-1",
+      action: "updated"
+    });
+    expect(deleteResponse.statusCode).toBe(200);
+    expect(deleteResponse.json()).toMatchObject({
+      deletedRecordId: createResponse.json().id,
+      runId: "caltrain-run-1"
+    });
+  });
+
+  it("rejects fare enforcement writes without fare write permission", async () => {
+    const restrictedApp = buildApp({
+      ...env,
+      USER_PROPERTY_PERMISSIONS: "local-dev-user@caltrain:delays.write"
+    });
+
+    await restrictedApp.ready();
+
+    const createResponse = await restrictedApp.inject({
+      method: "POST",
+      url: "/api/v1/fare-enforcement",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        runId: "caltrain-run-1",
+        inspectorName: "Morgan Lee",
+        firstLocation: "SFC",
+        secondLocation: "SJC",
+        activityCount: 8,
+        amtrakTransfers: 1,
+        amtrakTickets: 3,
+        upassCount: 2,
+        ticketsSold: 4,
+        notes: "Additional inspection pass",
+        capturedAt: "2026-03-06T07:00:00Z"
+      }
+    });
+
+    const deleteResponse = await restrictedApp.inject({
+      method: "DELETE",
+      url: "/api/v1/fare-enforcement/fare-caltrain-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(createResponse.statusCode).toBe(403);
+    expect(createResponse.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+    expect(deleteResponse.statusCode).toBe(403);
+    expect(deleteResponse.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+
+    await restrictedApp.close();
   });
 
   it("returns approval history for a train run", async () => {
+    const approvalResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/train-runs/caltrain-run-1/approval",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        isApproved: true,
+        notes: "Ready for run closeout."
+      }
+    });
+
     const response = await app.inject({
       method: "GET",
       url: "/api/v1/train-runs/caltrain-run-1/approval-history",
@@ -1025,6 +2768,7 @@ describe("app contracts", () => {
       }
     });
 
+    expect(approvalResponse.statusCode).toBe(200);
     expect(response.statusCode).toBe(200);
     expect(response.json().items[0]).toMatchObject({
       actorName: "Local Development User"
