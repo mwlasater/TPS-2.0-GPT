@@ -70,7 +70,7 @@ const commuterCrew: CrewAssignmentList = {
       employeeName: "Casey Morgan",
       role: "Assistant Conductor",
       onDutyTime: "05:40",
-      status: "pending_relief"
+      status: "assigned"
     }
   ]
 };
@@ -202,8 +202,22 @@ export function listConsistEquipment(propertyCode: PropertyCode, runId: string):
   return getRunConsist(propertyCode, runId);
 }
 
+export function peekConsistEquipment(
+  propertyCode: PropertyCode,
+  runId: string
+): ConsistEquipmentList | null {
+  return consistCatalog[propertyCode]?.[runId] ?? null;
+}
+
 export function listCrewAssignments(propertyCode: PropertyCode, runId: string): CrewAssignmentList {
   return getRunCrew(propertyCode, runId);
+}
+
+export function peekCrewAssignments(
+  propertyCode: PropertyCode,
+  runId: string
+): CrewAssignmentList | null {
+  return crewCatalog[propertyCode]?.[runId] ?? null;
 }
 
 export function listConsistTemplates(propertyCode: PropertyCode): ConsistTemplateList {

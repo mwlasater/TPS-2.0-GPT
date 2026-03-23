@@ -176,6 +176,7 @@ export function App() {
               attendanceNotificationRules={baselineData.attendanceNotificationRules}
               delayCommonLocations={adminData.delayCommonLocations}
               delayTemplates={adminData.delayTemplates}
+              cmmsSync={platformData.cmmsSync}
               files={platformData.files}
               jobProfiles={baselineData.jobProfiles}
               liveReports={adminData.liveReports}
@@ -195,6 +196,7 @@ export function App() {
               passengerReportImports={adminData.passengerReportImports}
               permissionGroups={adminData.permissionGroups}
               powerBi={platformData.powerBi}
+              powerBiSessions={platformData.powerBiSessions}
               property={activeProperty}
               referenceData={propertyData.referenceData}
               reportConfig={adminData.reportConfig}
@@ -206,14 +208,17 @@ export function App() {
               saveAttendance={baselineData.saveAttendance}
               saveAttendanceIssue={baselineData.saveAttendanceIssue}
               createAttendanceNotificationRule={baselineData.createAttendanceNotificationRule}
+              createCmmsSync={platformData.createCmmsSync}
               saveAttendanceNotificationRule={baselineData.saveAttendanceNotificationRule}
               deleteAttendanceNotificationRule={baselineData.deleteAttendanceNotificationRule}
+              createFileRequest={platformData.createFileRequest}
               saveJobProfile={baselineData.saveJobProfile}
               createUser={async (input) => {
                 const detail = await propertyData.createUser(input);
                 setSelectedUserId(detail.id);
               }}
               createPassengerImport={adminData.createPassengerImport}
+              createPowerBiSession={platformData.createPowerBiSession}
               createReportDelivery={adminData.createReportDelivery}
               executeLiveReport={adminData.executeLiveReport}
               createPermissionGroup={adminData.createPermissionGroup}

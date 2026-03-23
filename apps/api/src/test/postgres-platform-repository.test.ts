@@ -119,6 +119,153 @@ describe("PostgresPlatformRepository", () => {
     });
   });
 
+  it("creates file requests", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const record = await repository.createFileRequest(
+      "caltrain",
+      {
+        fileName: "caltrain-ops-export.csv",
+        category: "operations",
+        action: "download"
+      },
+      "Taylor Brooks"
+    );
+
+    expect(record).toMatchObject({
+      fileName: "caltrain-ops-export.csv",
+      category: "operations",
+      status: "available"
+    });
+    expect(record.id).toEqual(expect.any(String));
+  });
+
+  it("maps Power BI session rows", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "pbi-session-1",
+          report_id: "bi_caltrain_1",
+          report_name: "Daily OTP",
+          embed_url: "https://app.powerbi.com/reportEmbed?reportId=daily-otp",
+          access_token: "pbi-token-1",
+          expires_at: new Date("2026-03-06T13:00:00Z"),
+          requested_at: new Date("2026-03-06T12:00:00Z"),
+          requested_by: "Taylor Brooks"
+        }
+      ]
+    });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const sessions = await repository.listPowerBiSessions("caltrain");
+
+    expect(sessions).toEqual({
+      items: [
+        {
+          id: "pbi-session-1",
+          reportId: "bi_caltrain_1",
+          reportName: "Daily OTP",
+          embedUrl: "https://app.powerbi.com/reportEmbed?reportId=daily-otp",
+          accessToken: "pbi-token-1",
+          expiresAt: "2026-03-06T13:00:00.000Z",
+          requestedAt: "2026-03-06T12:00:00.000Z",
+          requestedBy: "Taylor Brooks"
+        }
+      ]
+    });
+  });
+
+  it("creates Power BI sessions from embed rows", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "bi_caltrain_1",
+            report_name: "Daily OTP",
+            workspace_name: "Transit Ops",
+            embed_url: "https://app.powerbi.com/reportEmbed?reportId=daily-otp",
+            enabled: true
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const session = await repository.createPowerBiSession(
+      "caltrain",
+      "bi_caltrain_1",
+      "Taylor Brooks"
+    );
+
+    expect(session).toMatchObject({
+      reportId: "bi_caltrain_1",
+      reportName: "Daily OTP",
+      embedUrl: "https://app.powerbi.com/reportEmbed?reportId=daily-otp",
+      requestedBy: "Taylor Brooks"
+    });
+    expect(session.id).toEqual(expect.any(String));
+    expect(session.accessToken).toMatch(/^pbi-/);
+  });
+
+  it("maps CMMS sync rows", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "cmms-sync-1",
+          work_order_id: "WO-1427",
+          asset_id: "LOCO-120",
+          status: "synced",
+          requested_at: new Date("2026-03-06T06:32:00Z"),
+          requested_by: "Dispatch Supervisor",
+          notes: "Sync locomotive fault work order to CMMS."
+        }
+      ]
+    });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const sync = await repository.listCmmsSync("caltrain");
+
+    expect(sync).toEqual({
+      items: [
+        {
+          id: "cmms-sync-1",
+          workOrderId: "WO-1427",
+          assetId: "LOCO-120",
+          status: "synced",
+          requestedAt: "2026-03-06T06:32:00.000Z",
+          requestedBy: "Dispatch Supervisor",
+          notes: "Sync locomotive fault work order to CMMS."
+        }
+      ]
+    });
+  });
+
+  it("creates CMMS sync jobs", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const record = await repository.createCmmsSync(
+      "caltrain",
+      {
+        workOrderId: "WO-1427",
+        assetId: "LOCO-120",
+        notes: "Sync locomotive fault work order to CMMS."
+      },
+      "Dispatch Supervisor"
+    );
+
+    expect(record).toMatchObject({
+      workOrderId: "WO-1427",
+      assetId: "LOCO-120",
+      status: "synced",
+      requestedBy: "Dispatch Supervisor",
+      notes: "Sync locomotive fault work order to CMMS."
+    });
+    expect(record.id).toEqual(expect.any(String));
+  });
+
   it("updates report config rows", async () => {
     const query = vi
       .fn()

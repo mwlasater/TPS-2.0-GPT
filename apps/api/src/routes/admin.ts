@@ -3,8 +3,10 @@ import {
   attendanceNotificationRuleCreateSchema,
   attendanceNotificationRuleUpdateSchema,
   attendanceExceptionUpdateSchema,
+  cmmsSyncRequestSchema,
   delayCommonLocationUpdateSchema,
   delayTemplateUpdateSchema,
+  fileServiceRequestSchema,
   jobProfileUpdateSchema,
   liveReportExecutionRequestSchema,
   notificationUpdateSchema,
@@ -26,8 +28,10 @@ import type {
   AttendanceNotificationRuleCreate,
   AttendanceNotificationRuleUpdate,
   AttendanceExceptionUpdate,
+  CmmsSyncRequest,
   DelayCommonLocationUpdate,
   DelayTemplateUpdate,
+  FileServiceRequest,
   JobProfileUpdate,
   LiveReportExecutionRequest,
   NotificationUpdate,
@@ -240,6 +244,85 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       return app.dataAccess.platform.retryReportDelivery(
         request.property,
         (request.params as { deliveryId: string }).deliveryId,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.get(
+    "/files",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listFiles(request.property)
+  );
+
+  app.post(
+    "/files",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "notifications.write");
+      const payload = fileServiceRequestSchema.parse(request.body) as FileServiceRequest;
+      return app.dataAccess.platform.createFileRequest(
+        request.property,
+        payload,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.get(
+    "/power-bi",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listPowerBiEmbeds(request.property)
+  );
+
+  app.get(
+    "/power-bi/sessions",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listPowerBiSessions(request.property)
+  );
+
+  app.post(
+    "/power-bi/:reportId/session",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      return app.dataAccess.platform.createPowerBiSession(
+        request.property,
+        (request.params as { reportId: string }).reportId,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.get(
+    "/cmms/sync",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listCmmsSync(request.property)
+  );
+
+  app.post(
+    "/cmms/sync",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "notifications.write");
+      const payload = cmmsSyncRequestSchema.parse(request.body) as CmmsSyncRequest;
+      return app.dataAccess.platform.createCmmsSync(
+        request.property,
+        payload,
         request.user.displayName
       );
     }
@@ -482,14 +565,6 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   );
 
   app.get(
-    "/files",
-    {
-      preHandler: [app.authenticate, app.requireProperty]
-    },
-    async (request) => app.dataAccess.platform.listFiles(request.property)
-  );
-
-  app.get(
     "/delay-common-locations",
     {
       preHandler: [app.authenticate, app.requireProperty]
@@ -587,11 +662,4 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     }
   );
 
-  app.get(
-    "/power-bi",
-    {
-      preHandler: [app.authenticate, app.requireProperty]
-    },
-    async (request) => app.dataAccess.platform.listPowerBiEmbeds(request.property)
-  );
 }

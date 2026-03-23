@@ -12,6 +12,9 @@ import type {
   AttendanceNotificationRuleList,
   AttendanceNotificationRuleUpdate,
   AppBootstrap,
+  CmmsSyncList,
+  CmmsSyncRecord,
+  CmmsSyncRequest,
   ConsistEquipmentList,
   ConsistTemplateList,
   ConsistEquipmentUpdate,
@@ -42,6 +45,8 @@ import type {
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
   FileServiceList,
+  FileServiceItem,
+  FileServiceRequest,
   JobProfile,
   JobProfileList,
   JobProfileUpdate,
@@ -67,6 +72,8 @@ import type {
   LiveReportExecutionRecord,
   LiveReportExecutionRequest,
   PowerBiEmbedList,
+  PowerBiSession,
+  PowerBiSessionList,
   PropertyCode,
   PropertySettings,
   PropertySettingsUpdate,
@@ -649,6 +656,13 @@ export function fetchFiles(propertyCode: PropertyCode): Promise<FileServiceList>
   return fetchPropertyScoped<FileServiceList>("/files", propertyCode);
 }
 
+export function createFileRequest(
+  propertyCode: PropertyCode,
+  payload: FileServiceRequest
+): Promise<FileServiceItem> {
+  return mutatePropertyScoped<FileServiceItem>("/files", propertyCode, "POST", payload);
+}
+
 export function fetchNotifications(propertyCode: PropertyCode): Promise<NotificationList> {
   return fetchPropertyScoped<NotificationList>("/notifications", propertyCode);
 }
@@ -668,6 +682,33 @@ export function updateNotification(
 
 export function fetchPowerBi(propertyCode: PropertyCode): Promise<PowerBiEmbedList> {
   return fetchPropertyScoped<PowerBiEmbedList>("/power-bi", propertyCode);
+}
+
+export function fetchPowerBiSessions(propertyCode: PropertyCode): Promise<PowerBiSessionList> {
+  return fetchPropertyScoped<PowerBiSessionList>("/power-bi/sessions", propertyCode);
+}
+
+export function createPowerBiSession(
+  propertyCode: PropertyCode,
+  reportId: string
+): Promise<PowerBiSession> {
+  return mutatePropertyScoped<PowerBiSession>(
+    `/power-bi/${reportId}/session`,
+    propertyCode,
+    "POST",
+    {}
+  );
+}
+
+export function fetchCmmsSync(propertyCode: PropertyCode): Promise<CmmsSyncList> {
+  return fetchPropertyScoped<CmmsSyncList>("/cmms/sync", propertyCode);
+}
+
+export function createCmmsSync(
+  propertyCode: PropertyCode,
+  payload: CmmsSyncRequest
+): Promise<CmmsSyncRecord> {
+  return mutatePropertyScoped<CmmsSyncRecord>("/cmms/sync", propertyCode, "POST", payload);
 }
 
 export function fetchTrainSchedules(propertyCode: PropertyCode): Promise<TrainScheduleList> {

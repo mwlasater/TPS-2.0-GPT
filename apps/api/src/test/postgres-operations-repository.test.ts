@@ -2,6 +2,19 @@ import { describe, expect, it, vi } from "vitest";
 
 import { PostgresOperationsRepository } from "../repositories/postgres-operations-repository.js";
 
+const readyApprovalRows = {
+  rows: [
+    {
+      stop_count: 3,
+      consist_count: 3,
+      crew_count: 3,
+      inactive_consist_count: 0,
+      pending_relief_count: 0,
+      incomplete_delay_metadata_count: 0
+    }
+  ]
+};
+
 describe("PostgresOperationsRepository", () => {
   it("maps schedule rows into train schedules", async () => {
     const query = vi.fn().mockResolvedValueOnce({
@@ -35,7 +48,7 @@ describe("PostgresOperationsRepository", () => {
   });
 
   it("maps run rows into train runs", async () => {
-    const query = vi.fn().mockResolvedValueOnce({
+    const query = vi.fn().mockResolvedValue(readyApprovalRows).mockResolvedValueOnce({
       rows: [
         {
           id: "caltrain-run-1",
@@ -77,6 +90,7 @@ describe("PostgresOperationsRepository", () => {
 
   it("maps initialized train runs into created and skipped results", async () => {
     const query = vi.fn()
+      .mockResolvedValue(readyApprovalRows)
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [
@@ -152,6 +166,19 @@ describe("PostgresOperationsRepository", () => {
             crew_count: 0
           }
         ]
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            stop_count: 3,
+            consist_count: 0,
+            crew_count: 0,
+            inactive_consist_count: 0,
+            pending_relief_count: 0,
+            incomplete_delay_metadata_count: 0
+          }
+        ]
       });
 
     const repository = new PostgresOperationsRepository({ query });
@@ -195,15 +222,10 @@ describe("PostgresOperationsRepository", () => {
   });
 
   it("maps approval updates into train runs", async () => {
-    const query = vi.fn().mockResolvedValueOnce({
-      rows: [
-        {
-          stop_count: 3,
-          consist_count: 3,
-          crew_count: 3
-        }
-      ]
-    }).mockResolvedValueOnce({
+    const query = vi.fn()
+      .mockResolvedValue(readyApprovalRows)
+      .mockResolvedValueOnce(readyApprovalRows)
+      .mockResolvedValueOnce({
       rows: [
         {
           id: "caltrain-run-1",
@@ -220,9 +242,10 @@ describe("PostgresOperationsRepository", () => {
           crew_count: 3
         }
       ]
-    }).mockResolvedValueOnce({
+      })
+      .mockResolvedValueOnce({
       rows: []
-    });
+      });
 
     const repository = new PostgresOperationsRepository({ query });
     const run = await repository.updateTrainRunApproval("caltrain", "caltrain-run-1", {
@@ -245,7 +268,7 @@ describe("PostgresOperationsRepository", () => {
   });
 
   it("maps unapproval updates into train runs", async () => {
-    const query = vi.fn().mockResolvedValueOnce({
+    const query = vi.fn().mockResolvedValue(readyApprovalRows).mockResolvedValueOnce({
       rows: [
         {
           id: "capmetro-run-1",
@@ -262,9 +285,10 @@ describe("PostgresOperationsRepository", () => {
           crew_count: 2
         }
       ]
-    }).mockResolvedValueOnce({
+      })
+      .mockResolvedValueOnce({
       rows: []
-    });
+      });
 
     const repository = new PostgresOperationsRepository({ query });
     const run = await repository.updateTrainRunApproval(
@@ -315,9 +339,7 @@ describe("PostgresOperationsRepository", () => {
   it("maps batch approval results into updated and blocked runs", async () => {
     const query = vi
       .fn()
-      .mockResolvedValueOnce({
-        rows: [{ stop_count: 3, consist_count: 3, crew_count: 3 }]
-      })
+      .mockResolvedValueOnce(readyApprovalRows)
       .mockResolvedValueOnce({
         rows: [
           {
@@ -337,11 +359,30 @@ describe("PostgresOperationsRepository", () => {
         ]
       })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce(readyApprovalRows)
       .mockResolvedValueOnce({
-        rows: [{ stop_count: 0, consist_count: 0, crew_count: 0 }]
+        rows: [
+          {
+            stop_count: 0,
+            consist_count: 0,
+            crew_count: 0,
+            inactive_consist_count: 0,
+            pending_relief_count: 0,
+            incomplete_delay_metadata_count: 0
+          }
+        ]
       })
       .mockResolvedValueOnce({
-        rows: [{ stop_count: 0, consist_count: 0, crew_count: 0 }]
+        rows: [
+          {
+            stop_count: 0,
+            consist_count: 0,
+            crew_count: 0,
+            inactive_consist_count: 0,
+            pending_relief_count: 0,
+            incomplete_delay_metadata_count: 0
+          }
+        ]
       });
 
     const repository = new PostgresOperationsRepository({ query });
@@ -623,6 +664,7 @@ describe("PostgresOperationsRepository", () => {
           }
         ]
       })
+      .mockResolvedValueOnce(readyApprovalRows)
       .mockResolvedValueOnce({
         rows: [
           {

@@ -25,5 +25,6 @@ export const migrationManifest: MigrationManifestEntry[] = [
   { id: "0020_reporting_delay_extensions", domain: "migration", tables: ["shared.passenger_report_import", "shared.notable_delay_type", "shared.delay_work_order"] },
   { id: "0021_report_delivery_history", domain: "reporting", tables: ["shared.report_delivery_request"] },
   { id: "0022_fare_enforcement_history", domain: "operations", tables: ["shared.fare_enforcement_history"] },
-  { id: "0023_live_report_workflows", domain: "reporting", tables: ["shared.live_report_execution"] }
+  { id: "0023_live_report_workflows", domain: "reporting", tables: ["shared.live_report_execution"] },
+  { id: "0024_platform_runtime_integrations", domain: "admin", tables: ["shared.power_bi_session", "shared.cmms_sync_job"] }
 ];

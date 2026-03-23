@@ -19,6 +19,7 @@ import type {
   DelayTemplateCreateRequest,
   DelayTemplateList,
   DelayTemplateUpdate,
+  FileServiceItem,
   FileServiceList,
   JobProfile,
   JobProfileList,
@@ -38,6 +39,8 @@ import type {
   PermissionGroupUpdate,
   PermissionGroupDeleteResult,
   PowerBiEmbedList,
+  PowerBiSession,
+  PowerBiSessionList,
   PropertyCode,
   PropertySettings,
   PropertySettingsUpdate,
@@ -46,6 +49,10 @@ import type {
   DelayPropagationPreview,
   DelayWorkOrder,
   DelayWorkOrderCreate,
+  CmmsSyncList,
+  CmmsSyncRecord,
+  CmmsSyncRequest,
+  FileServiceRequest,
   LiveReportCatalogList,
   LiveReportExecutionList,
   LiveReportExecutionRecord,
@@ -282,6 +289,11 @@ export interface PlatformRepository {
     actorName: string
   ): MaybePromise<ReportDeliveryRecord>;
   listFiles(propertyCode: PropertyCode): MaybePromise<FileServiceList>;
+  createFileRequest(
+    propertyCode: PropertyCode,
+    input: FileServiceRequest,
+    actorName: string
+  ): MaybePromise<FileServiceItem>;
   listNotifications(propertyCode: PropertyCode): MaybePromise<NotificationList>;
   updateNotification(
     propertyCode: PropertyCode,
@@ -289,6 +301,18 @@ export interface PlatformRepository {
     update: NotificationUpdate
   ): MaybePromise<NotificationItem>;
   listPowerBiEmbeds(propertyCode: PropertyCode): MaybePromise<PowerBiEmbedList>;
+  listPowerBiSessions(propertyCode: PropertyCode): MaybePromise<PowerBiSessionList>;
+  createPowerBiSession(
+    propertyCode: PropertyCode,
+    reportId: string,
+    actorName: string
+  ): MaybePromise<PowerBiSession>;
+  listCmmsSync(propertyCode: PropertyCode): MaybePromise<CmmsSyncList>;
+  createCmmsSync(
+    propertyCode: PropertyCode,
+    input: CmmsSyncRequest,
+    actorName: string
+  ): MaybePromise<CmmsSyncRecord>;
 }
 
 export interface OperationsRepository {

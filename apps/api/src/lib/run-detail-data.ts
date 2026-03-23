@@ -329,8 +329,16 @@ export function listStationStops(propertyCode: PropertyCode, runId: string): Sta
   return getRunStops(propertyCode, runId);
 }
 
+export function peekStationStops(propertyCode: PropertyCode, runId: string): StationStopList | null {
+  return stopCatalog[propertyCode]?.[runId] ?? null;
+}
+
 export function listDelayEvents(propertyCode: PropertyCode, runId: string): DelayEventList {
   return getRunDelays(propertyCode, runId);
+}
+
+export function peekDelayEvents(propertyCode: PropertyCode, runId: string): DelayEventList | null {
+  return delayCatalog[propertyCode]?.[runId] ?? null;
 }
 
 export function listDelayCommonLocations(propertyCode: PropertyCode): DelayCommonLocationList {
@@ -430,6 +438,13 @@ export function getDelayAdditionalInfo(propertyCode: PropertyCode, delayId: stri
   }
 
   return catalog[delayId]!;
+}
+
+export function peekDelayAdditionalInfo(
+  propertyCode: PropertyCode,
+  delayId: string
+): DelayAdditionalInfo | null {
+  return additionalInfoCatalog[propertyCode]?.[delayId] ?? null;
 }
 
 function getWorkOrderStore(propertyCode: PropertyCode): Partial<Record<string, DelayWorkOrder>> {

@@ -11,6 +11,7 @@ import { resetFareEnforcementData } from "../lib/fare-enforcement-data.js";
 import { resetOperationsData } from "../lib/operations-data.js";
 import { resetPersonnelData } from "../lib/personnel-data.js";
 import { resetPermissionGroups } from "../lib/permission-groups.js";
+import { resetPlatformData } from "../lib/platform-data.js";
 import { resetReferenceData } from "../lib/reference-data.js";
 import { resetReportConfigData } from "../lib/report-config.js";
 import { resetRunDetailData } from "../lib/run-detail-data.js";
@@ -49,6 +50,7 @@ describe("app contracts", () => {
     resetOperationsData();
     resetPersonnelData();
     resetPermissionGroups();
+    resetPlatformData();
     resetReferenceData();
     resetReportConfigData();
     resetRunDetailData();
@@ -1005,6 +1007,92 @@ describe("app contracts", () => {
     });
     expect(powerBiResponse.json().items[0]).toMatchObject({
       reportName: "Daily OTP"
+    });
+  });
+
+  it("creates file requests and Power BI sessions for authorized property context", async () => {
+    const fileResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/files",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        fileName: "caltrain-operations-export.csv",
+        category: "operations",
+        action: "download"
+      }
+    });
+
+    const sessionResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/power-bi/bi-1/session",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/power-bi/sessions",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(fileResponse.statusCode).toBe(200);
+    expect(fileResponse.json()).toMatchObject({
+      fileName: "caltrain-operations-export.csv",
+      category: "operations",
+      status: "available"
+    });
+    expect(sessionResponse.statusCode).toBe(200);
+    expect(sessionResponse.json()).toMatchObject({
+      reportId: "bi-1",
+      reportName: "Daily OTP"
+    });
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json().items[0]).toMatchObject({
+      reportId: "bi-1"
+    });
+  });
+
+  it("creates and lists CMMS sync jobs for authorized property context", async () => {
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/cmms/sync",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        workOrderId: "WO-1427",
+        assetId: "LOCO-120",
+        notes: "Sync locomotive fault work order to CMMS."
+      }
+    });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/cmms/sync",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(createResponse.statusCode).toBe(200);
+    expect(createResponse.json()).toMatchObject({
+      workOrderId: "WO-1427",
+      assetId: "LOCO-120",
+      status: "synced"
+    });
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json().items[0]).toMatchObject({
+      workOrderId: "WO-1427"
     });
   });
 

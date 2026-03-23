@@ -898,6 +898,12 @@ export interface FileServiceList {
   items: FileServiceItem[];
 }
 
+export interface FileServiceRequest {
+  fileName: string;
+  category: string;
+  action: "upload" | "download";
+}
+
 export interface NotificationItem {
   id: string;
   channel: "email" | "in_app";
@@ -926,6 +932,41 @@ export interface PowerBiEmbed {
 
 export interface PowerBiEmbedList {
   items: PowerBiEmbed[];
+}
+
+export interface PowerBiSession {
+  id: string;
+  reportId: string;
+  reportName: string;
+  embedUrl: string;
+  accessToken: string;
+  expiresAt: string;
+  requestedAt: string;
+  requestedBy: string;
+}
+
+export interface PowerBiSessionList {
+  items: PowerBiSession[];
+}
+
+export interface CmmsSyncRecord {
+  id: string;
+  workOrderId: string;
+  assetId: string | null;
+  status: "queued" | "synced" | "error";
+  requestedAt: string;
+  requestedBy: string;
+  notes: string;
+}
+
+export interface CmmsSyncList {
+  items: CmmsSyncRecord[];
+}
+
+export interface CmmsSyncRequest {
+  workOrderId: string;
+  assetId: string | null;
+  notes: string;
 }
 
 export interface NotableDelayType {

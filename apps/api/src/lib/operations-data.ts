@@ -12,6 +12,21 @@ import type {
   TrainScheduleList
 } from "@tps/types";
 
+import {
+  getDelayAdditionalInfo,
+  listDelayEvents,
+  listStationStops,
+  peekDelayAdditionalInfo,
+  peekDelayEvents,
+  peekStationStops
+} from "./run-detail-data.js";
+import {
+  listConsistEquipment,
+  listCrewAssignments,
+  peekConsistEquipment,
+  peekCrewAssignments
+} from "./run-resource-data.js";
+
 const scheduleCatalog: Record<PropertyCode, TrainSchedule[]> = {
   caltrain: [
     {
@@ -91,16 +106,47 @@ const scheduleCatalog: Record<PropertyCode, TrainSchedule[]> = {
 
 const runCatalog: Partial<Record<PropertyCode, TrainRun[]>> = {};
 
-function getApprovalBlockers(runId: string): string[] {
-  if (runId.endsWith("-run-2")) {
-    return [
-      "Crew assignment required before approval.",
-      "Consist assignment required before approval.",
-      "Station stop records required before approval."
-    ];
+function getApprovalBlockers(propertyCode: PropertyCode, runId: string): string[] {
+  const blockers: string[] = [];
+  const stops = peekStationStops(propertyCode, runId)?.items ?? [];
+  const consist = peekConsistEquipment(propertyCode, runId)?.items ?? [];
+  const crew = peekCrewAssignments(propertyCode, runId)?.items ?? [];
+  const delays = peekDelayEvents(propertyCode, runId)?.items ?? [];
+
+  if (!crew.length) {
+    blockers.push("Crew assignment required before approval.");
+  } else if (crew.some((assignment) => assignment.status === "pending_relief")) {
+    blockers.push("Pending crew relief must be resolved before approval.");
   }
 
-  return [];
+  if (!consist.length) {
+    blockers.push("Consist assignment required before approval.");
+  } else if (consist.some((equipment) => equipment.status !== "active")) {
+    blockers.push("Consist must be active before approval.");
+  }
+
+  if (!stops.length) {
+    blockers.push("Station stop records required before approval.");
+  }
+
+  const hasIncompleteDelayMetadata = delays.some((delay) => {
+    const info = peekDelayAdditionalInfo(propertyCode, delay.id);
+    if (!info) {
+      return true;
+    }
+
+    return (
+      !info.locationDetail.trim() ||
+      !info.responsibleParty.trim() ||
+      !info.passengerImpactSummary.trim()
+    );
+  });
+
+  if (hasIncompleteDelayMetadata) {
+    blockers.push("Delay metadata must be completed before approval.");
+  }
+
+  return blockers;
 }
 
 function buildRuns(propertyCode: PropertyCode): TrainRun[] {
@@ -109,6 +155,16 @@ function buildRuns(propertyCode: PropertyCode): TrainRun[] {
   return schedules.map((schedule, index) => {
     const isApproved = propertyCode === "capmetro";
     const runId = `${propertyCode}-run-${index + 1}`;
+
+    if (index === 0 || isApproved) {
+      listStationStops(propertyCode, runId);
+      const delays = listDelayEvents(propertyCode, runId);
+      listConsistEquipment(propertyCode, runId);
+      listCrewAssignments(propertyCode, runId);
+      delays.items.forEach((delay) => {
+        getDelayAdditionalInfo(propertyCode, delay.id);
+      });
+    }
 
     return {
       id: runId,
@@ -120,7 +176,7 @@ function buildRuns(propertyCode: PropertyCode): TrainRun[] {
       crewAssigned: propertyCode === "capmetro" ? 2 : 3,
       isApproved,
       approvedAt: isApproved ? "2026-03-06T12:15:00Z" : null,
-      approvalBlockers: getApprovalBlockers(runId)
+      approvalBlockers: getApprovalBlockers(propertyCode, runId)
     };
   });
 }
@@ -191,7 +247,10 @@ export function initializeTrainRuns(
       crewAssigned: 0,
       isApproved: false,
       approvedAt: null,
-      approvalBlockers: []
+      approvalBlockers: getApprovalBlockers(
+        propertyCode,
+        `${propertyCode}-${schedule.id}-${request.operatingDate.replaceAll("-", "_")}`
+      )
     };
 
     runs.unshift(newRun);

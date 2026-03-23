@@ -316,7 +316,16 @@ function toIsoDate(value: string | Date): string {
 export class PostgresOperationsRepository implements OperationsRepository {
   constructor(private readonly db: Queryable) {}
 
-  private getApprovalBlockers(row: Pick<TrainRunRow, "stop_count" | "consist_count" | "crew_count">): string[] {
+  private getApprovalBlockers(
+    row: Pick<
+      TrainRunRow,
+      "stop_count" | "consist_count" | "crew_count"
+    > & {
+      inactive_consist_count?: number;
+      pending_relief_count?: number;
+      incomplete_delay_metadata_count?: number;
+    }
+  ): string[] {
     const blockers: string[] = [];
 
     if (!row.crew_count) {
@@ -329,6 +338,18 @@ export class PostgresOperationsRepository implements OperationsRepository {
 
     if (!row.stop_count) {
       blockers.push("Station stop records required before approval.");
+    }
+
+    if ((row.pending_relief_count ?? 0) > 0) {
+      blockers.push("Pending crew relief must be resolved before approval.");
+    }
+
+    if ((row.inactive_consist_count ?? 0) > 0) {
+      blockers.push("Consist must be active before approval.");
+    }
+
+    if ((row.incomplete_delay_metadata_count ?? 0) > 0) {
+      blockers.push("Delay metadata must be completed before approval.");
     }
 
     return blockers;
@@ -357,12 +378,43 @@ export class PostgresOperationsRepository implements OperationsRepository {
   }
 
   private async loadApprovalBlockers(propertyCode: PropertyCode, runId: string): Promise<string[]> {
-    const result = await this.db.query<Pick<TrainRunRow, "stop_count" | "consist_count" | "crew_count">>(
+    const result = await this.db.query<
+      Pick<TrainRunRow, "stop_count" | "consist_count" | "crew_count"> & {
+        inactive_consist_count: number;
+        pending_relief_count: number;
+        incomplete_delay_metadata_count: number;
+      }
+    >(
       `
         SELECT
           (SELECT COUNT(*)::INTEGER FROM shared.station_stop WHERE train_run_id = tr.id) AS stop_count,
           (SELECT COUNT(*)::INTEGER FROM shared.consist_equipment WHERE train_run_id = tr.id) AS consist_count,
-          (SELECT COUNT(*)::INTEGER FROM shared.crew_assignment WHERE train_run_id = tr.id) AS crew_count
+          (SELECT COUNT(*)::INTEGER FROM shared.crew_assignment WHERE train_run_id = tr.id) AS crew_count,
+          (
+            SELECT COUNT(*)::INTEGER
+            FROM shared.consist_equipment ce
+            WHERE ce.train_run_id = tr.id
+              AND ce.status <> 'active'
+          ) AS inactive_consist_count,
+          (
+            SELECT COUNT(*)::INTEGER
+            FROM shared.crew_assignment ca
+            WHERE ca.train_run_id = tr.id
+              AND ca.status = 'pending_relief'
+          ) AS pending_relief_count,
+          (
+            SELECT COUNT(*)::INTEGER
+            FROM shared.delay_event de
+            LEFT JOIN shared.delay_additional_info dai
+              ON dai.delay_id = de.id
+            WHERE de.train_run_id = tr.id
+              AND (
+                dai.delay_id IS NULL OR
+                BTRIM(dai.location_detail) = '' OR
+                BTRIM(dai.responsible_party) = '' OR
+                BTRIM(dai.passenger_impact_summary) = ''
+              )
+          ) AS incomplete_delay_metadata_count
         FROM shared.train_run tr
         WHERE tr.railroad_code = $1
           AND tr.id = $2
@@ -483,8 +535,8 @@ export class PostgresOperationsRepository implements OperationsRepository {
     );
 
     return {
-      items: result.rows.map(
-        (row): TrainRun => ({
+      items: await Promise.all(
+        result.rows.map(async (row): Promise<TrainRun> => ({
           id: row.id,
           scheduleId: row.schedule_id,
           trainNumber: row.train_number,
@@ -494,8 +546,8 @@ export class PostgresOperationsRepository implements OperationsRepository {
           crewAssigned: row.crew_assigned,
           isApproved: row.is_approved,
           approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null,
-          approvalBlockers: this.getApprovalBlockers(row)
-        })
+          approvalBlockers: await this.loadApprovalBlockers(propertyCode, row.id)
+        }))
       )
     };
   }
@@ -589,7 +641,7 @@ export class PostgresOperationsRepository implements OperationsRepository {
         crewAssigned: row.crew_assigned,
         isApproved: row.is_approved,
         approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null,
-        approvalBlockers: this.getApprovalBlockers(row)
+        approvalBlockers: await this.loadApprovalBlockers(propertyCode, row.id)
       });
     }
 
@@ -671,7 +723,7 @@ export class PostgresOperationsRepository implements OperationsRepository {
       crewAssigned: row.crew_assigned,
       isApproved: row.is_approved,
       approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null,
-      approvalBlockers: this.getApprovalBlockers(row)
+      approvalBlockers: await this.loadApprovalBlockers(propertyCode, row.id)
     };
   }
 
@@ -795,7 +847,7 @@ export class PostgresOperationsRepository implements OperationsRepository {
       crewAssigned: row.crew_assigned,
       isApproved: row.is_approved,
       approvedAt: row.approved_at ? toIsoTimestamp(row.approved_at) : null,
-      approvalBlockers: this.getApprovalBlockers(row)
+      approvalBlockers: await this.loadApprovalBlockers(propertyCode, row.id)
     };
   }
 

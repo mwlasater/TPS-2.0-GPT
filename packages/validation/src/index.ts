@@ -887,6 +887,12 @@ export const fileServiceListSchema = z.object({
   items: z.array(fileServiceItemSchema)
 });
 
+export const fileServiceRequestSchema = z.object({
+  fileName: z.string().min(1),
+  category: z.string().min(1),
+  action: z.enum(["upload", "download"])
+});
+
 export const notificationItemSchema = z.object({
   id: z.string(),
   channel: z.enum(["email", "in_app"]),
@@ -915,6 +921,41 @@ export const powerBiEmbedSchema = z.object({
 
 export const powerBiEmbedListSchema = z.object({
   items: z.array(powerBiEmbedSchema)
+});
+
+export const powerBiSessionSchema = z.object({
+  id: z.string(),
+  reportId: z.string(),
+  reportName: z.string(),
+  embedUrl: z.string().url(),
+  accessToken: z.string(),
+  expiresAt: z.string(),
+  requestedAt: z.string(),
+  requestedBy: z.string()
+});
+
+export const powerBiSessionListSchema = z.object({
+  items: z.array(powerBiSessionSchema)
+});
+
+export const cmmsSyncRecordSchema = z.object({
+  id: z.string(),
+  workOrderId: z.string(),
+  assetId: z.string().nullable(),
+  status: z.enum(["queued", "synced", "error"]),
+  requestedAt: z.string(),
+  requestedBy: z.string(),
+  notes: z.string()
+});
+
+export const cmmsSyncListSchema = z.object({
+  items: z.array(cmmsSyncRecordSchema)
+});
+
+export const cmmsSyncRequestSchema = z.object({
+  workOrderId: z.string().min(1),
+  assetId: z.string().nullable(),
+  notes: z.string().min(1)
 });
 
 export const notableDelayTypeSchema = z.object({

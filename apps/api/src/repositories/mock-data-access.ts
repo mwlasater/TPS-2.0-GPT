@@ -40,9 +40,14 @@ import {
   updatePermissionGroup
 } from "../lib/permission-groups.js";
 import {
+  createCmmsSync,
+  createFileRequest,
+  createPowerBiSession,
   listFiles,
+  listCmmsSync,
   listNotifications,
   listPowerBiEmbeds,
+  listPowerBiSessions,
   updateNotification
 } from "../lib/platform-data.js";
 import { getPropertySettings, updatePropertySettings } from "../lib/property-settings.js";
@@ -248,9 +253,14 @@ export function createMockDataAccess(): DataAccess {
       updateReportDeliveryStatus,
       retryReportDelivery,
       listFiles,
+      createFileRequest,
       listNotifications,
       updateNotification,
-      listPowerBiEmbeds
+      listPowerBiEmbeds,
+      listPowerBiSessions,
+      createPowerBiSession,
+      listCmmsSync,
+      createCmmsSync
     },
     operations: {
       listTrainSchedules,

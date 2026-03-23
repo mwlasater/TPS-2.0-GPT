@@ -7,10 +7,13 @@ import type {
   AttendanceNotificationRuleCreate,
   AttendanceNotificationRuleList,
   AttendanceNotificationRuleUpdate,
+  CmmsSyncList,
+  CmmsSyncRequest,
   DelayCommonLocationList,
   DelayCommonLocationUpdate,
   DelayTemplateList,
   DelayTemplateUpdate,
+  FileServiceRequest,
   FileServiceList,
   JobProfileUpdate,
   JobProfileList,
@@ -31,6 +34,7 @@ import type {
   PermissionGroupUpdate,
   PermissionGroupList,
   PowerBiEmbedList,
+  PowerBiSessionList,
   PropertySettingsUpdate,
   PropertySettings,
   PropertySummary,
@@ -61,6 +65,7 @@ interface SettingsPageProps {
   attendanceHistory: AttendanceHistoryList;
   attendanceIssues: AttendanceIssueList;
   attendanceNotificationRules: AttendanceNotificationRuleList;
+  cmmsSync: CmmsSyncList;
   delayCommonLocations: DelayCommonLocationList;
   delayTemplates: DelayTemplateList;
   files: FileServiceList;
@@ -76,6 +81,7 @@ interface SettingsPageProps {
   personnel: PersonnelRecordList;
   notifications: NotificationList;
   powerBi: PowerBiEmbedList;
+  powerBiSessions: PowerBiSessionList;
   property: PropertySummary;
   referenceData: ReferenceDataset;
   reportConfig: ReportConfigList;
@@ -83,7 +89,10 @@ interface SettingsPageProps {
   reportPreferences: ReportPreferenceList;
   scheduledReportEmails: ScheduledReportEmailJobList;
   createUser: (input: ManagedUserCreate) => Promise<void>;
+  createCmmsSync: (input: CmmsSyncRequest) => Promise<void>;
+  createFileRequest: (input: FileServiceRequest) => Promise<void>;
   createPassengerImport: (input: PassengerReportImportCreate) => Promise<void>;
+  createPowerBiSession: (reportId: string) => Promise<void>;
   createReportDelivery: (input: ReportDeliveryRequest) => Promise<void>;
   executeLiveReport: (reportId: string, input: LiveReportExecutionRequest) => Promise<void>;
   createPermissionGroup: (input: PermissionGroupCreate) => Promise<void>;
@@ -126,6 +135,7 @@ export function SettingsPage({
   attendanceHistory,
   attendanceIssues,
   attendanceNotificationRules,
+  cmmsSync,
   delayCommonLocations,
   delayTemplates,
   files,
@@ -141,6 +151,7 @@ export function SettingsPage({
   notifications,
   permissionGroups,
   powerBi,
+  powerBiSessions,
   property,
   referenceData,
   reportConfig,
@@ -148,7 +159,10 @@ export function SettingsPage({
   reportPreferences,
   scheduledReportEmails,
   createUser,
+  createCmmsSync,
+  createFileRequest,
   createPassengerImport,
+  createPowerBiSession,
   createReportDelivery,
   executeLiveReport,
   createPermissionGroup,
@@ -1131,6 +1145,42 @@ export function SettingsPage({
               </article>
             ))}
           </div>
+          <div className="button-row">
+            <button
+              type="button"
+              disabled={!canManageNotifications}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    createFileRequest({
+                      fileName: `${property.code}-operations-export.csv`,
+                      category: "operations",
+                      action: "download"
+                    }),
+                  "File request created."
+                )
+              }
+            >
+              Generate file export
+            </button>
+            <button
+              type="button"
+              disabled={!canManageNotifications}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    createFileRequest({
+                      fileName: `${property.code}-crew-upload.xlsx`,
+                      category: "crew",
+                      action: "upload"
+                    }),
+                  "File upload request queued."
+                )
+              }
+            >
+              Queue file upload
+            </button>
+          </div>
         </Panel>
         <Panel title="Notifications" eyebrow={`${notifications.items.length} templates`}>
           <div className="list-stack">
@@ -1184,6 +1234,70 @@ export function SettingsPage({
             </article>
           ))}
         </div>
+        {powerBi.items[0] ? (
+          <button
+            type="button"
+            disabled={!canScheduleReports}
+            onClick={() =>
+              void runAction(
+                () => createPowerBiSession(powerBi.items[0]!.id),
+                "Power BI session generated."
+              )
+            }
+          >
+            Generate first Power BI session
+          </button>
+        ) : null}
+        <div className="list-stack">
+          {powerBiSessions.items.map((session) => (
+            <article className="list-row" key={session.id}>
+              <div>
+                <strong>{session.reportName}</strong>
+                <p>{session.requestedBy}</p>
+                <p>{session.expiresAt}</p>
+              </div>
+              <div className="list-meta">
+                <StatusBadge tone="success" label="session" />
+              </div>
+            </article>
+          ))}
+        </div>
+      </Panel>
+      <Panel title="CMMS sync" eyebrow={`${cmmsSync.items.length} jobs`}>
+        <div className="list-stack">
+          {cmmsSync.items.map((job) => (
+            <article className="list-row" key={job.id}>
+              <div>
+                <strong>{job.workOrderId}</strong>
+                <p>{job.assetId ?? "Unassigned asset"}</p>
+                <p>{job.notes}</p>
+              </div>
+              <div className="list-meta">
+                <StatusBadge
+                  tone={job.status === "synced" ? "success" : job.status === "queued" ? "warning" : "neutral"}
+                  label={job.status}
+                />
+              </div>
+            </article>
+          ))}
+        </div>
+        <button
+          type="button"
+          disabled={!canManageNotifications}
+          onClick={() =>
+            void runAction(
+              () =>
+                createCmmsSync({
+                  workOrderId: "WO-1427",
+                  assetId: "LOCO-120",
+                  notes: "Sync locomotive fault work order to CMMS."
+                }),
+              "CMMS sync requested."
+            )
+          }
+        >
+          Sync sample work order
+        </button>
       </Panel>
       <Panel title="Live reports" eyebrow={`${liveReports.items.length} views`}>
         <div className="list-stack">

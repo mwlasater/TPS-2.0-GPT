@@ -1,8 +1,12 @@
 import crypto from "node:crypto";
 
 import type {
+  CmmsSyncList,
+  CmmsSyncRecord,
+  CmmsSyncRequest,
   FileServiceItem,
   FileServiceList,
+  FileServiceRequest,
   LiveReportCatalogItem,
   LiveReportCatalogList,
   LiveReportExecutionList,
@@ -15,6 +19,8 @@ import type {
   PassengerReportImportList,
   PowerBiEmbed,
   PowerBiEmbedList,
+  PowerBiSession,
+  PowerBiSessionList,
   PropertyCode,
   ReportConfigList,
   ReportConfigRow,
@@ -33,7 +39,14 @@ import type {
   ScheduledReportEmailJobUpdate
 } from "@tps/types";
 
-import { listFiles, listNotifications, listPowerBiEmbeds } from "../lib/platform-data.js";
+import {
+  createPowerBiSession,
+  listCmmsSync,
+  listFiles,
+  listNotifications,
+  listPowerBiEmbeds,
+  listPowerBiSessions
+} from "../lib/platform-data.js";
 import {
   executeLiveReport,
   listLiveReports,
@@ -63,6 +76,27 @@ interface FileServiceDbRow {
   category: string;
   uploaded_at: string | Date;
   status: FileServiceItem["status"];
+}
+
+interface PowerBiSessionDbRow {
+  id: string;
+  report_id: string;
+  report_name: string;
+  embed_url: string;
+  access_token: string;
+  expires_at: string | Date;
+  requested_at: string | Date;
+  requested_by: string;
+}
+
+interface CmmsSyncDbRow {
+  id: string;
+  work_order_id: string;
+  asset_id: string | null;
+  status: CmmsSyncRecord["status"];
+  requested_at: string | Date;
+  requested_by: string;
+  notes: string;
 }
 
 interface ReportPreferenceDbRow {
@@ -983,6 +1017,39 @@ export class PostgresPlatformRepository implements PlatformRepository {
     };
   }
 
+  async createFileRequest(
+    propertyCode: PropertyCode,
+    input: FileServiceRequest,
+    actorName: string
+  ): Promise<FileServiceItem> {
+    void actorName;
+    const id = crypto.randomUUID();
+    const status = input.action === "upload" ? "processing" : "available";
+
+    await this.db.query(
+      `
+        INSERT INTO shared.file_service_item (
+          id,
+          railroad_code,
+          file_name,
+          category,
+          uploaded_at,
+          status
+        )
+        VALUES ($1, $2, $3, $4, NOW(), $5)
+      `,
+      [id, propertyCode, input.fileName, input.category, status]
+    );
+
+    return {
+      id,
+      fileName: input.fileName,
+      category: input.category,
+      uploadedAt: new Date().toISOString(),
+      status
+    };
+  }
+
   async listNotifications(propertyCode: PropertyCode): Promise<NotificationList> {
     const result = await this.db.query<NotificationDbRow>(
       `
@@ -1099,6 +1166,174 @@ export class PostgresPlatformRepository implements PlatformRepository {
           enabled: row.enabled
         })
       )
+    };
+  }
+
+  async listPowerBiSessions(propertyCode: PropertyCode): Promise<PowerBiSessionList> {
+    const result = await this.db.query<PowerBiSessionDbRow>(
+      `
+        SELECT
+          id,
+          report_id,
+          report_name,
+          embed_url,
+          access_token,
+          expires_at,
+          requested_at,
+          requested_by
+        FROM shared.power_bi_session
+        WHERE railroad_code = $1
+        ORDER BY requested_at DESC
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listPowerBiSessions(propertyCode);
+    }
+
+    return {
+      items: result.rows.map((row): PowerBiSession => ({
+        id: row.id,
+        reportId: row.report_id,
+        reportName: row.report_name,
+        embedUrl: row.embed_url,
+        accessToken: row.access_token,
+        expiresAt: toIsoTimestamp(row.expires_at),
+        requestedAt: toIsoTimestamp(row.requested_at),
+        requestedBy: row.requested_by
+      }))
+    };
+  }
+
+  async createPowerBiSession(
+    propertyCode: PropertyCode,
+    reportId: string,
+    actorName: string
+  ): Promise<PowerBiSession> {
+    const embedResult = await this.db.query<PowerBiDbRow>(
+      `
+        SELECT
+          id,
+          report_name,
+          workspace_name,
+          embed_url,
+          enabled
+        FROM shared.power_bi_embed
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, reportId]
+    );
+
+    const report = embedResult.rows[0];
+
+    if (!report) {
+      return createPowerBiSession(propertyCode, reportId, actorName);
+    }
+
+    const id = crypto.randomUUID();
+    const accessToken = `pbi-${crypto.randomUUID()}`;
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+    await this.db.query(
+      `
+        INSERT INTO shared.power_bi_session (
+          id,
+          railroad_code,
+          report_id,
+          report_name,
+          embed_url,
+          access_token,
+          expires_at,
+          requested_at,
+          requested_by
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
+      `,
+      [id, propertyCode, report.id, report.report_name, report.embed_url, accessToken, expiresAt, actorName]
+    );
+
+    return {
+      id,
+      reportId: report.id,
+      reportName: report.report_name,
+      embedUrl: report.embed_url,
+      accessToken,
+      expiresAt,
+      requestedAt: new Date().toISOString(),
+      requestedBy: actorName
+    };
+  }
+
+  async listCmmsSync(propertyCode: PropertyCode): Promise<CmmsSyncList> {
+    const result = await this.db.query<CmmsSyncDbRow>(
+      `
+        SELECT
+          id,
+          work_order_id,
+          asset_id,
+          status,
+          requested_at,
+          requested_by,
+          notes
+        FROM shared.cmms_sync_job
+        WHERE railroad_code = $1
+        ORDER BY requested_at DESC
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listCmmsSync(propertyCode);
+    }
+
+    return {
+      items: result.rows.map((row): CmmsSyncRecord => ({
+        id: row.id,
+        workOrderId: row.work_order_id,
+        assetId: row.asset_id,
+        status: row.status,
+        requestedAt: toIsoTimestamp(row.requested_at),
+        requestedBy: row.requested_by,
+        notes: row.notes
+      }))
+    };
+  }
+
+  async createCmmsSync(
+    propertyCode: PropertyCode,
+    input: CmmsSyncRequest,
+    actorName: string
+  ): Promise<CmmsSyncRecord> {
+    const id = crypto.randomUUID();
+    const status: CmmsSyncRecord["status"] = input.assetId ? "synced" : "queued";
+
+    await this.db.query(
+      `
+        INSERT INTO shared.cmms_sync_job (
+          id,
+          railroad_code,
+          work_order_id,
+          asset_id,
+          status,
+          requested_at,
+          requested_by,
+          notes
+        )
+        VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7)
+      `,
+      [id, propertyCode, input.workOrderId, input.assetId, status, actorName, input.notes]
+    );
+
+    return {
+      id,
+      workOrderId: input.workOrderId,
+      assetId: input.assetId,
+      status,
+      requestedAt: new Date().toISOString(),
+      requestedBy: actorName,
+      notes: input.notes
     };
   }
 }
