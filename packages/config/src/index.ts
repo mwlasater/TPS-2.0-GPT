@@ -18,6 +18,13 @@ const envSchema = z.object({
   JWT_JWKS_URI: z.string().default(""),
   JWT_CLOCK_TOLERANCE_SECONDS: z.coerce.number().int().min(0).default(30),
   JWT_DEV_TOKEN: z.string().min(1),
+  POWER_BI_AUTH_MODE: z.enum(["development", "client_credentials"]).default("development"),
+  POWER_BI_TENANT_ID: z.string().default(""),
+  POWER_BI_CLIENT_ID: z.string().default(""),
+  POWER_BI_CLIENT_SECRET: z.string().default(""),
+  POWER_BI_SCOPE: z.string().default("https://analysis.windows.net/powerbi/api/.default"),
+  POWER_BI_AUTHORITY_HOST: z.string().url().default("https://login.microsoftonline.com"),
+  POWER_BI_API_BASE_URL: z.string().url().default("https://api.powerbi.com/v1.0/myorg"),
   PROPERTY_CODES: z.string().min(1),
   USER_PROPERTY_ACCESS: z.string().min(1),
   USER_PROPERTY_PERMISSIONS: z.string().default("")
@@ -42,6 +49,13 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
 
   if (parsed.JWT_AUTH_MODE === "jwks" && !parsed.JWT_JWKS_URI) {
     throw new Error("auth.jwks_uri_required");
+  }
+
+  if (
+    parsed.POWER_BI_AUTH_MODE === "client_credentials" &&
+    (!parsed.POWER_BI_TENANT_ID || !parsed.POWER_BI_CLIENT_ID || !parsed.POWER_BI_CLIENT_SECRET)
+  ) {
+    throw new Error("power_bi.client_credentials_required");
   }
 
   return {

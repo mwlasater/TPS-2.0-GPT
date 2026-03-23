@@ -1,5 +1,6 @@
 import type { AppConfig } from "@tps/config";
 
+import { createPowerBiClient } from "../lib/power-bi-client.js";
 import type { DataAccess } from "./contracts.js";
 import { createMockDataAccess } from "./mock-data-access.js";
 import { getPostgresPool } from "./postgres-client.js";
@@ -18,7 +19,7 @@ export function createDataAccess(config: AppConfig): DataAccess {
   const pool = getPostgresPool(config);
   const property = new PostgresPropertyRepository(pool);
   const operations = new PostgresOperationsRepository(pool);
-  const platform = new PostgresPlatformRepository(pool);
+  const platform = new PostgresPlatformRepository(pool, createPowerBiClient(config));
   const users = new PostgresUsersRepository(pool);
 
   return {

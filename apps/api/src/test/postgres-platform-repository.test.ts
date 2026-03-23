@@ -97,6 +97,8 @@ describe("PostgresPlatformRepository", () => {
           id: "bi_caltrain_1",
           report_name: "Daily OTP",
           workspace_name: "Transit Ops",
+          workspace_id: "11111111-1111-1111-1111-111111111111",
+          external_report_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
           embed_url: "https://app.powerbi.com/reportEmbed?reportId=daily-otp",
           enabled: true
         }
@@ -177,6 +179,13 @@ describe("PostgresPlatformRepository", () => {
   });
 
   it("creates Power BI sessions from embed rows", async () => {
+    const powerBiClient = {
+      issueEmbedToken: vi.fn().mockResolvedValue({
+        accessToken: "embed-token-1",
+        embedUrl: "https://app.powerbi.com/reportEmbed?reportId=daily-otp",
+        expiresAt: "2026-03-06T13:00:00Z"
+      })
+    };
     const query = vi
       .fn()
       .mockResolvedValueOnce({
@@ -185,6 +194,8 @@ describe("PostgresPlatformRepository", () => {
             id: "bi_caltrain_1",
             report_name: "Daily OTP",
             workspace_name: "Transit Ops",
+            workspace_id: "11111111-1111-1111-1111-111111111111",
+            external_report_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
             embed_url: "https://app.powerbi.com/reportEmbed?reportId=daily-otp",
             enabled: true
           }
@@ -192,7 +203,7 @@ describe("PostgresPlatformRepository", () => {
       })
       .mockResolvedValueOnce({ rows: [] });
 
-    const repository = new PostgresPlatformRepository({ query });
+    const repository = new PostgresPlatformRepository({ query }, powerBiClient);
     const session = await repository.createPowerBiSession(
       "caltrain",
       "bi_caltrain_1",
@@ -203,10 +214,18 @@ describe("PostgresPlatformRepository", () => {
       reportId: "bi_caltrain_1",
       reportName: "Daily OTP",
       embedUrl: "https://app.powerbi.com/reportEmbed?reportId=daily-otp",
+      accessToken: "embed-token-1",
+      expiresAt: "2026-03-06T13:00:00Z",
       requestedBy: "Taylor Brooks"
     });
     expect(session.id).toEqual(expect.any(String));
-    expect(session.accessToken).toMatch(/^pbi-/);
+    expect(powerBiClient.issueEmbedToken).toHaveBeenCalledWith({
+      reportName: "Daily OTP",
+      workspaceId: "11111111-1111-1111-1111-111111111111",
+      reportId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      embedUrl: "https://app.powerbi.com/reportEmbed?reportId=daily-otp",
+      actorName: "Taylor Brooks"
+    });
   });
 
   it("maps CMMS sync rows", async () => {

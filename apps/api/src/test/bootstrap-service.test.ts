@@ -32,6 +32,13 @@ function createConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     JWT_JWKS_URI: "",
     JWT_CLOCK_TOLERANCE_SECONDS: 30,
     JWT_DEV_TOKEN: "local-dev-token",
+    POWER_BI_AUTH_MODE: "development",
+    POWER_BI_TENANT_ID: "",
+    POWER_BI_CLIENT_ID: "",
+    POWER_BI_CLIENT_SECRET: "",
+    POWER_BI_SCOPE: "https://analysis.windows.net/powerbi/api/.default",
+    POWER_BI_AUTHORITY_HOST: "https://login.microsoftonline.com",
+    POWER_BI_API_BASE_URL: "https://api.powerbi.com/v1.0/myorg",
     PROPERTY_CODES: "caltrain,capmetro,tre",
     USER_PROPERTY_ACCESS: "local-dev-user:caltrain|capmetro|tre",
     USER_PROPERTY_PERMISSIONS:

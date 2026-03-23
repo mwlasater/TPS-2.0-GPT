@@ -26,5 +26,6 @@ export const migrationManifest: MigrationManifestEntry[] = [
   { id: "0021_report_delivery_history", domain: "reporting", tables: ["shared.report_delivery_request"] },
   { id: "0022_fare_enforcement_history", domain: "operations", tables: ["shared.fare_enforcement_history"] },
   { id: "0023_live_report_workflows", domain: "reporting", tables: ["shared.live_report_execution"] },
-  { id: "0024_platform_runtime_integrations", domain: "admin", tables: ["shared.power_bi_session", "shared.cmms_sync_job"] }
+  { id: "0024_platform_runtime_integrations", domain: "admin", tables: ["shared.power_bi_session", "shared.cmms_sync_job"] },
+  { id: "0025_power_bi_embed_external_ids", domain: "admin", tables: ["shared.power_bi_embed"] }
 ];

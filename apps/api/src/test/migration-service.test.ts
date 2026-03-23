@@ -29,7 +29,8 @@ describe("migration service", () => {
       "0021_report_delivery_history",
       "0022_fare_enforcement_history",
       "0023_live_report_workflows",
-      "0024_platform_runtime_integrations"
+      "0024_platform_runtime_integrations",
+      "0025_power_bi_embed_external_ids"
     ]);
   });
 });

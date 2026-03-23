@@ -47,6 +47,7 @@ import {
   listPowerBiEmbeds,
   listPowerBiSessions
 } from "../lib/platform-data.js";
+import type { PowerBiClient } from "../lib/power-bi-client.js";
 import {
   executeLiveReport,
   listLiveReports,
@@ -128,6 +129,8 @@ interface PowerBiDbRow {
   id: string;
   report_name: string;
   workspace_name: string;
+  workspace_id: string | null;
+  external_report_id: string | null;
   embed_url: string;
   enabled: boolean;
 }
@@ -174,7 +177,10 @@ interface LiveReportExecutionDbRow {
 }
 
 export class PostgresPlatformRepository implements PlatformRepository {
-  constructor(private readonly db: Queryable) {}
+  constructor(
+    private readonly db: Queryable,
+    private readonly powerBiClient?: PowerBiClient
+  ) {}
 
   async listReportConfig(propertyCode: PropertyCode): Promise<ReportConfigList> {
     const result = await this.db.query<ReportConfigDbRow>(
@@ -493,6 +499,8 @@ export class PostgresPlatformRepository implements PlatformRepository {
           id,
           report_name,
           workspace_name,
+          workspace_id,
+          external_report_id,
           embed_url,
           enabled
         FROM shared.power_bi_embed
@@ -1217,6 +1225,8 @@ export class PostgresPlatformRepository implements PlatformRepository {
           id,
           report_name,
           workspace_name,
+          workspace_id,
+          external_report_id,
           embed_url,
           enabled
         FROM shared.power_bi_embed
@@ -1232,9 +1242,18 @@ export class PostgresPlatformRepository implements PlatformRepository {
       return createPowerBiSession(propertyCode, reportId, actorName);
     }
 
+    if (!report.workspace_id || !report.external_report_id || !this.powerBiClient) {
+      return createPowerBiSession(propertyCode, reportId, actorName);
+    }
+
     const id = crypto.randomUUID();
-    const accessToken = `pbi-${crypto.randomUUID()}`;
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const issued = await this.powerBiClient.issueEmbedToken({
+      reportName: report.report_name,
+      workspaceId: report.workspace_id,
+      reportId: report.external_report_id,
+      embedUrl: report.embed_url,
+      actorName
+    });
 
     await this.db.query(
       `
@@ -1251,16 +1270,25 @@ export class PostgresPlatformRepository implements PlatformRepository {
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
       `,
-      [id, propertyCode, report.id, report.report_name, report.embed_url, accessToken, expiresAt, actorName]
+      [
+        id,
+        propertyCode,
+        report.id,
+        report.report_name,
+        issued.embedUrl,
+        issued.accessToken,
+        issued.expiresAt,
+        actorName
+      ]
     );
 
     return {
       id,
       reportId: report.id,
       reportName: report.report_name,
-      embedUrl: report.embed_url,
-      accessToken,
-      expiresAt,
+      embedUrl: issued.embedUrl,
+      accessToken: issued.accessToken,
+      expiresAt: issued.expiresAt,
       requestedAt: new Date().toISOString(),
       requestedBy: actorName
     };
