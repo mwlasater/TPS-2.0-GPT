@@ -613,6 +613,56 @@ export const reportConfigListSchema = z.object({
   items: z.array(reportConfigRowSchema)
 });
 
+export const reportPreferenceSchema = z.object({
+  id: z.string(),
+  reportName: z.string(),
+  visibleColumns: z.array(z.string()),
+  sortOrder: z.string(),
+  filtersSummary: z.string()
+});
+
+export const reportPreferenceUpdateSchema = z.object({
+  visibleColumns: z.array(z.string()).min(1),
+  sortOrder: z.string().min(1),
+  filtersSummary: z.string().min(1)
+});
+
+export const reportPreferenceListSchema = z.object({
+  items: z.array(reportPreferenceSchema)
+});
+
+export const scheduledReportEmailJobSchema = z.object({
+  id: z.string(),
+  reportName: z.string(),
+  recipientGroup: z.string(),
+  schedule: z.string(),
+  format: z.enum(["pdf", "xlsx"]),
+  enabled: z.boolean()
+});
+
+export const scheduledReportEmailJobCreateSchema = z.object({
+  reportName: z.string().min(1),
+  recipientGroup: z.string().min(1),
+  schedule: z.string().min(1),
+  format: z.enum(["pdf", "xlsx"]),
+  enabled: z.boolean()
+});
+
+export const scheduledReportEmailJobUpdateSchema = z.object({
+  recipientGroup: z.string().min(1),
+  schedule: z.string().min(1),
+  format: z.enum(["pdf", "xlsx"]),
+  enabled: z.boolean()
+});
+
+export const scheduledReportEmailJobDeleteResultSchema = z.object({
+  deletedJobId: z.string()
+});
+
+export const scheduledReportEmailJobListSchema = z.object({
+  items: z.array(scheduledReportEmailJobSchema)
+});
+
 export const jobProfileSchema = z.object({
   id: z.string(),
   title: z.string(),

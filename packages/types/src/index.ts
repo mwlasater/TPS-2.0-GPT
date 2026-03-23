@@ -624,6 +624,56 @@ export interface ReportConfigList {
   items: ReportConfigRow[];
 }
 
+export interface ReportPreference {
+  id: string;
+  reportName: string;
+  visibleColumns: string[];
+  sortOrder: string;
+  filtersSummary: string;
+}
+
+export interface ReportPreferenceUpdate {
+  visibleColumns: string[];
+  sortOrder: string;
+  filtersSummary: string;
+}
+
+export interface ReportPreferenceList {
+  items: ReportPreference[];
+}
+
+export interface ScheduledReportEmailJob {
+  id: string;
+  reportName: string;
+  recipientGroup: string;
+  schedule: string;
+  format: "pdf" | "xlsx";
+  enabled: boolean;
+}
+
+export interface ScheduledReportEmailJobCreate {
+  reportName: string;
+  recipientGroup: string;
+  schedule: string;
+  format: "pdf" | "xlsx";
+  enabled: boolean;
+}
+
+export interface ScheduledReportEmailJobUpdate {
+  recipientGroup: string;
+  schedule: string;
+  format: "pdf" | "xlsx";
+  enabled: boolean;
+}
+
+export interface ScheduledReportEmailJobDeleteResult {
+  deletedJobId: string;
+}
+
+export interface ScheduledReportEmailJobList {
+  items: ScheduledReportEmailJob[];
+}
+
 export interface JobProfile {
   id: string;
   title: string;

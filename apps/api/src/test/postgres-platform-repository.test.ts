@@ -151,6 +151,57 @@ describe("PostgresPlatformRepository", () => {
     });
   });
 
+  it("maps report preference rows", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "report-pref-caltrain-1",
+          report_name: "Daily OTP",
+          visible_columns: ["trainNumber", "otpPercent"],
+          sort_order: "otpPercent desc",
+          filters_summary: "Weekday service only"
+        }
+      ]
+    });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const preferences = await repository.listReportPreferences("caltrain");
+
+    expect(preferences).toEqual({
+      items: [
+        {
+          id: "report-pref-caltrain-1",
+          reportName: "Daily OTP",
+          visibleColumns: ["trainNumber", "otpPercent"],
+          sortOrder: "otpPercent desc",
+          filtersSummary: "Weekday service only"
+        }
+      ]
+    });
+  });
+
+  it("creates scheduled report email jobs", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const job = await repository.createScheduledReportEmailJob("caltrain", {
+      reportName: "Daily OTP",
+      recipientGroup: "Operations Leadership",
+      schedule: "12:00 daily",
+      format: "pdf",
+      enabled: true
+    });
+
+    expect(job).toMatchObject({
+      reportName: "Daily OTP",
+      recipientGroup: "Operations Leadership",
+      schedule: "12:00 daily",
+      format: "pdf",
+      enabled: true
+    });
+    expect(job.id).toEqual(expect.any(String));
+  });
+
   it("updates notification rows", async () => {
     const query = vi
       .fn()

@@ -13,6 +13,7 @@ Initial SQL persistence tooling for TPS 2.0.
 - `migrations/0015_user_admin_history.sql`: persisted user admin audit history for lifecycle and access changes
 - `migrations/0017_train_run_status_history.sql`: train-run status comments plus operational event history
 - `migrations/0018_attendance_workflows.sql`: attendance employee linkage, history-friendly fields, and notification rules
+- `migrations/0019_reporting_workflows.sql`: report preferences and scheduled report email jobs
 - `seeds/0001_bootstrap.sql`: bootstrap property settings plus a small set of schedules and runs
 - `seeds/0002_run_resources.sql`: consist and crew records for seeded train runs
 - `seeds/0003_user_admin.sql`: managed users, property access, permission groups, and memberships
@@ -28,6 +29,7 @@ Initial SQL persistence tooling for TPS 2.0.
 - `seeds/0016_local_dev_user.sql`: seeded local development operator for persisted permission resolution
 - `seeds/0017_train_run_status_history.sql`: seeded train-run status comments and operational events
 - `seeds/0018_attendance_workflows.sql`: seeded attendance history rows plus attendance notification rules
+- `seeds/0019_reporting_workflows.sql`: seeded report preferences and scheduled report email jobs
 
 Commands:
 

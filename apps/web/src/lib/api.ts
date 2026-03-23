@@ -63,6 +63,14 @@ import type {
   ReportConfigList,
   ReportConfigRow,
   ReportConfigUpdate,
+  ReportPreference,
+  ReportPreferenceList,
+  ReportPreferenceUpdate,
+  ScheduledReportEmailJob,
+  ScheduledReportEmailJobCreate,
+  ScheduledReportEmailJobDeleteResult,
+  ScheduledReportEmailJobList,
+  ScheduledReportEmailJobUpdate,
   SpecialMovementList,
   SpecialMovementUpdate,
   StationStop,
@@ -277,6 +285,72 @@ export function deletePermissionGroupDefinition(
 
 export function fetchReportConfig(propertyCode: PropertyCode): Promise<ReportConfigList> {
   return fetchPropertyScoped<ReportConfigList>("/report-config", propertyCode);
+}
+
+export function fetchReportPreferences(propertyCode: PropertyCode): Promise<ReportPreferenceList> {
+  return fetchPropertyScoped<ReportPreferenceList>("/reports/preferences", propertyCode);
+}
+
+export function updateReportPreference(
+  propertyCode: PropertyCode,
+  preferenceId: string,
+  payload: ReportPreferenceUpdate
+): Promise<ReportPreference> {
+  return mutatePropertyScoped<ReportPreference>(
+    `/reports/preferences/${preferenceId}`,
+    propertyCode,
+    "POST",
+    payload
+  );
+}
+
+export function fetchScheduledReportEmailJobs(
+  propertyCode: PropertyCode
+): Promise<ScheduledReportEmailJobList> {
+  return fetchPropertyScoped<ScheduledReportEmailJobList>("/reports/scheduled-emails", propertyCode);
+}
+
+export function createScheduledReportEmailJob(
+  propertyCode: PropertyCode,
+  payload: ScheduledReportEmailJobCreate
+): Promise<ScheduledReportEmailJob> {
+  return mutatePropertyScoped<ScheduledReportEmailJob>(
+    "/reports/scheduled-emails",
+    propertyCode,
+    "POST",
+    payload
+  );
+}
+
+export function updateScheduledReportEmailJob(
+  propertyCode: PropertyCode,
+  jobId: string,
+  payload: ScheduledReportEmailJobUpdate
+): Promise<ScheduledReportEmailJob> {
+  return mutatePropertyScoped<ScheduledReportEmailJob>(
+    `/reports/scheduled-emails/${jobId}`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
+export function deleteScheduledReportEmailJob(
+  propertyCode: PropertyCode,
+  jobId: string
+): Promise<ScheduledReportEmailJobDeleteResult> {
+  return buildAuthorizedHeaders({
+    "X-Property": propertyCode
+  }).then((headers) => fetch(`${apiBaseUrl}/reports/scheduled-emails/${jobId}`, {
+    method: "DELETE",
+    headers
+  })).then(async (response) => {
+    if (!response.ok) {
+      throw new Error(`request.failed.${response.status}`);
+    }
+
+    return (await response.json()) as ScheduledReportEmailJobDeleteResult;
+  });
 }
 
 export function fetchAdminDelayCommonLocations(

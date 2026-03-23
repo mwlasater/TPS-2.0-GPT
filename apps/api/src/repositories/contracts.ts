@@ -44,6 +44,14 @@ import type {
   ReportConfigRow,
   ReportConfigList,
   ReportConfigUpdate,
+  ReportPreference,
+  ReportPreferenceList,
+  ReportPreferenceUpdate,
+  ScheduledReportEmailJob,
+  ScheduledReportEmailJobCreate,
+  ScheduledReportEmailJobDeleteResult,
+  ScheduledReportEmailJobList,
+  ScheduledReportEmailJobUpdate,
   SpecialMovementList,
   SpecialMovementUpdate,
   DelayEventList,
@@ -207,6 +215,26 @@ export interface PlatformRepository {
     reportId: string,
     update: ReportConfigUpdate
   ): MaybePromise<ReportConfigRow>;
+  listReportPreferences(propertyCode: PropertyCode): MaybePromise<ReportPreferenceList>;
+  updateReportPreference(
+    propertyCode: PropertyCode,
+    preferenceId: string,
+    update: ReportPreferenceUpdate
+  ): MaybePromise<ReportPreference>;
+  listScheduledReportEmailJobs(propertyCode: PropertyCode): MaybePromise<ScheduledReportEmailJobList>;
+  createScheduledReportEmailJob(
+    propertyCode: PropertyCode,
+    input: ScheduledReportEmailJobCreate
+  ): MaybePromise<ScheduledReportEmailJob>;
+  updateScheduledReportEmailJob(
+    propertyCode: PropertyCode,
+    jobId: string,
+    update: ScheduledReportEmailJobUpdate
+  ): MaybePromise<ScheduledReportEmailJob>;
+  deleteScheduledReportEmailJob(
+    propertyCode: PropertyCode,
+    jobId: string
+  ): MaybePromise<ScheduledReportEmailJobDeleteResult>;
   listFiles(propertyCode: PropertyCode): MaybePromise<FileServiceList>;
   listNotifications(propertyCode: PropertyCode): MaybePromise<NotificationList>;
   updateNotification(

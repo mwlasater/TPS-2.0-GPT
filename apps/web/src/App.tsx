@@ -188,6 +188,8 @@ export function App() {
               property={activeProperty}
               referenceData={propertyData.referenceData}
               reportConfig={adminData.reportConfig}
+              reportPreferences={adminData.reportPreferences}
+              scheduledReportEmails={adminData.scheduledReportEmails}
               saveDelayCommonLocation={adminData.saveDelayCommonLocation}
               saveDelayTemplate={adminData.saveDelayTemplate}
               saveAttendance={baselineData.saveAttendance}
@@ -209,6 +211,10 @@ export function App() {
               savePermissionGroups={userAdminData.savePermissionGroups}
               savePropertyAccess={userAdminData.savePropertyAccess}
               saveReportConfig={adminData.saveReportConfig}
+              saveReportPreference={adminData.saveReportPreference}
+              createScheduledReportEmail={adminData.createScheduledReportEmail}
+              saveScheduledReportEmail={adminData.saveScheduledReportEmail}
+              deleteScheduledReportEmail={adminData.deleteScheduledReportEmail}
               saveReferenceData={propertyData.saveReferenceData}
               saveSettings={propertyData.saveSettings}
               saveSpecialMovement={adminData.saveSpecialMovement}

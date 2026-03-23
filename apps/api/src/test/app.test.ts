@@ -12,6 +12,7 @@ import { resetOperationsData } from "../lib/operations-data.js";
 import { resetPersonnelData } from "../lib/personnel-data.js";
 import { resetPermissionGroups } from "../lib/permission-groups.js";
 import { resetReferenceData } from "../lib/reference-data.js";
+import { resetReportConfigData } from "../lib/report-config.js";
 import { resetRunDetailData } from "../lib/run-detail-data.js";
 import { resetRunResourceData } from "../lib/run-resource-data.js";
 import { resetTrainRunEventHistoryData } from "../lib/train-run-event-history-data.js";
@@ -49,6 +50,7 @@ describe("app contracts", () => {
     resetPersonnelData();
     resetPermissionGroups();
     resetReferenceData();
+    resetReportConfigData();
     resetRunDetailData();
     resetRunResourceData();
     resetTrainRunEventHistoryData();
@@ -367,6 +369,35 @@ describe("app contracts", () => {
     });
   });
 
+  it("returns reporting preferences and scheduled email jobs for authorized property context", async () => {
+    const preferencesResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/reports/preferences",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const emailJobsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/reports/scheduled-emails",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(preferencesResponse.statusCode).toBe(200);
+    expect(emailJobsResponse.statusCode).toBe(200);
+    expect(preferencesResponse.json().items[0]).toMatchObject({
+      reportName: "Daily OTP"
+    });
+    expect(emailJobsResponse.json().items[0]).toMatchObject({
+      reportName: "Daily OTP"
+    });
+  });
+
   it("updates permission groups for authorized property context", async () => {
     const response = await app.inject({
       method: "PUT",
@@ -545,6 +576,48 @@ describe("app contracts", () => {
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({
       error: "validation.failed"
+    });
+  });
+
+  it("updates report preferences and scheduled email jobs for authorized property context", async () => {
+    const preferenceResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/reports/preferences/report-pref-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        visibleColumns: ["trainNumber", "otpPercent"],
+        sortOrder: "reportName asc",
+        filtersSummary: "Leadership default"
+      }
+    });
+
+    const createJobResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/reports/scheduled-emails",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        reportName: "Daily OTP",
+        recipientGroup: "Operations Leadership",
+        schedule: "12:00 daily",
+        format: "pdf",
+        enabled: true
+      }
+    });
+
+    expect(preferenceResponse.statusCode).toBe(200);
+    expect(preferenceResponse.json()).toMatchObject({
+      sortOrder: "reportName asc"
+    });
+    expect(createJobResponse.statusCode).toBe(200);
+    expect(createJobResponse.json()).toMatchObject({
+      reportName: "Daily OTP",
+      schedule: "12:00 daily"
     });
   });
 

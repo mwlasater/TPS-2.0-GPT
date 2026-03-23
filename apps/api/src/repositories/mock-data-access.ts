@@ -45,7 +45,16 @@ import {
 } from "../lib/platform-data.js";
 import { getPropertySettings, updatePropertySettings } from "../lib/property-settings.js";
 import { getReferenceData, updateReferenceData } from "../lib/reference-data.js";
-import { listReportConfig, updateReportConfig } from "../lib/report-config.js";
+import {
+  createScheduledReportEmailJob,
+  deleteScheduledReportEmailJob,
+  listReportConfig,
+  listReportPreferences,
+  listScheduledReportEmailJobs,
+  updateReportConfig,
+  updateReportPreference,
+  updateScheduledReportEmailJob
+} from "../lib/report-config.js";
 import {
   createDelayFromTemplate,
   createDelayEvents,
@@ -208,6 +217,12 @@ export function createMockDataAccess(): DataAccess {
     platform: {
       listReportConfig,
       updateReportConfig,
+      listReportPreferences,
+      updateReportPreference,
+      listScheduledReportEmailJobs,
+      createScheduledReportEmailJob,
+      updateScheduledReportEmailJob,
+      deleteScheduledReportEmailJob,
       listFiles,
       listNotifications,
       updateNotification,

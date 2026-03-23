@@ -26,6 +26,8 @@ import type {
   PropertySettings,
   ReferenceDataset,
   ReportConfigList,
+  ReportPreferenceList,
+  ScheduledReportEmailJobList,
   SpecialMovementList,
   StationStopList,
   TrainRunList,
@@ -1483,6 +1485,71 @@ const streetcarReportConfig: ReportConfigList = {
   ]
 };
 
+const commuterReportPreferences: ReportPreferenceList = {
+  items: [
+    {
+      id: "report-pref-1",
+      reportName: "Daily OTP",
+      visibleColumns: ["trainNumber", "otpPercent", "lateTrains"],
+      sortOrder: "otpPercent desc",
+      filtersSummary: "Weekday service only"
+    },
+    {
+      id: "report-pref-2",
+      reportName: "Delay Detail",
+      visibleColumns: ["trainNumber", "delayType", "minutes"],
+      sortOrder: "minutes desc",
+      filtersSummary: "Exclude resolved delays"
+    }
+  ]
+};
+
+const streetcarReportPreferences: ReportPreferenceList = {
+  items: [
+    {
+      id: "street-report-pref-1",
+      reportName: "Streetcar Service Summary",
+      visibleColumns: ["line", "headway", "ridership"],
+      sortOrder: "headway asc",
+      filtersSummary: "Peak service only"
+    }
+  ]
+};
+
+const commuterScheduledReportEmailJobs: ScheduledReportEmailJobList = {
+  items: [
+    {
+      id: "report-email-1",
+      reportName: "Daily OTP",
+      recipientGroup: "Operations Leadership",
+      schedule: "06:15 daily",
+      format: "pdf",
+      enabled: true
+    },
+    {
+      id: "report-email-2",
+      reportName: "Delay Detail",
+      recipientGroup: "Dispatch",
+      schedule: "Every 30 min",
+      format: "xlsx",
+      enabled: true
+    }
+  ]
+};
+
+const streetcarScheduledReportEmailJobs: ScheduledReportEmailJobList = {
+  items: [
+    {
+      id: "street-report-email-1",
+      reportName: "Streetcar Service Summary",
+      recipientGroup: "Street Supervisors",
+      schedule: "07:00 daily",
+      format: "pdf",
+      enabled: true
+    }
+  ]
+};
+
 export const demoPermissionGroups: Record<PropertyCode, PermissionGroupList> = {
   caltrain: commuterPermissionGroups,
   texrail: commuterPermissionGroups,
@@ -1513,6 +1580,38 @@ export const demoReportConfig: Record<PropertyCode, ReportConfigList> = {
   octastreetcar: streetcarReportConfig,
   metrolinkarrow: commuterReportConfig,
   silverline: commuterReportConfig
+};
+
+export const demoReportPreferences: Record<PropertyCode, ReportPreferenceList> = {
+  caltrain: commuterReportPreferences,
+  texrail: commuterReportPreferences,
+  tre: commuterReportPreferences,
+  trirail: commuterReportPreferences,
+  nmrx: commuterReportPreferences,
+  ctrail: commuterReportPreferences,
+  ace: commuterReportPreferences,
+  capmetro: commuterReportPreferences,
+  kcstreetcar: streetcarReportPreferences,
+  okcstreetcar: streetcarReportPreferences,
+  octastreetcar: streetcarReportPreferences,
+  metrolinkarrow: commuterReportPreferences,
+  silverline: commuterReportPreferences
+};
+
+export const demoScheduledReportEmailJobs: Record<PropertyCode, ScheduledReportEmailJobList> = {
+  caltrain: commuterScheduledReportEmailJobs,
+  texrail: commuterScheduledReportEmailJobs,
+  tre: commuterScheduledReportEmailJobs,
+  trirail: commuterScheduledReportEmailJobs,
+  nmrx: commuterScheduledReportEmailJobs,
+  ctrail: commuterScheduledReportEmailJobs,
+  ace: commuterScheduledReportEmailJobs,
+  capmetro: commuterScheduledReportEmailJobs,
+  kcstreetcar: streetcarScheduledReportEmailJobs,
+  okcstreetcar: streetcarScheduledReportEmailJobs,
+  octastreetcar: streetcarScheduledReportEmailJobs,
+  metrolinkarrow: commuterScheduledReportEmailJobs,
+  silverline: commuterScheduledReportEmailJobs
 };
 
 const commuterJobProfiles: JobProfileList = {

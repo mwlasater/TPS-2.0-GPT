@@ -31,7 +31,12 @@ import type {
   PropertySummary,
   ReferenceDataset,
   ReportConfigList,
+  ReportPreferenceList,
+  ReportPreferenceUpdate,
   ReportConfigUpdate,
+  ScheduledReportEmailJobCreate,
+  ScheduledReportEmailJobList,
+  ScheduledReportEmailJobUpdate,
   SpecialMovementList,
   SpecialMovementUpdate,
   UserPermissionGroupUpdate,
@@ -63,6 +68,8 @@ interface SettingsPageProps {
   property: PropertySummary;
   referenceData: ReferenceDataset;
   reportConfig: ReportConfigList;
+  reportPreferences: ReportPreferenceList;
+  scheduledReportEmails: ScheduledReportEmailJobList;
   createUser: (input: ManagedUserCreate) => Promise<void>;
   createPermissionGroup: (input: PermissionGroupCreate) => Promise<void>;
   currentUserPermissions: string[];
@@ -81,6 +88,10 @@ interface SettingsPageProps {
   savePermissionGroups: (update: UserPermissionGroupUpdate) => Promise<void>;
   savePropertyAccess: (update: UserPropertyAccessUpdate) => Promise<void>;
   saveReportConfig: (reportId: string, update: ReportConfigUpdate) => Promise<void>;
+  saveReportPreference: (preferenceId: string, update: ReportPreferenceUpdate) => Promise<void>;
+  createScheduledReportEmail: (input: ScheduledReportEmailJobCreate) => Promise<void>;
+  saveScheduledReportEmail: (jobId: string, update: ScheduledReportEmailJobUpdate) => Promise<void>;
+  deleteScheduledReportEmail: (jobId: string) => Promise<void>;
   saveReferenceData: (update: ReferenceDataset) => Promise<void>;
   saveSettings: (update: PropertySettingsUpdate) => Promise<void>;
   saveSpecialMovement: (movementId: string, update: SpecialMovementUpdate) => Promise<void>;
@@ -113,6 +124,8 @@ export function SettingsPage({
   property,
   referenceData,
   reportConfig,
+  reportPreferences,
+  scheduledReportEmails,
   createUser,
   createPermissionGroup,
   currentUserPermissions,
@@ -131,6 +144,10 @@ export function SettingsPage({
   savePermissionGroups,
   savePropertyAccess,
   saveReportConfig,
+  saveReportPreference,
+  createScheduledReportEmail,
+  saveScheduledReportEmail,
+  deleteScheduledReportEmail,
   saveReferenceData,
   saveSettings,
   saveSpecialMovement,
@@ -574,6 +591,114 @@ export function SettingsPage({
               Update first report row
             </button>
           ) : null}
+        </Panel>
+        <Panel title="Report preferences" eyebrow={`${reportPreferences.items.length} saved views`}>
+          <div className="list-stack">
+            {reportPreferences.items.map((preference) => (
+              <article className="list-row" key={preference.id}>
+                <div>
+                  <strong>{preference.reportName}</strong>
+                  <p>{preference.visibleColumns.join(", ")}</p>
+                  <p>{preference.filtersSummary}</p>
+                </div>
+                <div className="list-meta">
+                  <span>{preference.sortOrder}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+          {reportPreferences.items[0] ? (
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    saveReportPreference(reportPreferences.items[0]!.id, {
+                      visibleColumns: [...reportPreferences.items[0]!.visibleColumns, "onTimeStops"],
+                      sortOrder: "reportName asc",
+                      filtersSummary: "Updated saved view for leadership review"
+                    }),
+                  "Report preference updated."
+                )
+              }
+            >
+              Update first report preference
+            </button>
+          ) : null}
+        </Panel>
+        <Panel title="Scheduled report emails" eyebrow={`${scheduledReportEmails.items.length} jobs`}>
+          <div className="list-stack">
+            {scheduledReportEmails.items.map((job) => (
+              <article className="list-row" key={job.id}>
+                <div>
+                  <strong>{job.reportName}</strong>
+                  <p>
+                    {job.recipientGroup} · {job.schedule}
+                  </p>
+                </div>
+                <div className="list-meta">
+                  <span>{job.format}</span>
+                  <StatusBadge tone={job.enabled ? "success" : "neutral"} label={job.enabled ? "enabled" : "disabled"} />
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="button-row">
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    createScheduledReportEmail({
+                      reportName: "Daily OTP",
+                      recipientGroup: "Operations Leadership",
+                      schedule: "12:00 daily",
+                      format: "pdf",
+                      enabled: true
+                    }),
+                  "Scheduled report email created."
+                )
+              }
+            >
+              Add scheduled email
+            </button>
+            {scheduledReportEmails.items[0] ? (
+              <>
+                <button
+                  type="button"
+                  disabled={!canScheduleReports}
+                  onClick={() =>
+                    void runAction(
+                      () =>
+                        saveScheduledReportEmail(scheduledReportEmails.items[0]!.id, {
+                          recipientGroup: "Dispatch Leadership",
+                          schedule: "18:00 daily",
+                          format: "xlsx",
+                          enabled: false
+                        }),
+                      "Scheduled report email updated."
+                    )
+                  }
+                >
+                  Update first email job
+                </button>
+                <button
+                  type="button"
+                  disabled={!canScheduleReports}
+                  onClick={() =>
+                    void runAction(
+                      () => deleteScheduledReportEmail(scheduledReportEmails.items[0]!.id),
+                      "Scheduled report email deleted."
+                    )
+                  }
+                >
+                  Delete first email job
+                </button>
+              </>
+            ) : null}
+          </div>
         </Panel>
       </div>
       <div className="two-column-grid">

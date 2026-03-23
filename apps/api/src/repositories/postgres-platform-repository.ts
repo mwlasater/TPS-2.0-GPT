@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import type {
   FileServiceItem,
   FileServiceList,
@@ -9,11 +11,23 @@ import type {
   PropertyCode,
   ReportConfigList,
   ReportConfigRow,
-  ReportConfigUpdate
+  ReportConfigUpdate,
+  ReportPreference,
+  ReportPreferenceList,
+  ReportPreferenceUpdate,
+  ScheduledReportEmailJob,
+  ScheduledReportEmailJobCreate,
+  ScheduledReportEmailJobDeleteResult,
+  ScheduledReportEmailJobList,
+  ScheduledReportEmailJobUpdate
 } from "@tps/types";
 
 import { listFiles, listNotifications, listPowerBiEmbeds } from "../lib/platform-data.js";
-import { listReportConfig } from "../lib/report-config.js";
+import {
+  listReportConfig,
+  listReportPreferences,
+  listScheduledReportEmailJobs
+} from "../lib/report-config.js";
 
 import type { PlatformRepository } from "./contracts.js";
 import type { Queryable } from "./postgres-client.js";
@@ -32,6 +46,23 @@ interface FileServiceDbRow {
   category: string;
   uploaded_at: string | Date;
   status: FileServiceItem["status"];
+}
+
+interface ReportPreferenceDbRow {
+  id: string;
+  report_name: string;
+  visible_columns: string[];
+  sort_order: string;
+  filters_summary: string;
+}
+
+interface ScheduledReportEmailDbRow {
+  id: string;
+  report_name: string;
+  recipient_group: string;
+  schedule_text: string;
+  delivery_format: ScheduledReportEmailJob["format"];
+  enabled: boolean;
 }
 
 interface NotificationDbRow {
@@ -139,6 +170,235 @@ export class PostgresPlatformRepository implements PlatformRepository {
       audience: row.audience,
       embedEnabled: row.embed_enabled,
       schedule: row.schedule_text
+    };
+  }
+
+  async listReportPreferences(propertyCode: PropertyCode): Promise<ReportPreferenceList> {
+    const result = await this.db.query<ReportPreferenceDbRow>(
+      `
+        SELECT
+          id,
+          report_name,
+          visible_columns,
+          sort_order,
+          filters_summary
+        FROM shared.report_preference
+        WHERE railroad_code = $1
+        ORDER BY report_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listReportPreferences(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): ReportPreference => ({
+          id: row.id,
+          reportName: row.report_name,
+          visibleColumns: row.visible_columns,
+          sortOrder: row.sort_order,
+          filtersSummary: row.filters_summary
+        })
+      )
+    };
+  }
+
+  async updateReportPreference(
+    propertyCode: PropertyCode,
+    preferenceId: string,
+    update: ReportPreferenceUpdate
+  ): Promise<ReportPreference> {
+    await this.db.query(
+      `
+        UPDATE shared.report_preference
+        SET
+          visible_columns = $3,
+          sort_order = $4,
+          filters_summary = $5
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, preferenceId, update.visibleColumns, update.sortOrder, update.filtersSummary]
+    );
+
+    const result = await this.db.query<ReportPreferenceDbRow>(
+      `
+        SELECT
+          id,
+          report_name,
+          visible_columns,
+          sort_order,
+          filters_summary
+        FROM shared.report_preference
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, preferenceId]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      throw new Error("report_preference.not_found");
+    }
+
+    return {
+      id: row.id,
+      reportName: row.report_name,
+      visibleColumns: row.visible_columns,
+      sortOrder: row.sort_order,
+      filtersSummary: row.filters_summary
+    };
+  }
+
+  async listScheduledReportEmailJobs(
+    propertyCode: PropertyCode
+  ): Promise<ScheduledReportEmailJobList> {
+    const result = await this.db.query<ScheduledReportEmailDbRow>(
+      `
+        SELECT
+          id,
+          report_name,
+          recipient_group,
+          schedule_text,
+          delivery_format,
+          enabled
+        FROM shared.scheduled_report_email_job
+        WHERE railroad_code = $1
+        ORDER BY report_name, schedule_text
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listScheduledReportEmailJobs(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): ScheduledReportEmailJob => ({
+          id: row.id,
+          reportName: row.report_name,
+          recipientGroup: row.recipient_group,
+          schedule: row.schedule_text,
+          format: row.delivery_format,
+          enabled: row.enabled
+        })
+      )
+    };
+  }
+
+  async createScheduledReportEmailJob(
+    propertyCode: PropertyCode,
+    input: ScheduledReportEmailJobCreate
+  ): Promise<ScheduledReportEmailJob> {
+    const id = crypto.randomUUID();
+    await this.db.query(
+      `
+        INSERT INTO shared.scheduled_report_email_job (
+          id,
+          railroad_code,
+          report_name,
+          recipient_group,
+          schedule_text,
+          delivery_format,
+          enabled
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `,
+      [
+        id,
+        propertyCode,
+        input.reportName,
+        input.recipientGroup,
+        input.schedule,
+        input.format,
+        input.enabled
+      ]
+    );
+
+    return {
+      id,
+      reportName: input.reportName,
+      recipientGroup: input.recipientGroup,
+      schedule: input.schedule,
+      format: input.format,
+      enabled: input.enabled
+    };
+  }
+
+  async updateScheduledReportEmailJob(
+    propertyCode: PropertyCode,
+    jobId: string,
+    update: ScheduledReportEmailJobUpdate
+  ): Promise<ScheduledReportEmailJob> {
+    await this.db.query(
+      `
+        UPDATE shared.scheduled_report_email_job
+        SET
+          recipient_group = $3,
+          schedule_text = $4,
+          delivery_format = $5,
+          enabled = $6
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, jobId, update.recipientGroup, update.schedule, update.format, update.enabled]
+    );
+
+    const result = await this.db.query<ScheduledReportEmailDbRow>(
+      `
+        SELECT
+          id,
+          report_name,
+          recipient_group,
+          schedule_text,
+          delivery_format,
+          enabled
+        FROM shared.scheduled_report_email_job
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, jobId]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      throw new Error("scheduled_report_email.not_found");
+    }
+
+    return {
+      id: row.id,
+      reportName: row.report_name,
+      recipientGroup: row.recipient_group,
+      schedule: row.schedule_text,
+      format: row.delivery_format,
+      enabled: row.enabled
+    };
+  }
+
+  async deleteScheduledReportEmailJob(
+    propertyCode: PropertyCode,
+    jobId: string
+  ): Promise<ScheduledReportEmailJobDeleteResult> {
+    const result = await this.db.query<{ id: string }>(
+      `
+        DELETE FROM shared.scheduled_report_email_job
+        WHERE railroad_code = $1
+          AND id = $2
+        RETURNING id
+      `,
+      [propertyCode, jobId]
+    );
+
+    if (!result.rows[0]) {
+      throw new Error("scheduled_report_email.not_found");
+    }
+
+    return {
+      deletedJobId: jobId
     };
   }
 

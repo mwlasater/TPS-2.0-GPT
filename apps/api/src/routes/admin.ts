@@ -9,8 +9,11 @@ import {
   notificationUpdateSchema,
   permissionGroupCreateSchema,
   permissionGroupUpdateSchema,
+  reportPreferenceUpdateSchema,
   personnelStatusUpdateSchema,
   reportConfigUpdateSchema,
+  scheduledReportEmailJobCreateSchema,
+  scheduledReportEmailJobUpdateSchema,
   specialMovementUpdateSchema
 } from "@tps/validation";
 import type { FastifyInstance } from "fastify";
@@ -27,6 +30,9 @@ import type {
   PermissionGroupUpdate,
   PersonnelStatusUpdate,
   ReportConfigUpdate,
+  ReportPreferenceUpdate,
+  ScheduledReportEmailJobCreate,
+  ScheduledReportEmailJobUpdate,
   SpecialMovementUpdate
 } from "@tps/types";
 
@@ -103,6 +109,84 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         request.property,
         (request.params as { reportId: string }).reportId,
         payload
+      );
+    }
+  );
+
+  app.get(
+    "/reports/preferences",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listReportPreferences(request.property)
+  );
+
+  app.post(
+    "/reports/preferences/:preferenceId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = reportPreferenceUpdateSchema.parse(request.body) as ReportPreferenceUpdate;
+      return app.dataAccess.platform.updateReportPreference(
+        request.property,
+        (request.params as { preferenceId: string }).preferenceId,
+        payload
+      );
+    }
+  );
+
+  app.get(
+    "/reports/scheduled-emails",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listScheduledReportEmailJobs(request.property)
+  );
+
+  app.post(
+    "/reports/scheduled-emails",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = scheduledReportEmailJobCreateSchema.parse(
+        request.body
+      ) as ScheduledReportEmailJobCreate;
+      return app.dataAccess.platform.createScheduledReportEmailJob(request.property, payload);
+    }
+  );
+
+  app.put(
+    "/reports/scheduled-emails/:jobId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = scheduledReportEmailJobUpdateSchema.parse(
+        request.body
+      ) as ScheduledReportEmailJobUpdate;
+      return app.dataAccess.platform.updateScheduledReportEmailJob(
+        request.property,
+        (request.params as { jobId: string }).jobId,
+        payload
+      );
+    }
+  );
+
+  app.delete(
+    "/reports/scheduled-emails/:jobId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      return app.dataAccess.platform.deleteScheduledReportEmailJob(
+        request.property,
+        (request.params as { jobId: string }).jobId
       );
     }
   );
