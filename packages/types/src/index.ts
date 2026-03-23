@@ -707,6 +707,33 @@ export interface LiveReportCatalogList {
   items: LiveReportCatalogItem[];
 }
 
+export interface LiveReportExecutionRequest {
+  format: "interactive" | "pdf" | "xlsx";
+  deliveryMode: "view" | "download" | "email";
+  recipient: string;
+  filtersSummary: string;
+  notes: string;
+}
+
+export interface LiveReportExecutionRecord {
+  id: string;
+  reportId: string;
+  reportName: string;
+  format: "interactive" | "pdf" | "xlsx";
+  deliveryMode: "view" | "download" | "email";
+  recipient: string;
+  status: "ready" | "generated" | "sent";
+  executedAt: string;
+  executedBy: string;
+  filtersSummary: string;
+  notes: string;
+  linkedDeliveryId: string | null;
+}
+
+export interface LiveReportExecutionList {
+  items: LiveReportExecutionRecord[];
+}
+
 export interface PassengerReportImportRecord {
   id: string;
   importName: string;
@@ -740,6 +767,11 @@ export interface ReportDeliveryRequest {
   notes: string;
 }
 
+export interface ReportDeliveryStatusUpdate {
+  status: "queued" | "generated" | "sent";
+  notes: string;
+}
+
 export interface ReportDeliveryRecord {
   id: string;
   reportName: string;
@@ -750,6 +782,8 @@ export interface ReportDeliveryRecord {
   requestedAt: string;
   requestedBy: string;
   notes: string;
+  retryCount: number;
+  lastRetriedAt: string | null;
 }
 
 export interface ReportDeliveryRecordList {

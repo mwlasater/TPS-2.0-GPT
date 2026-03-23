@@ -5,6 +5,9 @@ import type {
   FileServiceList,
   LiveReportCatalogItem,
   LiveReportCatalogList,
+  LiveReportExecutionList,
+  LiveReportExecutionRecord,
+  LiveReportExecutionRequest,
   NotificationItem,
   NotificationList,
   NotificationUpdate,
@@ -19,6 +22,7 @@ import type {
   ReportDeliveryRecord,
   ReportDeliveryRecordList,
   ReportDeliveryRequest,
+  ReportDeliveryStatusUpdate,
   ReportPreference,
   ReportPreferenceList,
   ReportPreferenceUpdate,
@@ -31,7 +35,9 @@ import type {
 
 import { listFiles, listNotifications, listPowerBiEmbeds } from "../lib/platform-data.js";
 import {
+  executeLiveReport,
   listLiveReports,
+  listLiveReportExecutions,
   listPassengerReportImports,
   listReportDeliveries,
   listReportConfig,
@@ -113,6 +119,23 @@ interface ReportDeliveryDbRow {
   requested_at: string | Date;
   requested_by: string;
   notes: string;
+  retry_count: number;
+  last_retried_at: string | Date | null;
+}
+
+interface LiveReportExecutionDbRow {
+  id: string;
+  report_id: string;
+  report_name: string;
+  execution_format: LiveReportExecutionRecord["format"];
+  delivery_mode: LiveReportExecutionRecord["deliveryMode"];
+  recipient: string;
+  status: LiveReportExecutionRecord["status"];
+  executed_at: string | Date;
+  executed_by: string;
+  filters_summary: string;
+  notes: string;
+  linked_delivery_id: string | null;
 }
 
 function toIsoTimestamp(value: string | Date): string {
@@ -470,6 +493,177 @@ export class PostgresPlatformRepository implements PlatformRepository {
     };
   }
 
+  async listLiveReportExecutions(propertyCode: PropertyCode): Promise<LiveReportExecutionList> {
+    const result = await this.db.query<LiveReportExecutionDbRow>(
+      `
+        SELECT
+          id,
+          report_id,
+          report_name,
+          execution_format,
+          delivery_mode,
+          recipient,
+          status,
+          executed_at,
+          executed_by,
+          filters_summary,
+          notes,
+          linked_delivery_id
+        FROM shared.live_report_execution
+        WHERE railroad_code = $1
+        ORDER BY executed_at DESC, report_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listLiveReportExecutions(propertyCode);
+    }
+
+    return {
+      items: result.rows.map((row): LiveReportExecutionRecord => ({
+        id: row.id,
+        reportId: row.report_id,
+        reportName: row.report_name,
+        format: row.execution_format,
+        deliveryMode: row.delivery_mode,
+        recipient: row.recipient,
+        status: row.status,
+        executedAt: toIsoTimestamp(row.executed_at),
+        executedBy: row.executed_by,
+        filtersSummary: row.filters_summary,
+        notes: row.notes,
+        linkedDeliveryId: row.linked_delivery_id
+      }))
+    };
+  }
+
+  async executeLiveReport(
+    propertyCode: PropertyCode,
+    reportId: string,
+    input: LiveReportExecutionRequest,
+    actorName: string
+  ): Promise<LiveReportExecutionRecord> {
+    const reportLookup = await this.db.query<{
+      id: string;
+      report_name: string;
+    }>(
+      `
+        SELECT
+          id,
+          report_name
+        FROM shared.power_bi_embed
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, reportId]
+    );
+
+    const report = reportLookup.rows[0];
+
+    if (!report) {
+      return executeLiveReport(propertyCode, reportId, input, actorName);
+    }
+
+    let linkedDeliveryId: string | null = null;
+
+    if (input.deliveryMode !== "view") {
+      linkedDeliveryId = crypto.randomUUID();
+      const deliveryMode = input.deliveryMode === "email" ? "email" : "download";
+      const deliveryFormat = input.format === "interactive" ? "pdf" : input.format;
+      const deliveryStatus = deliveryMode === "email" ? "sent" : "generated";
+
+      await this.db.query(
+        `
+          INSERT INTO shared.report_delivery_request (
+            id,
+            railroad_code,
+            report_name,
+            delivery_format,
+            delivery_mode,
+            recipient,
+            status,
+            requested_at,
+            requested_by,
+            notes,
+            retry_count,
+            last_retried_at
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9, 0, NULL)
+        `,
+        [
+          linkedDeliveryId,
+          propertyCode,
+          report.report_name,
+          deliveryFormat,
+          deliveryMode,
+          input.recipient,
+          deliveryStatus,
+          actorName,
+          input.notes
+        ]
+      );
+    }
+
+    const executionId = crypto.randomUUID();
+    const status =
+      input.deliveryMode === "email"
+        ? "sent"
+        : input.deliveryMode === "view"
+          ? "ready"
+          : "generated";
+
+    await this.db.query(
+      `
+        INSERT INTO shared.live_report_execution (
+          id,
+          railroad_code,
+          report_id,
+          report_name,
+          execution_format,
+          delivery_mode,
+          recipient,
+          status,
+          executed_at,
+          executed_by,
+          filters_summary,
+          notes,
+          linked_delivery_id
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9, $10, $11, $12)
+      `,
+      [
+        executionId,
+        propertyCode,
+        report.id,
+        report.report_name,
+        input.format,
+        input.deliveryMode,
+        input.recipient,
+        status,
+        actorName,
+        input.filtersSummary,
+        input.notes,
+        linkedDeliveryId
+      ]
+    );
+
+    return {
+      id: executionId,
+      reportId: report.id,
+      reportName: report.report_name,
+      format: input.format,
+      deliveryMode: input.deliveryMode,
+      recipient: input.recipient,
+      status,
+      executedAt: new Date().toISOString(),
+      executedBy: actorName,
+      filtersSummary: input.filtersSummary,
+      notes: input.notes,
+      linkedDeliveryId
+    };
+  }
+
   async listPassengerReportImports(propertyCode: PropertyCode): Promise<PassengerReportImportList> {
     const result = await this.db.query<PassengerReportImportDbRow>(
       `
@@ -557,7 +751,9 @@ export class PostgresPlatformRepository implements PlatformRepository {
           status,
           requested_at,
           requested_by,
-          notes
+          notes,
+          retry_count,
+          last_retried_at
         FROM shared.report_delivery_request
         WHERE railroad_code = $1
         ORDER BY requested_at DESC, report_name
@@ -579,7 +775,9 @@ export class PostgresPlatformRepository implements PlatformRepository {
         status: row.status,
         requestedAt: toIsoTimestamp(row.requested_at),
         requestedBy: row.requested_by,
-        notes: row.notes
+        notes: row.notes,
+        retryCount: row.retry_count,
+        lastRetriedAt: row.last_retried_at ? toIsoTimestamp(row.last_retried_at) : null
       }))
     };
   }
@@ -630,7 +828,132 @@ export class PostgresPlatformRepository implements PlatformRepository {
       status,
       requestedAt: new Date().toISOString(),
       requestedBy: actorName,
-      notes: input.notes
+      notes: input.notes,
+      retryCount: 0,
+      lastRetriedAt: null
+    };
+  }
+
+  async updateReportDeliveryStatus(
+    propertyCode: PropertyCode,
+    deliveryId: string,
+    input: ReportDeliveryStatusUpdate
+  ): Promise<ReportDeliveryRecord> {
+    await this.db.query(
+      `
+        UPDATE shared.report_delivery_request
+        SET
+          status = $3,
+          notes = $4
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, deliveryId, input.status, input.notes]
+    );
+
+    const result = await this.db.query<ReportDeliveryDbRow>(
+      `
+        SELECT
+          id,
+          report_name,
+          delivery_format,
+          delivery_mode,
+          recipient,
+          status,
+          requested_at,
+          requested_by,
+          notes,
+          retry_count,
+          last_retried_at
+        FROM shared.report_delivery_request
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, deliveryId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("report_delivery.not_found");
+    }
+
+    return {
+      id: row.id,
+      reportName: row.report_name,
+      format: row.delivery_format,
+      deliveryMode: row.delivery_mode,
+      recipient: row.recipient,
+      status: row.status,
+      requestedAt: toIsoTimestamp(row.requested_at),
+      requestedBy: row.requested_by,
+      notes: row.notes,
+      retryCount: row.retry_count,
+      lastRetriedAt: row.last_retried_at ? toIsoTimestamp(row.last_retried_at) : null
+    };
+  }
+
+  async retryReportDelivery(
+    propertyCode: PropertyCode,
+    deliveryId: string,
+    actorName: string
+  ): Promise<ReportDeliveryRecord> {
+    await this.db.query(
+      `
+        UPDATE shared.report_delivery_request
+        SET
+          retry_count = retry_count + 1,
+          last_retried_at = NOW(),
+          status = CASE
+            WHEN delivery_mode = 'email' THEN 'sent'
+            ELSE 'generated'
+          END,
+          notes = CONCAT(notes, ' Retry requested by ', $3, '.')
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, deliveryId, actorName]
+    );
+
+    const result = await this.db.query<ReportDeliveryDbRow>(
+      `
+        SELECT
+          id,
+          report_name,
+          delivery_format,
+          delivery_mode,
+          recipient,
+          status,
+          requested_at,
+          requested_by,
+          notes,
+          retry_count,
+          last_retried_at
+        FROM shared.report_delivery_request
+        WHERE railroad_code = $1
+          AND id = $2
+      `,
+      [propertyCode, deliveryId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error("report_delivery.not_found");
+    }
+
+    return {
+      id: row.id,
+      reportName: row.report_name,
+      format: row.delivery_format,
+      deliveryMode: row.delivery_mode,
+      recipient: row.recipient,
+      status: row.status,
+      requestedAt: toIsoTimestamp(row.requested_at),
+      requestedBy: row.requested_by,
+      notes: row.notes,
+      retryCount: row.retry_count,
+      lastRetriedAt: row.last_retried_at ? toIsoTimestamp(row.last_retried_at) : null
     };
   }
 

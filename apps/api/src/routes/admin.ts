@@ -6,11 +6,13 @@ import {
   delayCommonLocationUpdateSchema,
   delayTemplateUpdateSchema,
   jobProfileUpdateSchema,
+  liveReportExecutionRequestSchema,
   notificationUpdateSchema,
   passengerReportImportCreateSchema,
   permissionGroupCreateSchema,
   permissionGroupUpdateSchema,
   reportDeliveryRequestSchema,
+  reportDeliveryStatusUpdateSchema,
   reportPreferenceUpdateSchema,
   personnelStatusUpdateSchema,
   reportConfigUpdateSchema,
@@ -27,6 +29,7 @@ import type {
   DelayCommonLocationUpdate,
   DelayTemplateUpdate,
   JobProfileUpdate,
+  LiveReportExecutionRequest,
   NotificationUpdate,
   PassengerReportImportCreate,
   PermissionGroupCreate,
@@ -34,6 +37,7 @@ import type {
   PersonnelStatusUpdate,
   ReportConfigUpdate,
   ReportDeliveryRequest,
+  ReportDeliveryStatusUpdate,
   ReportPreferenceUpdate,
   ScheduledReportEmailJobCreate,
   ScheduledReportEmailJobUpdate,
@@ -150,6 +154,33 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   );
 
   app.get(
+    "/reports/live/executions",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listLiveReportExecutions(request.property)
+  );
+
+  app.post(
+    "/reports/live/:reportId/execute",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = liveReportExecutionRequestSchema.parse(
+        request.body
+      ) as LiveReportExecutionRequest;
+      return app.dataAccess.platform.executeLiveReport(
+        request.property,
+        (request.params as { reportId: string }).reportId,
+        payload,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.get(
     "/reports/passenger-report",
     {
       preHandler: [app.authenticate, app.requireProperty]
@@ -176,6 +207,39 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       return app.dataAccess.platform.createReportDelivery(
         request.property,
         payload,
+        request.user.displayName
+      );
+    }
+  );
+
+  app.put(
+    "/reports/deliveries/:deliveryId/status",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = reportDeliveryStatusUpdateSchema.parse(
+        request.body
+      ) as ReportDeliveryStatusUpdate;
+      return app.dataAccess.platform.updateReportDeliveryStatus(
+        request.property,
+        (request.params as { deliveryId: string }).deliveryId,
+        payload
+      );
+    }
+  );
+
+  app.post(
+    "/reports/deliveries/:deliveryId/retry",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      return app.dataAccess.platform.retryReportDelivery(
+        request.property,
+        (request.params as { deliveryId: string }).deliveryId,
         request.user.displayName
       );
     }

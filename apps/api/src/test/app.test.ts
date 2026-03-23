@@ -660,6 +660,77 @@ describe("app contracts", () => {
     });
   });
 
+  it("executes live reports and updates delivery status for authorized property context", async () => {
+    const executeResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/reports/live/live-report-otp/execute",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        format: "pdf",
+        deliveryMode: "download",
+        recipient: "Operations Leadership",
+        filtersSummary: "Current operating day",
+        notes: "Generated leadership packet."
+      }
+    });
+
+    const executionsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/reports/live/executions",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const updateDeliveryResponse = await app.inject({
+      method: "PUT",
+      url: "/api/v1/reports/deliveries/report-delivery-1/status",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      },
+      payload: {
+        status: "queued",
+        notes: "Held for dispatch review."
+      }
+    });
+
+    const retryDeliveryResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/reports/deliveries/report-delivery-1/retry",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    expect(executeResponse.statusCode).toBe(200);
+    expect(executeResponse.json()).toMatchObject({
+      reportName: "Daily OTP Live",
+      deliveryMode: "download",
+      status: "generated"
+    });
+    expect(executionsResponse.statusCode).toBe(200);
+    expect(executionsResponse.json().items[0]).toMatchObject({
+      reportId: "live-report-otp",
+      status: expect.any(String)
+    });
+    expect(updateDeliveryResponse.statusCode).toBe(200);
+    expect(updateDeliveryResponse.json()).toMatchObject({
+      id: "report-delivery-1",
+      status: "queued"
+    });
+    expect(retryDeliveryResponse.statusCode).toBe(200);
+    expect(retryDeliveryResponse.json()).toMatchObject({
+      id: "report-delivery-1",
+      retryCount: 1
+    });
+  });
+
   it("returns job profiles and attendance exceptions for authorized property context", async () => {
     const profilesResponse = await app.inject({
       method: "GET",

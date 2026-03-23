@@ -179,6 +179,7 @@ export function App() {
               files={platformData.files}
               jobProfiles={baselineData.jobProfiles}
               liveReports={adminData.liveReports}
+              liveReportExecutions={adminData.liveReportExecutions}
               isSaving={
                 propertyData.isSaving ||
                 adminData.isSaving ||
@@ -214,6 +215,7 @@ export function App() {
               }}
               createPassengerImport={adminData.createPassengerImport}
               createReportDelivery={adminData.createReportDelivery}
+              executeLiveReport={adminData.executeLiveReport}
               createPermissionGroup={adminData.createPermissionGroup}
               currentUserPermissions={currentUserPermissions}
               deletePermissionGroup={adminData.deletePermissionGroup}
@@ -227,6 +229,8 @@ export function App() {
               createScheduledReportEmail={adminData.createScheduledReportEmail}
               saveScheduledReportEmail={adminData.saveScheduledReportEmail}
               deleteScheduledReportEmail={adminData.deleteScheduledReportEmail}
+              saveReportDeliveryStatus={adminData.saveReportDeliveryStatus}
+              retryReportDelivery={adminData.retryReportDelivery}
               saveReferenceData={propertyData.saveReferenceData}
               saveSettings={propertyData.saveSettings}
               saveSpecialMovement={adminData.saveSpecialMovement}

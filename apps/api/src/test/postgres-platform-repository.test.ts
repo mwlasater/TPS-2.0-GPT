@@ -214,7 +214,9 @@ describe("PostgresPlatformRepository", () => {
           status: "sent",
           requested_at: new Date("2026-03-06T06:16:00Z"),
           requested_by: "Taylor Brooks",
-          notes: "Morning leadership packet."
+          notes: "Morning leadership packet.",
+          retry_count: 0,
+          last_retried_at: null
         }
       ]
     });
@@ -233,7 +235,9 @@ describe("PostgresPlatformRepository", () => {
           status: "sent",
           requestedAt: "2026-03-06T06:16:00.000Z",
           requestedBy: "Taylor Brooks",
-          notes: "Morning leadership packet."
+          notes: "Morning leadership packet.",
+          retryCount: 0,
+          lastRetriedAt: null
         }
       ]
     });
@@ -258,8 +262,129 @@ describe("PostgresPlatformRepository", () => {
       recipient: "dispatch.leadership@herzog.com",
       status: "sent",
       requestedBy: "Taylor Brooks",
-      notes: "On-demand review packet."
+      notes: "On-demand review packet.",
+      retryCount: 0,
+      lastRetriedAt: null
     });
+  });
+
+  it("maps live report execution rows", async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [
+        {
+          id: "live-execution-1",
+          report_id: "bi_caltrain_1",
+          report_name: "Daily OTP",
+          execution_format: "interactive",
+          delivery_mode: "view",
+          recipient: "Operations Leadership",
+          status: "ready",
+          executed_at: new Date("2026-03-06T06:10:00Z"),
+          executed_by: "Taylor Brooks",
+          filters_summary: "Weekday service only",
+          notes: "Leadership standup review.",
+          linked_delivery_id: null
+        }
+      ]
+    });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const executions = await repository.listLiveReportExecutions("caltrain");
+
+    expect(executions).toEqual({
+      items: [
+        {
+          id: "live-execution-1",
+          reportId: "bi_caltrain_1",
+          reportName: "Daily OTP",
+          format: "interactive",
+          deliveryMode: "view",
+          recipient: "Operations Leadership",
+          status: "ready",
+          executedAt: "2026-03-06T06:10:00.000Z",
+          executedBy: "Taylor Brooks",
+          filtersSummary: "Weekday service only",
+          notes: "Leadership standup review.",
+          linkedDeliveryId: null
+        }
+      ]
+    });
+  });
+
+  it("updates report delivery status rows", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "report-delivery-1",
+            report_name: "Daily OTP",
+            delivery_format: "pdf",
+            delivery_mode: "email",
+            recipient: "operations.leadership@herzog.com",
+            status: "queued",
+            requested_at: new Date("2026-03-06T06:16:00Z"),
+            requested_by: "Taylor Brooks",
+            notes: "Held for review.",
+            retry_count: 0,
+            last_retried_at: null
+          }
+        ]
+      });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const delivery = await repository.updateReportDeliveryStatus("caltrain", "report-delivery-1", {
+      status: "queued",
+      notes: "Held for review."
+    });
+
+    expect(delivery).toMatchObject({
+      id: "report-delivery-1",
+      status: "queued",
+      notes: "Held for review.",
+      retryCount: 0
+    });
+  });
+
+  it("creates live report execution rows", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "bi_caltrain_1",
+            report_name: "Daily OTP"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresPlatformRepository({ query });
+    const execution = await repository.executeLiveReport(
+      "caltrain",
+      "bi_caltrain_1",
+      {
+        format: "pdf",
+        deliveryMode: "download",
+        recipient: "Operations Leadership",
+        filtersSummary: "Current operating day",
+        notes: "Generated leadership packet."
+      },
+      "Taylor Brooks"
+    );
+
+    expect(execution).toMatchObject({
+      reportId: "bi_caltrain_1",
+      reportName: "Daily OTP",
+      format: "pdf",
+      deliveryMode: "download",
+      recipient: "Operations Leadership",
+      status: "generated",
+      executedBy: "Taylor Brooks"
+    });
+    expect(execution.linkedDeliveryId).toEqual(expect.any(String));
   });
 
   it("updates notification rows", async () => {

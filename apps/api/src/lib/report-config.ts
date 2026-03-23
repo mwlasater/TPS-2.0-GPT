@@ -2,6 +2,9 @@ import crypto from "node:crypto";
 
 import type {
   LiveReportCatalogList,
+  LiveReportExecutionList,
+  LiveReportExecutionRecord,
+  LiveReportExecutionRequest,
   PassengerReportImportCreate,
   PassengerReportImportList,
   PropertyCode,
@@ -11,6 +14,7 @@ import type {
   ReportDeliveryRecord,
   ReportDeliveryRecordList,
   ReportDeliveryRequest,
+  ReportDeliveryStatusUpdate,
   ReportPreference,
   ReportPreferenceList,
   ReportPreferenceUpdate,
@@ -208,7 +212,9 @@ const commuterReportDeliveriesSeed: ReportDeliveryRecordList = {
       status: "sent",
       requestedAt: "2026-03-06T06:16:00Z",
       requestedBy: "Taylor Brooks",
-      notes: "Morning leadership packet."
+      notes: "Morning leadership packet.",
+      retryCount: 0,
+      lastRetriedAt: null
     }
   ]
 };
@@ -224,7 +230,47 @@ const streetcarReportDeliveriesSeed: ReportDeliveryRecordList = {
       status: "generated",
       requestedAt: "2026-03-06T07:05:00Z",
       requestedBy: "Jordan Reyes",
-      notes: "Supervisor handoff packet."
+      notes: "Supervisor handoff packet.",
+      retryCount: 0,
+      lastRetriedAt: null
+    }
+  ]
+};
+
+const commuterLiveReportExecutionsSeed: LiveReportExecutionList = {
+  items: [
+    {
+      id: "live-execution-1",
+      reportId: "live-report-otp",
+      reportName: "Daily OTP Live",
+      format: "interactive",
+      deliveryMode: "view",
+      recipient: "Operations Leadership",
+      status: "ready",
+      executedAt: "2026-03-06T06:10:00Z",
+      executedBy: "Taylor Brooks",
+      filtersSummary: "Weekday service, current operating day",
+      notes: "Leadership standup review.",
+      linkedDeliveryId: null
+    }
+  ]
+};
+
+const streetcarLiveReportExecutionsSeed: LiveReportExecutionList = {
+  items: [
+    {
+      id: "street-live-execution-1",
+      reportId: "street-live-headway",
+      reportName: "Street Headway Monitor",
+      format: "pdf",
+      deliveryMode: "download",
+      recipient: "Street Supervisors",
+      status: "generated",
+      executedAt: "2026-03-06T07:00:00Z",
+      executedBy: "Jordan Reyes",
+      filtersSummary: "Peak service only",
+      notes: "Morning supervisor packet.",
+      linkedDeliveryId: "street-report-delivery-1"
     }
   ]
 };
@@ -259,6 +305,12 @@ function cloneLiveReports(value: LiveReportCatalogList): LiveReportCatalogList {
   };
 }
 
+function cloneLiveReportExecutions(value: LiveReportExecutionList): LiveReportExecutionList {
+  return {
+    items: value.items.map((item) => ({ ...item }))
+  };
+}
+
 function clonePassengerImports(value: PassengerReportImportList): PassengerReportImportList {
   return {
     items: value.items.map((item) => ({ ...item }))
@@ -279,6 +331,7 @@ const reportConfigByProperty = new Map<PropertyCode, ReportConfigList>();
 const reportPreferencesByProperty = new Map<PropertyCode, ReportPreferenceList>();
 const scheduledEmailJobsByProperty = new Map<PropertyCode, ScheduledReportEmailJobList>();
 const liveReportsByProperty = new Map<PropertyCode, LiveReportCatalogList>();
+const liveReportExecutionsByProperty = new Map<PropertyCode, LiveReportExecutionList>();
 const passengerImportsByProperty = new Map<PropertyCode, PassengerReportImportList>();
 const reportDeliveriesByProperty = new Map<PropertyCode, ReportDeliveryRecordList>();
 
@@ -345,6 +398,19 @@ function getPassengerImportsStore(propertyCode: PropertyCode): PassengerReportIm
   }
 
   return value;
+}
+
+function getLiveReportExecutionsStore(propertyCode: PropertyCode): LiveReportExecutionList {
+  if (!liveReportExecutionsByProperty.has(propertyCode)) {
+    liveReportExecutionsByProperty.set(
+      propertyCode,
+      streetcarProperties.has(propertyCode)
+        ? cloneLiveReportExecutions(streetcarLiveReportExecutionsSeed)
+        : cloneLiveReportExecutions(commuterLiveReportExecutionsSeed)
+    );
+  }
+
+  return liveReportExecutionsByProperty.get(propertyCode)!;
 }
 
 function getReportDeliveriesStore(propertyCode: PropertyCode): ReportDeliveryRecordList {
@@ -471,6 +537,64 @@ export function listLiveReports(propertyCode: PropertyCode): LiveReportCatalogLi
   return getLiveReportsStore(propertyCode);
 }
 
+export function listLiveReportExecutions(propertyCode: PropertyCode): LiveReportExecutionList {
+  return getLiveReportExecutionsStore(propertyCode);
+}
+
+export function executeLiveReport(
+  propertyCode: PropertyCode,
+  reportId: string,
+  input: LiveReportExecutionRequest,
+  actorName: string
+): LiveReportExecutionRecord {
+  const liveReport = getLiveReportsStore(propertyCode).items.find((item) => item.id === reportId);
+
+  if (!liveReport) {
+    throw new Error("live_report.not_found");
+  }
+
+  let linkedDeliveryId: string | null = null;
+
+  if (input.deliveryMode !== "view") {
+    const delivery = createReportDelivery(
+      propertyCode,
+      {
+        reportName: liveReport.reportName,
+        format: input.format === "interactive" ? "pdf" : input.format,
+        deliveryMode: input.deliveryMode === "email" ? "email" : "download",
+        recipient: input.recipient,
+        notes: input.notes
+      },
+      actorName
+    );
+    linkedDeliveryId = delivery.id;
+  }
+
+  const record: LiveReportExecutionRecord = {
+    id: crypto.randomUUID(),
+    reportId,
+    reportName: liveReport.reportName,
+    format: input.format,
+    deliveryMode: input.deliveryMode,
+    recipient: input.recipient,
+    status:
+      input.deliveryMode === "email"
+        ? "sent"
+        : input.deliveryMode === "view"
+          ? "ready"
+          : "generated",
+    executedAt: new Date().toISOString(),
+    executedBy: actorName,
+    filtersSummary: input.filtersSummary,
+    notes: input.notes,
+    linkedDeliveryId
+  };
+
+  getLiveReportExecutionsStore(propertyCode).items.unshift(record);
+
+  return record;
+}
+
 export function listPassengerReportImports(propertyCode: PropertyCode): PassengerReportImportList {
   return getPassengerImportsStore(propertyCode);
 }
@@ -513,9 +637,48 @@ export function createReportDelivery(
     status: input.deliveryMode === "email" ? "sent" : "generated",
     requestedAt: new Date().toISOString(),
     requestedBy: actorName,
-    notes: input.notes
+    notes: input.notes,
+    retryCount: 0,
+    lastRetriedAt: null
   };
   source.items.unshift(record);
+  return record;
+}
+
+export function updateReportDeliveryStatus(
+  propertyCode: PropertyCode,
+  deliveryId: string,
+  input: ReportDeliveryStatusUpdate
+): ReportDeliveryRecord {
+  const source = getReportDeliveriesStore(propertyCode);
+  const record = source.items.find((item) => item.id === deliveryId);
+
+  if (!record) {
+    throw new Error("report_delivery.not_found");
+  }
+
+  record.status = input.status;
+  record.notes = input.notes;
+
+  return record;
+}
+
+export function retryReportDelivery(
+  propertyCode: PropertyCode,
+  deliveryId: string
+): ReportDeliveryRecord {
+  const source = getReportDeliveriesStore(propertyCode);
+  const record = source.items.find((item) => item.id === deliveryId);
+
+  if (!record) {
+    throw new Error("report_delivery.not_found");
+  }
+
+  record.retryCount += 1;
+  record.lastRetriedAt = new Date().toISOString();
+  record.status = record.deliveryMode === "email" ? "sent" : "generated";
+  record.notes = `${record.notes} Retry #${record.retryCount} queued.`;
+
   return record;
 }
 
@@ -524,6 +687,7 @@ export function resetReportConfigData() {
   reportPreferencesByProperty.clear();
   scheduledEmailJobsByProperty.clear();
   liveReportsByProperty.clear();
+  liveReportExecutionsByProperty.clear();
   passengerImportsByProperty.clear();
   reportDeliveriesByProperty.clear();
 }

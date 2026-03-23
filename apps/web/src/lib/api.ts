@@ -63,6 +63,9 @@ import type {
   PermissionGroupUpdate,
   PermissionGroupList,
   LiveReportCatalogList,
+  LiveReportExecutionList,
+  LiveReportExecutionRecord,
+  LiveReportExecutionRequest,
   PowerBiEmbedList,
   PropertyCode,
   PropertySettings,
@@ -75,6 +78,7 @@ import type {
   ReportDeliveryRecord,
   ReportDeliveryRecordList,
   ReportDeliveryRequest,
+  ReportDeliveryStatusUpdate,
   ReportPreference,
   ReportPreferenceList,
   ReportPreferenceUpdate,
@@ -314,6 +318,25 @@ export function fetchLiveReports(propertyCode: PropertyCode): Promise<LiveReport
   return fetchPropertyScoped<LiveReportCatalogList>("/reports/live", propertyCode);
 }
 
+export function fetchLiveReportExecutions(
+  propertyCode: PropertyCode
+): Promise<LiveReportExecutionList> {
+  return fetchPropertyScoped<LiveReportExecutionList>("/reports/live/executions", propertyCode);
+}
+
+export function executeLiveReportRequest(
+  propertyCode: PropertyCode,
+  reportId: string,
+  payload: LiveReportExecutionRequest
+): Promise<LiveReportExecutionRecord> {
+  return mutatePropertyScoped<LiveReportExecutionRecord>(
+    `/reports/live/${reportId}/execute`,
+    propertyCode,
+    "POST",
+    payload
+  );
+}
+
 export function fetchPassengerReportImports(
   propertyCode: PropertyCode
 ): Promise<PassengerReportImportList> {
@@ -341,6 +364,31 @@ export function createReportDelivery(
   payload: ReportDeliveryRequest
 ): Promise<ReportDeliveryRecord> {
   return mutatePropertyScoped<ReportDeliveryRecord>("/reports/deliveries", propertyCode, "POST", payload);
+}
+
+export function updateReportDeliveryStatus(
+  propertyCode: PropertyCode,
+  deliveryId: string,
+  payload: ReportDeliveryStatusUpdate
+): Promise<ReportDeliveryRecord> {
+  return mutatePropertyScoped<ReportDeliveryRecord>(
+    `/reports/deliveries/${deliveryId}/status`,
+    propertyCode,
+    "PUT",
+    payload
+  );
+}
+
+export function retryReportDeliveryRequest(
+  propertyCode: PropertyCode,
+  deliveryId: string
+): Promise<ReportDeliveryRecord> {
+  return mutatePropertyScoped<ReportDeliveryRecord>(
+    `/reports/deliveries/${deliveryId}/retry`,
+    propertyCode,
+    "POST",
+    {}
+  );
 }
 
 export function updateReportPreference(

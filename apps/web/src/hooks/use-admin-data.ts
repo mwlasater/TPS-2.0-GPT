@@ -4,6 +4,8 @@ import type {
   DelayTemplateList,
   DelayTemplateUpdate,
   LiveReportCatalogList,
+  LiveReportExecutionList,
+  LiveReportExecutionRequest,
   PassengerReportImportCreate,
   PassengerReportImportList,
   PermissionGroupCreate,
@@ -13,6 +15,7 @@ import type {
   ReportConfigList,
   ReportDeliveryRecordList,
   ReportDeliveryRequest,
+  ReportDeliveryStatusUpdate,
   ReportPreferenceList,
   ReportPreferenceUpdate,
   ReportConfigUpdate,
@@ -31,19 +34,23 @@ import {
   createScheduledReportEmailJob,
   deletePermissionGroupDefinition,
   deleteScheduledReportEmailJob,
+  executeLiveReportRequest,
   fetchAdminDelayCommonLocations,
   fetchAdminDelayTemplates,
   fetchAdminSpecialMovements,
   fetchLiveReports,
+  fetchLiveReportExecutions,
   fetchPassengerReportImports,
   fetchReportDeliveries,
   fetchPermissionGroups,
   fetchReportConfig,
   fetchReportPreferences,
   fetchScheduledReportEmailJobs,
+  retryReportDeliveryRequest,
   updatePermissionGroupDefinition,
   updateAdminDelayCommonLocation,
   updateAdminDelayTemplate,
+  updateReportDeliveryStatus,
   updateAdminSpecialMovement,
   updateReportConfig,
   updateReportPreference,
@@ -66,6 +73,7 @@ interface AdminDataState {
   delayCommonLocations: DelayCommonLocationList;
   delayTemplates: DelayTemplateList;
   liveReports: LiveReportCatalogList;
+  liveReportExecutions: LiveReportExecutionList;
   passengerReportImports: PassengerReportImportList;
   permissionGroups: PermissionGroupList;
   reportConfig: ReportConfigList;
@@ -79,6 +87,7 @@ interface AdminDataState {
   createPermissionGroup: (input: PermissionGroupCreate) => Promise<void>;
   createPassengerImport: (input: PassengerReportImportCreate) => Promise<void>;
   createReportDelivery: (input: ReportDeliveryRequest) => Promise<void>;
+  executeLiveReport: (reportId: string, input: LiveReportExecutionRequest) => Promise<void>;
   deletePermissionGroup: (groupId: string) => Promise<void>;
   savePermissionGroup: (groupId: string, update: PermissionGroupUpdate) => Promise<void>;
   saveDelayCommonLocation: (locationId: string, update: DelayCommonLocationUpdate) => Promise<void>;
@@ -88,6 +97,8 @@ interface AdminDataState {
   createScheduledReportEmail: (input: ScheduledReportEmailJobCreate) => Promise<void>;
   saveScheduledReportEmail: (jobId: string, update: ScheduledReportEmailJobUpdate) => Promise<void>;
   deleteScheduledReportEmail: (jobId: string) => Promise<void>;
+  saveReportDeliveryStatus: (deliveryId: string, update: ReportDeliveryStatusUpdate) => Promise<void>;
+  retryReportDelivery: (deliveryId: string) => Promise<void>;
   saveSpecialMovement: (movementId: string, update: SpecialMovementUpdate) => Promise<void>;
 }
 
@@ -96,6 +107,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     delayCommonLocations: demoDelayCommonLocations[propertyCode],
     delayTemplates: demoDelayTemplates[propertyCode],
     liveReports: demoLiveReports[propertyCode],
+    liveReportExecutions: { items: [] },
     passengerReportImports: demoPassengerReportImports[propertyCode],
     permissionGroups: demoPermissionGroups[propertyCode],
     reportConfig: demoReportConfig[propertyCode],
@@ -109,6 +121,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     createPermissionGroup: async () => undefined,
     createPassengerImport: async () => undefined,
     createReportDelivery: async () => undefined,
+    executeLiveReport: async () => undefined,
     deletePermissionGroup: async () => undefined,
     savePermissionGroup: async () => undefined,
     saveDelayCommonLocation: async () => undefined,
@@ -118,6 +131,8 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     createScheduledReportEmail: async () => undefined,
     saveScheduledReportEmail: async () => undefined,
     deleteScheduledReportEmail: async () => undefined,
+    saveReportDeliveryStatus: async () => undefined,
+    retryReportDelivery: async () => undefined,
     saveSpecialMovement: async () => undefined
   });
 
@@ -128,6 +143,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
       delayCommonLocations: demoDelayCommonLocations[propertyCode],
       delayTemplates: demoDelayTemplates[propertyCode],
       liveReports: demoLiveReports[propertyCode],
+      liveReportExecutions: { items: [] },
       passengerReportImports: demoPassengerReportImports[propertyCode],
       permissionGroups: demoPermissionGroups[propertyCode],
       reportConfig: demoReportConfig[propertyCode],
@@ -141,6 +157,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
       createPermissionGroup: state.createPermissionGroup,
       createPassengerImport: state.createPassengerImport,
       createReportDelivery: state.createReportDelivery,
+      executeLiveReport: state.executeLiveReport,
       deletePermissionGroup: state.deletePermissionGroup,
       savePermissionGroup: state.savePermissionGroup,
       saveDelayCommonLocation: state.saveDelayCommonLocation,
@@ -150,6 +167,8 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
       createScheduledReportEmail: state.createScheduledReportEmail,
       saveScheduledReportEmail: state.saveScheduledReportEmail,
       deleteScheduledReportEmail: state.deleteScheduledReportEmail,
+      saveReportDeliveryStatus: state.saveReportDeliveryStatus,
+      retryReportDelivery: state.retryReportDelivery,
       saveSpecialMovement: state.saveSpecialMovement
     });
 
@@ -158,6 +177,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
       fetchAdminDelayTemplates(propertyCode),
       fetchAdminSpecialMovements(propertyCode),
       fetchLiveReports(propertyCode),
+      fetchLiveReportExecutions(propertyCode),
       fetchPassengerReportImports(propertyCode),
       fetchPermissionGroups(propertyCode),
       fetchReportConfig(propertyCode),
@@ -170,6 +190,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
         delayTemplates,
         specialMovements,
         liveReports,
+        liveReportExecutions,
         passengerReportImports,
         permissionGroups,
         reportConfig,
@@ -182,6 +203,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             delayCommonLocations,
             delayTemplates,
             liveReports,
+            liveReportExecutions,
             passengerReportImports,
             permissionGroups,
             reportConfig,
@@ -195,6 +217,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             createPermissionGroup: state.createPermissionGroup,
             createPassengerImport: state.createPassengerImport,
             createReportDelivery: state.createReportDelivery,
+            executeLiveReport: state.executeLiveReport,
             deletePermissionGroup: state.deletePermissionGroup,
             savePermissionGroup: state.savePermissionGroup,
             saveDelayCommonLocation: state.saveDelayCommonLocation,
@@ -204,6 +227,8 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             createScheduledReportEmail: state.createScheduledReportEmail,
             saveScheduledReportEmail: state.saveScheduledReportEmail,
             deleteScheduledReportEmail: state.deleteScheduledReportEmail,
+            saveReportDeliveryStatus: state.saveReportDeliveryStatus,
+            retryReportDelivery: state.retryReportDelivery,
             saveSpecialMovement: state.saveSpecialMovement
           });
         }
@@ -214,6 +239,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             delayCommonLocations: demoDelayCommonLocations[propertyCode],
             delayTemplates: demoDelayTemplates[propertyCode],
             liveReports: demoLiveReports[propertyCode],
+            liveReportExecutions: { items: [] },
             passengerReportImports: demoPassengerReportImports[propertyCode],
             permissionGroups: demoPermissionGroups[propertyCode],
             reportConfig: demoReportConfig[propertyCode],
@@ -227,6 +253,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             createPermissionGroup: state.createPermissionGroup,
             createPassengerImport: state.createPassengerImport,
             createReportDelivery: state.createReportDelivery,
+            executeLiveReport: state.executeLiveReport,
             deletePermissionGroup: state.deletePermissionGroup,
             savePermissionGroup: state.savePermissionGroup,
             saveDelayCommonLocation: state.saveDelayCommonLocation,
@@ -236,6 +263,8 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
             createScheduledReportEmail: state.createScheduledReportEmail,
             saveScheduledReportEmail: state.saveScheduledReportEmail,
             deleteScheduledReportEmail: state.deleteScheduledReportEmail,
+            saveReportDeliveryStatus: state.saveReportDeliveryStatus,
+            retryReportDelivery: state.retryReportDelivery,
             saveSpecialMovement: state.saveSpecialMovement
           });
         }
@@ -341,6 +370,46 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     }
   }
 
+  async function runLiveReport(reportId: string, input: LiveReportExecutionRequest): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const created = await executeLiveReportRequest(propertyCode, reportId, input);
+      setState((current) => ({
+        ...current,
+        liveReportExecutions: {
+          items: [created, ...current.liveReportExecutions.items]
+        },
+        reportDeliveries:
+          created.linkedDeliveryId && created.deliveryMode !== "view"
+            ? {
+                items: [
+                  {
+                    id: created.linkedDeliveryId,
+                    reportName: created.reportName,
+                    format: created.format === "interactive" ? "pdf" : created.format,
+                    deliveryMode: created.deliveryMode === "email" ? "email" : "download",
+                    recipient: created.recipient,
+                    status: created.deliveryMode === "email" ? "sent" : "generated",
+                    requestedAt: created.executedAt,
+                    requestedBy: created.executedBy,
+                    notes: created.notes,
+                    retryCount: 0,
+                    lastRetriedAt: null
+                  },
+                  ...current.reportDeliveries.items
+                ]
+              }
+            : current.reportDeliveries,
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("live_report.execute_failed");
+    }
+  }
+
   async function saveReportConfig(reportId: string, update: ReportConfigUpdate): Promise<void> {
     setState((current) => ({ ...current, isSaving: true }));
 
@@ -357,6 +426,51 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     } catch {
       setState((current) => ({ ...current, isSaving: false }));
       throw new Error("report_config.update_failed");
+    }
+  }
+
+  async function saveReportDelivery(
+    deliveryId: string,
+    update: ReportDeliveryStatusUpdate
+  ): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const updated = await updateReportDeliveryStatus(propertyCode, deliveryId, update);
+      setState((current) => ({
+        ...current,
+        reportDeliveries: {
+          items: current.reportDeliveries.items.map((item) =>
+            item.id === deliveryId ? updated : item
+          )
+        },
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("report_delivery.update_failed");
+    }
+  }
+
+  async function retryReportDelivery(deliveryId: string): Promise<void> {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const updated = await retryReportDeliveryRequest(propertyCode, deliveryId);
+      setState((current) => ({
+        ...current,
+        reportDeliveries: {
+          items: current.reportDeliveries.items.map((item) =>
+            item.id === deliveryId ? updated : item
+          )
+        },
+        source: "api",
+        isSaving: false
+      }));
+    } catch {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw new Error("report_delivery.retry_failed");
     }
   }
 
@@ -522,6 +636,7 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     createPermissionGroup,
     createPassengerImport,
     createReportDelivery: queueReportDelivery,
+    executeLiveReport: runLiveReport,
     deletePermissionGroup,
     savePermissionGroup,
     saveDelayCommonLocation,
@@ -531,6 +646,8 @@ export function useAdminData(propertyCode: PropertyCode): AdminDataState {
     createScheduledReportEmail,
     saveScheduledReportEmail,
     deleteScheduledReportEmail,
+    saveReportDeliveryStatus: saveReportDelivery,
+    retryReportDelivery,
     saveSpecialMovement
   };
 }

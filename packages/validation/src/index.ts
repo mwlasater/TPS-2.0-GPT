@@ -721,11 +721,43 @@ export const passengerReportImportCreateSchema = z.object({
   notes: z.string().min(1)
 });
 
+export const liveReportExecutionRequestSchema = z.object({
+  format: z.enum(["interactive", "pdf", "xlsx"]),
+  deliveryMode: z.enum(["view", "download", "email"]),
+  recipient: z.string().min(1),
+  filtersSummary: z.string().min(1),
+  notes: z.string().min(1)
+});
+
+export const liveReportExecutionRecordSchema = z.object({
+  id: z.string(),
+  reportId: z.string(),
+  reportName: z.string(),
+  format: z.enum(["interactive", "pdf", "xlsx"]),
+  deliveryMode: z.enum(["view", "download", "email"]),
+  recipient: z.string(),
+  status: z.enum(["ready", "generated", "sent"]),
+  executedAt: z.string(),
+  executedBy: z.string(),
+  filtersSummary: z.string(),
+  notes: z.string(),
+  linkedDeliveryId: z.string().nullable()
+});
+
+export const liveReportExecutionListSchema = z.object({
+  items: z.array(liveReportExecutionRecordSchema)
+});
+
 export const reportDeliveryRequestSchema = z.object({
   reportName: z.string().min(1),
   format: z.enum(["pdf", "xlsx"]),
   deliveryMode: z.enum(["download", "email"]),
   recipient: z.string().min(1),
+  notes: z.string().min(1)
+});
+
+export const reportDeliveryStatusUpdateSchema = z.object({
+  status: z.enum(["queued", "generated", "sent"]),
   notes: z.string().min(1)
 });
 
@@ -738,7 +770,9 @@ export const reportDeliveryRecordSchema = z.object({
   status: z.enum(["queued", "generated", "sent"]),
   requestedAt: z.string(),
   requestedBy: z.string(),
-  notes: z.string()
+  notes: z.string(),
+  retryCount: z.number().int().nonnegative(),
+  lastRetriedAt: z.string().nullable()
 });
 
 export const reportDeliveryRecordListSchema = z.object({

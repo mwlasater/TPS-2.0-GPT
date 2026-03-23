@@ -15,6 +15,8 @@ import type {
   JobProfileUpdate,
   JobProfileList,
   LiveReportCatalogList,
+  LiveReportExecutionList,
+  LiveReportExecutionRequest,
   ManagedUserCreate,
   UserAdminHistoryList,
   ManagedUserDetail,
@@ -36,6 +38,7 @@ import type {
   ReportConfigList,
   ReportDeliveryRecordList,
   ReportDeliveryRequest,
+  ReportDeliveryStatusUpdate,
   ReportPreferenceList,
   ReportPreferenceUpdate,
   ReportConfigUpdate,
@@ -64,6 +67,7 @@ interface SettingsPageProps {
   isSaving: boolean;
   jobProfiles: JobProfileList;
   liveReports: LiveReportCatalogList;
+  liveReportExecutions: LiveReportExecutionList;
   managedUserActions: UserAdminActionList;
   managedUserHistory: UserAdminHistoryList;
   managedUserDetail: ManagedUserDetail;
@@ -81,6 +85,7 @@ interface SettingsPageProps {
   createUser: (input: ManagedUserCreate) => Promise<void>;
   createPassengerImport: (input: PassengerReportImportCreate) => Promise<void>;
   createReportDelivery: (input: ReportDeliveryRequest) => Promise<void>;
+  executeLiveReport: (reportId: string, input: LiveReportExecutionRequest) => Promise<void>;
   createPermissionGroup: (input: PermissionGroupCreate) => Promise<void>;
   currentUserPermissions: string[];
   deletePermissionGroup: (groupId: string) => Promise<void>;
@@ -102,6 +107,8 @@ interface SettingsPageProps {
   createScheduledReportEmail: (input: ScheduledReportEmailJobCreate) => Promise<void>;
   saveScheduledReportEmail: (jobId: string, update: ScheduledReportEmailJobUpdate) => Promise<void>;
   deleteScheduledReportEmail: (jobId: string) => Promise<void>;
+  saveReportDeliveryStatus: (deliveryId: string, update: ReportDeliveryStatusUpdate) => Promise<void>;
+  retryReportDelivery: (deliveryId: string) => Promise<void>;
   saveReferenceData: (update: ReferenceDataset) => Promise<void>;
   saveSettings: (update: PropertySettingsUpdate) => Promise<void>;
   saveSpecialMovement: (movementId: string, update: SpecialMovementUpdate) => Promise<void>;
@@ -125,6 +132,7 @@ export function SettingsPage({
   isSaving,
   jobProfiles,
   liveReports,
+  liveReportExecutions,
   managedUserActions,
   managedUserHistory,
   managedUserDetail,
@@ -142,6 +150,7 @@ export function SettingsPage({
   createUser,
   createPassengerImport,
   createReportDelivery,
+  executeLiveReport,
   createPermissionGroup,
   currentUserPermissions,
   deletePermissionGroup,
@@ -163,6 +172,8 @@ export function SettingsPage({
   createScheduledReportEmail,
   saveScheduledReportEmail,
   deleteScheduledReportEmail,
+  saveReportDeliveryStatus,
+  retryReportDelivery,
   saveReferenceData,
   saveSettings,
   saveSpecialMovement,
@@ -772,6 +783,38 @@ export function SettingsPage({
             >
               Email report now
             </button>
+            {reportDeliveries.items[0] ? (
+              <>
+                <button
+                  type="button"
+                  disabled={!canScheduleReports}
+                  onClick={() =>
+                    void runAction(
+                      () =>
+                        saveReportDeliveryStatus(reportDeliveries.items[0]!.id, {
+                          status: "queued",
+                          notes: "Held for final dispatch review."
+                        }),
+                      "Report delivery status updated."
+                    )
+                  }
+                >
+                  Queue first delivery
+                </button>
+                <button
+                  type="button"
+                  disabled={!canScheduleReports}
+                  onClick={() =>
+                    void runAction(
+                      () => retryReportDelivery(reportDeliveries.items[0]!.id),
+                      "Report delivery retried."
+                    )
+                  }
+                >
+                  Retry first delivery
+                </button>
+              </>
+            ) : null}
           </div>
         </Panel>
         <Panel title="Passenger report imports" eyebrow={`${passengerReportImports.items.length} imports`}>
@@ -1156,6 +1199,68 @@ export function SettingsPage({
                 <StatusBadge
                   tone={report.status === "available" ? "success" : "warning"}
                   label={report.status}
+                />
+              </div>
+            </article>
+          ))}
+        </div>
+        {liveReports.items[0] ? (
+          <div className="button-row">
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    executeLiveReport(liveReports.items[0]!.id, {
+                      format: "interactive",
+                      deliveryMode: "view",
+                      recipient: "Operations Leadership",
+                      filtersSummary: "Current operating day and leadership review filters",
+                      notes: "Interactive leadership review."
+                    }),
+                  "Live report opened."
+                )
+              }
+            >
+              Open first live report
+            </button>
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    executeLiveReport(liveReports.items[0]!.id, {
+                      format: "pdf",
+                      deliveryMode: "download",
+                      recipient: "Operations Leadership",
+                      filtersSummary: "Current operating day and leadership review filters",
+                      notes: "Generated PDF leadership handoff."
+                    }),
+                  "Live report export generated."
+                )
+              }
+            >
+              Export first live report
+            </button>
+          </div>
+        ) : null}
+        <div className="list-stack">
+          {liveReportExecutions.items.map((execution) => (
+            <article className="list-row" key={execution.id}>
+              <div>
+                <strong>{execution.reportName}</strong>
+                <p>
+                  {execution.deliveryMode} · {execution.recipient}
+                </p>
+                <p>{execution.filtersSummary}</p>
+              </div>
+              <div className="list-meta">
+                <span>{execution.format}</span>
+                <StatusBadge
+                  tone={execution.status === "ready" ? "neutral" : "success"}
+                  label={execution.status}
                 />
               </div>
             </article>

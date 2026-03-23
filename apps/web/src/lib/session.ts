@@ -1840,7 +1840,9 @@ const commuterReportDeliveries: ReportDeliveryRecordList = {
       status: "sent",
       requestedAt: "2026-03-06T06:16:00Z",
       requestedBy: "Taylor Brooks",
-      notes: "Morning leadership packet."
+      notes: "Morning leadership packet.",
+      retryCount: 0,
+      lastRetriedAt: null
     }
   ]
 };
@@ -1856,7 +1858,9 @@ const streetcarReportDeliveries: ReportDeliveryRecordList = {
       status: "generated",
       requestedAt: "2026-03-06T07:05:00Z",
       requestedBy: "Jordan Reyes",
-      notes: "Supervisor handoff packet."
+      notes: "Supervisor handoff packet.",
+      retryCount: 0,
+      lastRetriedAt: null
     }
   ]
 };

@@ -47,6 +47,9 @@ import type {
   DelayWorkOrder,
   DelayWorkOrderCreate,
   LiveReportCatalogList,
+  LiveReportExecutionList,
+  LiveReportExecutionRecord,
+  LiveReportExecutionRequest,
   NotableDelayTypeList,
   ReportConfigRow,
   ReportConfigList,
@@ -54,6 +57,7 @@ import type {
   ReportDeliveryRecord,
   ReportDeliveryRecordList,
   ReportDeliveryRequest,
+  ReportDeliveryStatusUpdate,
   ReportPreference,
   ReportPreferenceList,
   ReportPreferenceUpdate,
@@ -248,6 +252,13 @@ export interface PlatformRepository {
     jobId: string
   ): MaybePromise<ScheduledReportEmailJobDeleteResult>;
   listLiveReports(propertyCode: PropertyCode): MaybePromise<LiveReportCatalogList>;
+  listLiveReportExecutions(propertyCode: PropertyCode): MaybePromise<LiveReportExecutionList>;
+  executeLiveReport(
+    propertyCode: PropertyCode,
+    reportId: string,
+    input: LiveReportExecutionRequest,
+    actorName: string
+  ): MaybePromise<LiveReportExecutionRecord>;
   listPassengerReportImports(propertyCode: PropertyCode): MaybePromise<PassengerReportImportList>;
   createPassengerReportImport(
     propertyCode: PropertyCode,
@@ -258,6 +269,16 @@ export interface PlatformRepository {
   createReportDelivery(
     propertyCode: PropertyCode,
     input: ReportDeliveryRequest,
+    actorName: string
+  ): MaybePromise<ReportDeliveryRecord>;
+  updateReportDeliveryStatus(
+    propertyCode: PropertyCode,
+    deliveryId: string,
+    input: ReportDeliveryStatusUpdate
+  ): MaybePromise<ReportDeliveryRecord>;
+  retryReportDelivery(
+    propertyCode: PropertyCode,
+    deliveryId: string,
     actorName: string
   ): MaybePromise<ReportDeliveryRecord>;
   listFiles(propertyCode: PropertyCode): MaybePromise<FileServiceList>;
