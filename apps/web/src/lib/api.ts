@@ -21,6 +21,9 @@ import type {
   DelayAdditionalInfo,
   DelayAdditionalInfoDeleteResult,
   DelayAdditionalInfoUpdate,
+  DelayPropagationPreview,
+  DelayWorkOrder,
+  DelayWorkOrderCreate,
   DelayEventBatchCreate,
   DelayCommonLocationList,
   DelayCommonLocationUpdate,
@@ -47,6 +50,9 @@ import type {
   NotificationList,
   NotificationItem,
   NotificationUpdate,
+  NotableDelayTypeList,
+  PassengerReportImportCreate,
+  PassengerReportImportList,
   PersonnelRecord,
   PersonnelRecordList,
   PersonnelStatusUpdate,
@@ -54,6 +60,7 @@ import type {
   PermissionGroupDeleteResult,
   PermissionGroupUpdate,
   PermissionGroupList,
+  LiveReportCatalogList,
   PowerBiEmbedList,
   PropertyCode,
   PropertySettings,
@@ -289,6 +296,28 @@ export function fetchReportConfig(propertyCode: PropertyCode): Promise<ReportCon
 
 export function fetchReportPreferences(propertyCode: PropertyCode): Promise<ReportPreferenceList> {
   return fetchPropertyScoped<ReportPreferenceList>("/reports/preferences", propertyCode);
+}
+
+export function fetchLiveReports(propertyCode: PropertyCode): Promise<LiveReportCatalogList> {
+  return fetchPropertyScoped<LiveReportCatalogList>("/reports/live", propertyCode);
+}
+
+export function fetchPassengerReportImports(
+  propertyCode: PropertyCode
+): Promise<PassengerReportImportList> {
+  return fetchPropertyScoped<PassengerReportImportList>("/reports/passenger-report", propertyCode);
+}
+
+export function createPassengerReportImport(
+  propertyCode: PropertyCode,
+  payload: PassengerReportImportCreate
+): Promise<{ ok: true }> {
+  return mutatePropertyScoped<{ ok: true }>(
+    "/reports/passenger-report",
+    propertyCode,
+    "POST",
+    payload
+  );
 }
 
 export function updateReportPreference(
@@ -734,6 +763,10 @@ export function fetchDelayTemplates(propertyCode: PropertyCode): Promise<DelayTe
   return fetchPropertyScoped<DelayTemplateList>("/delays/templates", propertyCode);
 }
 
+export function fetchNotableDelayTypes(propertyCode: PropertyCode): Promise<NotableDelayTypeList> {
+  return fetchPropertyScoped<NotableDelayTypeList>("/delays/notable-delay-types", propertyCode);
+}
+
 export function fetchSpecialMovements(
   propertyCode: PropertyCode
 ): Promise<SpecialMovementList> {
@@ -745,6 +778,26 @@ export function fetchDelayAdditionalInfo(
   delayId: string
 ): Promise<DelayAdditionalInfo> {
   return fetchPropertyScoped<DelayAdditionalInfo>(`/delays/${delayId}/additional-info`, propertyCode);
+}
+
+export function fetchDelayWorkOrder(
+  propertyCode: PropertyCode,
+  delayId: string
+): Promise<DelayWorkOrder | null> {
+  return fetchPropertyScoped<DelayWorkOrder | null>(`/delays/${delayId}/work-order`, propertyCode);
+}
+
+export function createDelayWorkOrder(
+  propertyCode: PropertyCode,
+  delayId: string,
+  payload: DelayWorkOrderCreate
+): Promise<DelayWorkOrder> {
+  return mutatePropertyScoped<DelayWorkOrder>(
+    `/delays/${delayId}/work-order`,
+    propertyCode,
+    "POST",
+    payload
+  );
 }
 
 export function updateDelayAdditionalInfo(
@@ -788,6 +841,16 @@ export function createDelayEvents(
     propertyCode,
     "POST",
     payload
+  );
+}
+
+export function fetchDelayPropagationPreview(
+  propertyCode: PropertyCode,
+  runId: string
+): Promise<DelayPropagationPreview> {
+  return fetchPropertyScoped<DelayPropagationPreview>(
+    `/train-runs/${runId}/delay-propagation`,
+    propertyCode
   );
 }
 

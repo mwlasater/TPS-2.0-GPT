@@ -8,6 +8,9 @@ import type {
   DelayAdditionalInfo,
   DelayAdditionalInfoDeleteResult,
   DelayAdditionalInfoUpdate,
+  DelayPropagationPreview,
+  DelayWorkOrder,
+  DelayWorkOrderCreate,
   DelayEventBatchCreate,
   DelayCommonLocationList,
   DelayEventDeleteResult,
@@ -19,6 +22,7 @@ import type {
   FareEnforcementList,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
+  NotableDelayTypeList,
   PropertyCode,
   ReferenceDataset,
   SpecialMovementList,
@@ -45,6 +49,7 @@ import type {
 import { useEffect, useState } from "react";
 
 import {
+  createDelayWorkOrder,
   createDelayEvents,
   createDelayFromTemplate,
   deleteDelayAdditionalInfo,
@@ -53,7 +58,9 @@ import {
   fetchConsistTemplates,
   fetchDelayAdditionalInfo,
   fetchDelayCommonLocations,
+  fetchDelayPropagationPreview,
   fetchDelayTemplates,
+  fetchDelayWorkOrder,
   fetchConsistEquipment,
   fetchCrewTemplates,
   createFareEnforcement,
@@ -62,6 +69,7 @@ import {
   fetchFareEnforcement,
   fetchFareEnforcementDashboard,
   fetchFareEnforcementSummary,
+  fetchNotableDelayTypes,
   fetchReferenceData,
   fetchSpecialMovements,
   fetchStationStops,
@@ -95,9 +103,12 @@ import {
   demoDelayAdditionalInfo,
   demoDelayCommonLocations,
   demoDelayEvents,
+  demoDelayPropagationPreview,
   demoDelayTemplates,
+  demoDelayWorkOrders,
   demoFareEnforcement,
   demoFareEnforcementSummary,
+  demoNotableDelayTypes,
   demoReferenceData,
   demoSpecialMovements,
   demoStationStops,
@@ -340,7 +351,10 @@ interface OperationsDataState {
   scheduleApprovalSummary: TrainScheduleApprovalSummary;
   trainRunStatus: TrainRunStatusRecord;
   delayAdditionalInfo: Record<string, DelayAdditionalInfo>;
+  delayPropagationPreview: DelayPropagationPreview;
   delayCommonLocations: DelayCommonLocationList;
+  notableDelayTypes: NotableDelayTypeList;
+  delayWorkOrders: Record<string, DelayWorkOrder>;
   delayTemplates: DelayTemplateList;
   specialMovements: SpecialMovementList;
   delayEvents: DelayEventList;
@@ -388,6 +402,10 @@ interface OperationsDataState {
     templateId: string,
     reportedAt: string
   ) => Promise<DelayEventList["items"][number] | undefined>;
+  createWorkOrder: (
+    delayId: string,
+    input: DelayWorkOrderCreate
+  ) => Promise<DelayWorkOrder | undefined>;
   saveDelayAdditionalInfo: (
     delayId: string,
     update: DelayAdditionalInfoUpdate
@@ -459,7 +477,19 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       updatedBy: null
     },
     delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
+    delayPropagationPreview:
+      demoDelayPropagationPreview[propertyCode][demoTrainRuns[propertyCode].items[0]?.id ?? ""] ?? {
+        runId: demoTrainRuns[propertyCode].items[0]?.id ?? "",
+        sourceDelayIds: [],
+        totalProjectedDelayMinutes: 0,
+        impactedStopCount: 0,
+        requiresCmmsFollowup: false,
+        notableDelayTypes: [],
+        downstreamStops: []
+      },
     delayCommonLocations: demoDelayCommonLocations[propertyCode],
+    notableDelayTypes: demoNotableDelayTypes[propertyCode],
+    delayWorkOrders: demoDelayWorkOrders[propertyCode],
     delayTemplates: demoDelayTemplates[propertyCode],
     specialMovements: demoSpecialMovements[propertyCode],
     consist: demoConsistEquipment[propertyCode],
@@ -487,6 +517,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     saveDelay: async () => undefined,
     createDelayBatch: async () => undefined,
     createDelayTemplate: async () => undefined,
+    createWorkOrder: async () => undefined,
     deleteDelay: async () => undefined,
     saveConsist: async () => undefined,
     saveCrew: async () => undefined,
@@ -537,7 +568,19 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         updatedBy: null
       },
       delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
+      delayPropagationPreview:
+        demoDelayPropagationPreview[propertyCode][demoTrainRuns[propertyCode].items[0]?.id ?? ""] ?? {
+          runId: demoTrainRuns[propertyCode].items[0]?.id ?? "",
+          sourceDelayIds: [],
+          totalProjectedDelayMinutes: 0,
+          impactedStopCount: 0,
+          requiresCmmsFollowup: false,
+          notableDelayTypes: [],
+          downstreamStops: []
+        },
       delayCommonLocations: demoDelayCommonLocations[propertyCode],
+      notableDelayTypes: demoNotableDelayTypes[propertyCode],
+      delayWorkOrders: demoDelayWorkOrders[propertyCode],
       delayTemplates: demoDelayTemplates[propertyCode],
       specialMovements: demoSpecialMovements[propertyCode],
       consist: demoConsistEquipment[propertyCode],
@@ -565,6 +608,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       saveDelay: state.saveDelay,
       createDelayBatch: state.createDelayBatch,
       createDelayTemplate: state.createDelayTemplate,
+      createWorkOrder: state.createWorkOrder,
       deleteDelay: state.deleteDelay,
       saveConsist: state.saveConsist,
       saveCrew: state.saveCrew,
@@ -578,6 +622,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
       fetchReferenceData(propertyCode),
       fetchDelayCommonLocations(propertyCode),
       fetchDelayTemplates(propertyCode),
+      fetchNotableDelayTypes(propertyCode),
       fetchSpecialMovements(propertyCode),
       fetchConsistTemplates(propertyCode),
       fetchCrewTemplates(propertyCode),
@@ -589,6 +634,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
           referenceData,
           delayCommonLocations,
           delayTemplates,
+          notableDelayTypes,
           specialMovements,
           consistTemplates,
           crewTemplates,
@@ -597,7 +643,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         ]) => {
         const selectedRunId = runs.items[0]?.id ?? null;
         const selectedScheduleId = runs.items.find((run) => run.id === selectedRunId)?.scheduleId;
-        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, fareSummary, fareDashboard, impactSummary, scheduleApprovalSummary, trainRunStatus, eventHistory] = selectedRunId
+        const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, fareSummary, fareDashboard, impactSummary, scheduleApprovalSummary, trainRunStatus, eventHistory, delayPropagationPreview] = selectedRunId
           ? await Promise.all([
               fetchStationStops(propertyCode, selectedRunId),
               fetchDelayEvents(propertyCode, selectedRunId),
@@ -615,7 +661,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
                 ? fetchTrainScheduleApprovalSummary(propertyCode, selectedScheduleId)
                 : Promise.resolve(getEmptyScheduleApprovalSummary(null)),
               fetchTrainRunStatus(propertyCode, selectedRunId),
-              fetchTrainRunEventHistory(propertyCode, selectedRunId)
+              fetchTrainRunEventHistory(propertyCode, selectedRunId),
+              fetchDelayPropagationPreview(propertyCode, selectedRunId)
             ])
           : [
               demoStationStops[propertyCode],
@@ -636,7 +683,16 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
                 updatedAt: null,
                 updatedBy: null
               },
-              { items: [] }
+              { items: [] },
+              demoDelayPropagationPreview[propertyCode][selectedRunId ?? ""] ?? {
+                runId: selectedRunId ?? "",
+                sourceDelayIds: [],
+                totalProjectedDelayMinutes: 0,
+                impactedStopCount: 0,
+                requiresCmmsFollowup: false,
+                notableDelayTypes: [],
+                downstreamStops: []
+              }
             ];
         const delayAdditionalInfo = Object.fromEntries(
           await Promise.all(
@@ -647,10 +703,20 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
           )
         );
 
+        const delayWorkOrders = Object.fromEntries(
+          await Promise.all(
+            delayEvents.items.map(async (delay) => [
+              delay.id,
+              (await fetchDelayWorkOrder(propertyCode, delay.id)) ?? demoDelayWorkOrders[propertyCode][delay.id]
+            ])
+          )
+        );
+
         if (isMounted) {
           setState({
             referenceData,
             delayCommonLocations,
+            notableDelayTypes,
             specialMovements,
             schedules,
             runs,
@@ -662,6 +728,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             trainRunStatus,
             eventHistory,
             delayAdditionalInfo,
+            delayPropagationPreview,
+            delayWorkOrders,
             consist,
             consistTemplates,
             crew,
@@ -688,6 +756,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             saveDelay: state.saveDelay,
             createDelayBatch: state.createDelayBatch,
             createDelayTemplate: state.createDelayTemplate,
+            createWorkOrder: state.createWorkOrder,
             deleteDelay: state.deleteDelay,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
@@ -739,7 +808,19 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               updatedBy: null
             },
             delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
+            delayPropagationPreview:
+              demoDelayPropagationPreview[propertyCode][demoTrainRuns[propertyCode].items[0]?.id ?? ""] ?? {
+                runId: demoTrainRuns[propertyCode].items[0]?.id ?? "",
+                sourceDelayIds: [],
+                totalProjectedDelayMinutes: 0,
+                impactedStopCount: 0,
+                requiresCmmsFollowup: false,
+                notableDelayTypes: [],
+                downstreamStops: []
+              },
             delayCommonLocations: demoDelayCommonLocations[propertyCode],
+            notableDelayTypes: demoNotableDelayTypes[propertyCode],
+            delayWorkOrders: demoDelayWorkOrders[propertyCode],
             delayTemplates: demoDelayTemplates[propertyCode],
             specialMovements: demoSpecialMovements[propertyCode],
             consist: demoConsistEquipment[propertyCode],
@@ -767,6 +848,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
             saveDelay: state.saveDelay,
             createDelayBatch: state.createDelayBatch,
             createDelayTemplate: state.createDelayTemplate,
+            createWorkOrder: state.createWorkOrder,
             deleteDelay: state.deleteDelay,
             saveConsist: state.saveConsist,
             saveCrew: state.saveCrew,
@@ -792,7 +874,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
 
     try {
       const scheduleId = state.runs.items.find((run) => run.id === runId)?.scheduleId;
-      const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, impactSummary, scheduleApprovalSummary, trainRunStatus, eventHistory] = await Promise.all([
+      const [stationStops, delayEvents, consist, crew, fareEnforcement, approvalHistory, scheduleApprovalHistory, impactSummary, scheduleApprovalSummary, trainRunStatus, eventHistory, delayPropagationPreview] = await Promise.all([
         fetchStationStops(propertyCode, runId),
         fetchDelayEvents(propertyCode, runId),
         fetchConsistEquipment(propertyCode, runId),
@@ -807,13 +889,22 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
           ? fetchTrainScheduleApprovalSummary(propertyCode, scheduleId)
           : Promise.resolve(getEmptyScheduleApprovalSummary(null)),
         fetchTrainRunStatus(propertyCode, runId),
-        fetchTrainRunEventHistory(propertyCode, runId)
+        fetchTrainRunEventHistory(propertyCode, runId),
+        fetchDelayPropagationPreview(propertyCode, runId)
       ]);
       const delayAdditionalInfo = Object.fromEntries(
         await Promise.all(
           delayEvents.items.map(async (delay) => [
             delay.id,
             await fetchDelayAdditionalInfo(propertyCode, delay.id)
+          ])
+        )
+      );
+      const delayWorkOrders = Object.fromEntries(
+        await Promise.all(
+          delayEvents.items.map(async (delay) => [
+            delay.id,
+            (await fetchDelayWorkOrder(propertyCode, delay.id)) ?? demoDelayWorkOrders[propertyCode][delay.id]
           ])
         )
       );
@@ -833,6 +924,8 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         scheduleApprovalSummary,
         trainRunStatus,
         delayAdditionalInfo,
+        delayPropagationPreview,
+        delayWorkOrders,
         source: "api",
         isLoading: false
       }));
@@ -843,6 +936,18 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         stationStops: demoStationStops[propertyCode],
         delayEvents: demoDelayEvents[propertyCode],
         delayAdditionalInfo: demoDelayAdditionalInfo[propertyCode],
+        delayPropagationPreview:
+          demoDelayPropagationPreview[propertyCode][runId] ?? {
+            runId,
+            sourceDelayIds: [],
+            totalProjectedDelayMinutes: 0,
+            impactedStopCount: 0,
+            requiresCmmsFollowup: false,
+            notableDelayTypes: [],
+            downstreamStops: []
+          },
+        notableDelayTypes: demoNotableDelayTypes[propertyCode],
+        delayWorkOrders: demoDelayWorkOrders[propertyCode],
         delayTemplates: demoDelayTemplates[propertyCode],
         consist: demoConsistEquipment[propertyCode],
         crew: demoCrewAssignments[propertyCode],
@@ -1181,6 +1286,38 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     }
   }
 
+  async function createWorkOrder(delayId: string, input: DelayWorkOrderCreate) {
+    setState((current) => ({ ...current, isSaving: true }));
+
+    try {
+      const workOrder = await createDelayWorkOrder(propertyCode, delayId, input);
+      const [delayAdditionalInfo, delayPropagationPreview] = state.selectedRunId
+        ? await Promise.all([
+            fetchDelayAdditionalInfo(propertyCode, delayId),
+            fetchDelayPropagationPreview(propertyCode, state.selectedRunId)
+          ])
+        : [await fetchDelayAdditionalInfo(propertyCode, delayId), state.delayPropagationPreview];
+
+      setState((current) => ({
+        ...current,
+        delayAdditionalInfo: {
+          ...current.delayAdditionalInfo,
+          [delayId]: delayAdditionalInfo
+        },
+        delayWorkOrders: {
+          ...current.delayWorkOrders,
+          [delayId]: workOrder
+        },
+        delayPropagationPreview,
+        isSaving: false
+      }));
+      return workOrder;
+    } catch (error) {
+      setState((current) => ({ ...current, isSaving: false }));
+      throw error;
+    }
+  }
+
   async function clearDelayMetadata(delayId: string) {
     setState((current) => ({ ...current, isSaving: true }));
 
@@ -1201,8 +1338,14 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         setState((current) => ({
           ...current,
           delayAdditionalInfo,
+          delayWorkOrders: Object.fromEntries(
+            Object.entries(current.delayWorkOrders).filter(([id]) => id !== delayId)
+          ),
           eventHistory,
           impactSummary,
+          delayPropagationPreview: current.selectedRunId === state.selectedRunId
+            ? current.delayPropagationPreview
+            : current.delayPropagationPreview,
           isSaving: false
         }));
       } else {
@@ -1248,6 +1391,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
               ])
             )
           },
+          delayWorkOrders: current.delayWorkOrders,
           runs: {
             items: current.runs.items.map((item) =>
               item.id === runId
@@ -1324,6 +1468,9 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
         },
         delayAdditionalInfo: Object.fromEntries(
           Object.entries(current.delayAdditionalInfo).filter(([id]) => id !== delayId)
+        ),
+        delayWorkOrders: Object.fromEntries(
+          Object.entries(current.delayWorkOrders).filter(([id]) => id !== delayId)
         ),
         runs: {
           items: current.runs.items.map((item) =>
@@ -1513,6 +1660,7 @@ export function useOperationsData(propertyCode: PropertyCode): OperationsDataSta
     clearDelayAdditionalInfo: clearDelayMetadata,
     createDelayBatch,
     createDelayTemplate,
+    createWorkOrder,
     deleteDelay: removeDelay,
     saveConsist,
     saveCrew,

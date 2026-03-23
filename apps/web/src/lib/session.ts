@@ -9,6 +9,8 @@ import type {
   CrewAssignmentList,
   CrewTemplateList,
   DelayAdditionalInfo,
+  DelayPropagationPreview,
+  DelayWorkOrder,
   DelayCommonLocationList,
   DelayEventList,
   DelayTemplateList,
@@ -16,9 +18,12 @@ import type {
   FareEnforcementSummaryList,
   FileServiceList,
   JobProfileList,
+  LiveReportCatalogList,
   ManagedUserDetail,
   ManagedUserList,
+  NotableDelayTypeList,
   NotificationList,
+  PassengerReportImportList,
   PersonnelRecordList,
   PermissionGroupList,
   PowerBiEmbedList,
@@ -1034,6 +1039,117 @@ export const demoDelayAdditionalInfo: Record<PropertyCode, Record<string, DelayA
   silverline: {}
 };
 
+export const demoNotableDelayTypes: Record<PropertyCode, NotableDelayTypeList> = {
+  caltrain: {
+    items: [
+      {
+        id: "notable-interlocking",
+        label: "Interlocking failure",
+        category: "mechanical",
+        requiresWorkOrder: true
+      },
+      {
+        id: "notable-platform",
+        label: "Platform crowding",
+        category: "passenger",
+        requiresWorkOrder: false
+      }
+    ]
+  },
+  texrail: { items: [] },
+  tre: { items: [] },
+  trirail: { items: [] },
+  nmrx: { items: [] },
+  ctrail: { items: [] },
+  ace: { items: [] },
+  capmetro: { items: [] },
+  kcstreetcar: {
+    items: [
+      {
+        id: "notable-signal-priority",
+        label: "Signal priority override",
+        category: "operations",
+        requiresWorkOrder: false
+      }
+    ]
+  },
+  okcstreetcar: { items: [] },
+  octastreetcar: { items: [] },
+  metrolinkarrow: { items: [] },
+  silverline: { items: [] }
+};
+
+export const demoDelayWorkOrders: Record<PropertyCode, Record<string, DelayWorkOrder>> = {
+  caltrain: {
+    "delay-1": {
+      delayId: "delay-1",
+      workOrderId: "WO-1427",
+      notableDelayType: "Interlocking failure",
+      assetId: "SIG-204",
+      repairType: "Signal diagnostics",
+      priority: "high",
+      status: "scheduled",
+      createdAt: "2026-03-06T06:21:00Z",
+      createdBy: "Dispatch Supervisor"
+    }
+  },
+  texrail: {},
+  tre: {},
+  trirail: {},
+  nmrx: {},
+  ctrail: {},
+  ace: {},
+  capmetro: {},
+  kcstreetcar: {},
+  okcstreetcar: {},
+  octastreetcar: {},
+  metrolinkarrow: {},
+  silverline: {}
+};
+
+export const demoDelayPropagationPreview: Record<PropertyCode, Record<string, DelayPropagationPreview>> = {
+  caltrain: {
+    "run-1001-2026-03-06": {
+      runId: "run-1001-2026-03-06",
+      sourceDelayIds: ["delay-1", "delay-2"],
+      totalProjectedDelayMinutes: 7,
+      impactedStopCount: 3,
+      requiresCmmsFollowup: true,
+      notableDelayTypes: ["Interlocking failure", "Platform crowding"],
+      downstreamStops: [
+        { stationCode: "STA", projectedDelayMinutes: 7, severity: "medium" },
+        { stationCode: "STB", projectedDelayMinutes: 6, severity: "medium" },
+        { stationCode: "STC", projectedDelayMinutes: 5, severity: "medium" }
+      ]
+    }
+  },
+  texrail: {},
+  tre: {},
+  trirail: {},
+  nmrx: {},
+  ctrail: {},
+  ace: {},
+  capmetro: {},
+  kcstreetcar: {
+    "streetcar-run-7001-2026-03-06": {
+      runId: "streetcar-run-7001-2026-03-06",
+      sourceDelayIds: ["street-delay-1"],
+      totalProjectedDelayMinutes: 2,
+      impactedStopCount: 2,
+      requiresCmmsFollowup: false,
+      notableDelayTypes: ["Signal priority override"],
+      downstreamStops: [
+        { stationCode: "ST01", projectedDelayMinutes: 2, severity: "low" },
+        { stationCode: "ST02", projectedDelayMinutes: 1, severity: "low" }
+      ]
+    }
+  },
+  okcstreetcar: {},
+  octastreetcar: {},
+  metrolinkarrow: {},
+  silverline: {}
+};
+
 export const demoFareEnforcement: Record<PropertyCode, FareEnforcementList> = {
   caltrain: {
     items: [
@@ -1550,6 +1666,72 @@ const streetcarScheduledReportEmailJobs: ScheduledReportEmailJobList = {
   ]
 };
 
+const commuterLiveReports: LiveReportCatalogList = {
+  items: [
+    {
+      id: "live-report-otp",
+      reportName: "Daily OTP Live",
+      provider: "power_bi",
+      audience: "Operations Leadership",
+      embedUrl: "https://app.powerbi.com/reportEmbed?reportId=daily-otp-live",
+      status: "available"
+    },
+    {
+      id: "live-report-dispatch",
+      reportName: "Dispatcher Delay Board",
+      provider: "paginated",
+      audience: "Dispatch",
+      embedUrl: "https://app.powerbi.com/reportEmbed?reportId=dispatch-delay-board",
+      status: "available"
+    }
+  ]
+};
+
+const streetcarLiveReports: LiveReportCatalogList = {
+  items: [
+    {
+      id: "street-live-headway",
+      reportName: "Street Headway Monitor",
+      provider: "power_bi",
+      audience: "Street Supervisors",
+      embedUrl: "https://app.powerbi.com/reportEmbed?reportId=street-headway-monitor",
+      status: "available"
+    }
+  ]
+};
+
+const commuterPassengerReportImports: PassengerReportImportList = {
+  items: [
+    {
+      id: "passenger-import-1",
+      importName: "Weekday passenger reconciliation",
+      sourceFileName: "caltrain-passenger-2026-03-06.csv",
+      importedAt: "2026-03-06T13:05:00Z",
+      importedBy: "Taylor Brooks",
+      operatingDate: "2026-03-06",
+      rowCount: 184,
+      status: "processed",
+      notes: "Matched to daily boarding feed with no rejected rows."
+    }
+  ]
+};
+
+const streetcarPassengerReportImports: PassengerReportImportList = {
+  items: [
+    {
+      id: "street-passenger-import-1",
+      importName: "Streetcar rider count import",
+      sourceFileName: "kcstreetcar-passenger-2026-03-06.csv",
+      importedAt: "2026-03-06T12:10:00Z",
+      importedBy: "Jordan Reyes",
+      operatingDate: "2026-03-06",
+      rowCount: 44,
+      status: "warning",
+      notes: "Two rows flagged for missing stop codes and held for review."
+    }
+  ]
+};
+
 export const demoPermissionGroups: Record<PropertyCode, PermissionGroupList> = {
   caltrain: commuterPermissionGroups,
   texrail: commuterPermissionGroups,
@@ -1612,6 +1794,38 @@ export const demoScheduledReportEmailJobs: Record<PropertyCode, ScheduledReportE
   octastreetcar: streetcarScheduledReportEmailJobs,
   metrolinkarrow: commuterScheduledReportEmailJobs,
   silverline: commuterScheduledReportEmailJobs
+};
+
+export const demoLiveReports: Record<PropertyCode, LiveReportCatalogList> = {
+  caltrain: commuterLiveReports,
+  texrail: commuterLiveReports,
+  tre: commuterLiveReports,
+  trirail: commuterLiveReports,
+  nmrx: commuterLiveReports,
+  ctrail: commuterLiveReports,
+  ace: commuterLiveReports,
+  capmetro: commuterLiveReports,
+  kcstreetcar: streetcarLiveReports,
+  okcstreetcar: streetcarLiveReports,
+  octastreetcar: streetcarLiveReports,
+  metrolinkarrow: commuterLiveReports,
+  silverline: commuterLiveReports
+};
+
+export const demoPassengerReportImports: Record<PropertyCode, PassengerReportImportList> = {
+  caltrain: commuterPassengerReportImports,
+  texrail: commuterPassengerReportImports,
+  tre: commuterPassengerReportImports,
+  trirail: commuterPassengerReportImports,
+  nmrx: commuterPassengerReportImports,
+  ctrail: commuterPassengerReportImports,
+  ace: commuterPassengerReportImports,
+  capmetro: commuterPassengerReportImports,
+  kcstreetcar: streetcarPassengerReportImports,
+  okcstreetcar: streetcarPassengerReportImports,
+  octastreetcar: streetcarPassengerReportImports,
+  metrolinkarrow: commuterPassengerReportImports,
+  silverline: commuterPassengerReportImports
 };
 
 const commuterJobProfiles: JobProfileList = {

@@ -28,6 +28,8 @@ import type {
   UserAdminHistoryList,
   NotificationItem,
   NotificationList,
+  PassengerReportImportCreate,
+  PassengerReportImportList,
   PersonnelRecord,
   PersonnelRecordList,
   PersonnelStatusUpdate,
@@ -41,6 +43,11 @@ import type {
   PropertySettingsUpdate,
   ReferenceDataset,
   ResourceSwapRequest,
+  DelayPropagationPreview,
+  DelayWorkOrder,
+  DelayWorkOrderCreate,
+  LiveReportCatalogList,
+  NotableDelayTypeList,
   ReportConfigRow,
   ReportConfigList,
   ReportConfigUpdate,
@@ -235,6 +242,13 @@ export interface PlatformRepository {
     propertyCode: PropertyCode,
     jobId: string
   ): MaybePromise<ScheduledReportEmailJobDeleteResult>;
+  listLiveReports(propertyCode: PropertyCode): MaybePromise<LiveReportCatalogList>;
+  listPassengerReportImports(propertyCode: PropertyCode): MaybePromise<PassengerReportImportList>;
+  createPassengerReportImport(
+    propertyCode: PropertyCode,
+    input: PassengerReportImportCreate,
+    actorName: string
+  ): MaybePromise<void>;
   listFiles(propertyCode: PropertyCode): MaybePromise<FileServiceList>;
   listNotifications(propertyCode: PropertyCode): MaybePromise<NotificationList>;
   updateNotification(
@@ -305,6 +319,7 @@ export interface OperationsRepository {
   listDelayEvents(propertyCode: PropertyCode, runId: string): MaybePromise<DelayEventList>;
   listDelayCommonLocations(propertyCode: PropertyCode): MaybePromise<DelayCommonLocationList>;
   listDelayTemplates(propertyCode: PropertyCode): MaybePromise<DelayTemplateList>;
+  listNotableDelayTypes(propertyCode: PropertyCode): MaybePromise<NotableDelayTypeList>;
   listSpecialMovements(propertyCode: PropertyCode): MaybePromise<SpecialMovementList>;
   updateDelayCommonLocation(
     propertyCode: PropertyCode,
@@ -325,6 +340,13 @@ export interface OperationsRepository {
     propertyCode: PropertyCode,
     delayId: string
   ): MaybePromise<DelayAdditionalInfo>;
+  getDelayWorkOrder(propertyCode: PropertyCode, delayId: string): MaybePromise<DelayWorkOrder | null>;
+  createDelayWorkOrder(
+    propertyCode: PropertyCode,
+    delayId: string,
+    input: DelayWorkOrderCreate,
+    actorName: string
+  ): MaybePromise<DelayWorkOrder>;
   updateDelayAdditionalInfo(
     propertyCode: PropertyCode,
     delayId: string,
@@ -356,6 +378,10 @@ export interface OperationsRepository {
     delayId: string,
     update: DelayEventUpdate
   ): MaybePromise<DelayEvent>;
+  getDelayPropagationPreview(
+    propertyCode: PropertyCode,
+    runId: string
+  ): MaybePromise<DelayPropagationPreview>;
   listConsistEquipment(
     propertyCode: PropertyCode,
     runId: string

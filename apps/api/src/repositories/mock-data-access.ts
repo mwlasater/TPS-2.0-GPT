@@ -46,8 +46,11 @@ import {
 import { getPropertySettings, updatePropertySettings } from "../lib/property-settings.js";
 import { getReferenceData, updateReferenceData } from "../lib/reference-data.js";
 import {
+  createPassengerReportImport,
   createScheduledReportEmailJob,
   deleteScheduledReportEmailJob,
+  listLiveReports,
+  listPassengerReportImports,
   listReportConfig,
   listReportPreferences,
   listScheduledReportEmailJobs,
@@ -56,15 +59,19 @@ import {
   updateScheduledReportEmailJob
 } from "../lib/report-config.js";
 import {
+  createDelayWorkOrder,
   createDelayFromTemplate,
   createDelayEvents,
   deleteDelayAdditionalInfo,
   deleteDelayEvent,
   deleteRunDetailState,
+  getDelayPropagationPreview,
   getDelayAdditionalInfo,
+  getDelayWorkOrder,
   listDelayTemplates,
   listDelayEvents,
   listDelayCommonLocations,
+  listNotableDelayTypes,
   listSpecialMovements,
   listStationStops,
   resetRunDetailState,
@@ -223,6 +230,9 @@ export function createMockDataAccess(): DataAccess {
       createScheduledReportEmailJob,
       updateScheduledReportEmailJob,
       deleteScheduledReportEmailJob,
+      listLiveReports,
+      listPassengerReportImports,
+      createPassengerReportImport,
       listFiles,
       listNotifications,
       updateNotification,
@@ -363,11 +373,14 @@ export function createMockDataAccess(): DataAccess {
       listDelayEvents,
       listDelayCommonLocations,
       listDelayTemplates,
+      listNotableDelayTypes,
       listSpecialMovements,
       updateDelayCommonLocation,
       updateDelayTemplate,
       updateSpecialMovement,
       getDelayAdditionalInfo,
+      getDelayWorkOrder,
+      createDelayWorkOrder,
       updateDelayAdditionalInfo,
       deleteDelayAdditionalInfo(propertyCode, delayId, actorName) {
         const result = deleteDelayAdditionalInfo(propertyCode, delayId);
@@ -408,6 +421,7 @@ export function createMockDataAccess(): DataAccess {
         assertRunMutable(propertyCode, runId);
         return updateDelayEvent(propertyCode, runId, delayId, update);
       },
+      getDelayPropagationPreview,
       listConsistEquipment,
       listConsistTemplates,
       swapConsistEquipment(propertyCode, runId, request) {

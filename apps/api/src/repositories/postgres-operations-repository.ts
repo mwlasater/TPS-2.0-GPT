@@ -12,6 +12,7 @@ import type {
   DelayAdditionalInfo,
   DelayAdditionalInfoDeleteResult,
   DelayAdditionalInfoUpdate,
+  DelayPropagationPreview,
   DelayEventBatchCreate,
   DelayCommonLocation,
   DelayCommonLocationList,
@@ -19,6 +20,8 @@ import type {
   DelayEventDeleteResult,
   DelayEvent,
   DelayEventList,
+  DelayWorkOrder,
+  DelayWorkOrderCreate,
   DelayTemplate,
   DelayTemplateCreateRequest,
   DelayTemplateList,
@@ -31,6 +34,8 @@ import type {
   FareEnforcementSummary,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
+  NotableDelayType,
+  NotableDelayTypeList,
   PropertyCode,
   ResourceSwapRequest,
   SpecialMovement,
@@ -71,9 +76,13 @@ import {
   listCrewTemplates
 } from "../lib/run-resource-data.js";
 import {
+  createDelayWorkOrder,
+  getDelayPropagationPreview,
   getDelayAdditionalInfo,
+  getDelayWorkOrder,
   listDelayCommonLocations,
   listDelayEvents,
+  listNotableDelayTypes,
   listDelayTemplates,
   listSpecialMovements,
   listStationStops
@@ -159,6 +168,25 @@ interface DelayTemplateRow {
   notes: string;
   notable_delay_type: string;
   special_movement_id: string | null;
+}
+
+interface NotableDelayTypeRow {
+  id: string;
+  delay_type_label: string;
+  category: NotableDelayType["category"];
+  requires_work_order: boolean;
+}
+
+interface DelayWorkOrderRow {
+  delay_id: string;
+  work_order_id: string;
+  notable_delay_type: string;
+  asset_id: string | null;
+  repair_type: string;
+  priority: DelayWorkOrder["priority"];
+  status: DelayWorkOrder["status"];
+  created_at: string | Date;
+  created_by: string;
 }
 
 interface ConsistEquipmentRow {
@@ -1148,6 +1176,37 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
+  async listNotableDelayTypes(propertyCode: PropertyCode): Promise<NotableDelayTypeList> {
+    const result = await this.db.query<NotableDelayTypeRow>(
+      `
+        SELECT
+          id,
+          delay_type_label,
+          category,
+          requires_work_order
+        FROM shared.notable_delay_type
+        WHERE railroad_code = $1
+        ORDER BY delay_type_label
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listNotableDelayTypes(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): NotableDelayType => ({
+          id: row.id,
+          label: row.delay_type_label,
+          category: row.category,
+          requiresWorkOrder: row.requires_work_order
+        })
+      )
+    };
+  }
+
   async updateDelayCommonLocation(
     propertyCode: PropertyCode,
     locationId: string,
@@ -1289,6 +1348,137 @@ export class PostgresOperationsRepository implements OperationsRepository {
       workOrderId: row.work_order_id,
       mechanicalNotes: row.mechanical_notes,
       passengerImpactSummary: row.passenger_impact_summary
+    };
+  }
+
+  async getDelayWorkOrder(propertyCode: PropertyCode, delayId: string): Promise<DelayWorkOrder | null> {
+    const result = await this.db.query<DelayWorkOrderRow>(
+      `
+        SELECT
+          dwo.delay_id,
+          dwo.work_order_id,
+          dwo.notable_delay_type,
+          dwo.asset_id,
+          dwo.repair_type,
+          dwo.priority,
+          dwo.status,
+          dwo.created_at,
+          dwo.created_by
+        FROM shared.delay_work_order dwo
+        JOIN shared.delay_event de ON de.id = dwo.delay_id
+        JOIN shared.train_run tr ON tr.id = de.train_run_id
+        WHERE tr.railroad_code = $1
+          AND dwo.delay_id = $2
+      `,
+      [propertyCode, delayId]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      return getDelayWorkOrder(propertyCode, delayId);
+    }
+
+    return {
+      delayId: row.delay_id,
+      workOrderId: row.work_order_id,
+      notableDelayType: row.notable_delay_type,
+      assetId: row.asset_id,
+      repairType: row.repair_type,
+      priority: row.priority,
+      status: row.status,
+      createdAt: toIsoTimestamp(row.created_at),
+      createdBy: row.created_by
+    };
+  }
+
+  async createDelayWorkOrder(
+    propertyCode: PropertyCode,
+    delayId: string,
+    input: DelayWorkOrderCreate,
+    actorName: string
+  ): Promise<DelayWorkOrder> {
+    const workOrderId = `WO-${Math.floor(Math.random() * 9000) + 1000}`;
+    const result = await this.db.query<DelayWorkOrderRow>(
+      `
+        INSERT INTO shared.delay_work_order (
+          delay_id,
+          work_order_id,
+          notable_delay_type,
+          asset_id,
+          repair_type,
+          priority,
+          status,
+          created_at,
+          created_by
+        )
+        SELECT
+          de.id,
+          $3,
+          $4,
+          $5,
+          $6,
+          $7,
+          'open',
+          NOW(),
+          $8
+        FROM shared.delay_event de
+        JOIN shared.train_run tr ON tr.id = de.train_run_id
+        WHERE tr.railroad_code = $1
+          AND de.id = $2
+        ON CONFLICT (delay_id) DO UPDATE
+        SET
+          work_order_id = EXCLUDED.work_order_id,
+          notable_delay_type = EXCLUDED.notable_delay_type,
+          asset_id = EXCLUDED.asset_id,
+          repair_type = EXCLUDED.repair_type,
+          priority = EXCLUDED.priority,
+          status = EXCLUDED.status,
+          created_at = EXCLUDED.created_at,
+          created_by = EXCLUDED.created_by
+        RETURNING
+          delay_id,
+          work_order_id,
+          notable_delay_type,
+          asset_id,
+          repair_type,
+          priority,
+          status,
+          created_at,
+          created_by
+      `,
+      [
+        propertyCode,
+        delayId,
+        workOrderId,
+        input.notableDelayType,
+        input.assetId,
+        input.repairType,
+        input.priority,
+        actorName
+      ]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      return createDelayWorkOrder(propertyCode, delayId, input, actorName);
+    }
+
+    await this.updateDelayAdditionalInfo(propertyCode, delayId, {
+      ...(await this.getDelayAdditionalInfo(propertyCode, delayId)),
+      notableDelayType: input.notableDelayType,
+      workOrderId: row.work_order_id
+    });
+
+    return {
+      delayId: row.delay_id,
+      workOrderId: row.work_order_id,
+      notableDelayType: row.notable_delay_type,
+      assetId: row.asset_id,
+      repairType: row.repair_type,
+      priority: row.priority,
+      status: row.status,
+      createdAt: toIsoTimestamp(row.created_at),
+      createdBy: row.created_by
     };
   }
 
@@ -1738,6 +1928,54 @@ export class PostgresOperationsRepository implements OperationsRepository {
       minutes: row.minutes,
       notes: row.notes,
       reportedAt: toIsoTimestamp(row.reported_at)
+    };
+  }
+
+  async getDelayPropagationPreview(
+    propertyCode: PropertyCode,
+    runId: string
+  ): Promise<DelayPropagationPreview> {
+    const delays = await this.listDelayEvents(propertyCode, runId);
+    const stops = await this.listStationStops(propertyCode, runId);
+    const notableDelayTypes = Array.from(
+      new Set(
+        (
+          await Promise.all(
+            delays.items.map(async (delay) =>
+              (await this.getDelayAdditionalInfo(propertyCode, delay.id)).notableDelayType
+            )
+          )
+        ).filter((value) => value.length > 0)
+      )
+    );
+
+    if (!delays.items.length && !stops.items.length) {
+      return getDelayPropagationPreview(propertyCode, runId);
+    }
+
+    const totalProjectedDelayMinutes = delays.items.reduce((total, delay) => total + delay.minutes, 0);
+
+    return {
+      runId,
+      sourceDelayIds: delays.items.map((delay) => delay.id),
+      totalProjectedDelayMinutes,
+      impactedStopCount: stops.items.filter((_stop, index) => Math.max(totalProjectedDelayMinutes - index, 0) > 0)
+        .length,
+      requiresCmmsFollowup: notableDelayTypes.some((label) =>
+        listNotableDelayTypes(propertyCode).items.some(
+          (item) => item.label === label && item.requiresWorkOrder
+        )
+      ),
+      notableDelayTypes,
+      downstreamStops: stops.items.map((stop, index) => {
+        const projectedDelayMinutes = Math.max(totalProjectedDelayMinutes - index, 0);
+        return {
+          stationCode: stop.stationCode,
+          projectedDelayMinutes,
+          severity:
+            projectedDelayMinutes >= 10 ? "high" : projectedDelayMinutes >= 5 ? "medium" : "low"
+        };
+      })
     };
   }
 

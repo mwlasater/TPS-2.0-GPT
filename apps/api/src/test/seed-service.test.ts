@@ -26,7 +26,8 @@ describe("seed service", () => {
       "0016_local_dev_user",
       "0017_train_run_status_history",
       "0018_attendance_workflows",
-      "0019_reporting_workflows"
+      "0019_reporting_workflows",
+      "0020_reporting_delay_extensions"
     ]);
   });
 });

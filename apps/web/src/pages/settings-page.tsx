@@ -14,12 +14,15 @@ import type {
   FileServiceList,
   JobProfileUpdate,
   JobProfileList,
+  LiveReportCatalogList,
   ManagedUserCreate,
   UserAdminHistoryList,
   ManagedUserDetail,
   ManagedUserList,
   NotificationUpdate,
   NotificationList,
+  PassengerReportImportCreate,
+  PassengerReportImportList,
   PersonnelRecordList,
   PersonnelStatusUpdate,
   PermissionGroupCreate,
@@ -58,9 +61,11 @@ interface SettingsPageProps {
   files: FileServiceList;
   isSaving: boolean;
   jobProfiles: JobProfileList;
+  liveReports: LiveReportCatalogList;
   managedUserActions: UserAdminActionList;
   managedUserHistory: UserAdminHistoryList;
   managedUserDetail: ManagedUserDetail;
+  passengerReportImports: PassengerReportImportList;
   permissionGroups: PermissionGroupList;
   personnel: PersonnelRecordList;
   notifications: NotificationList;
@@ -71,6 +76,7 @@ interface SettingsPageProps {
   reportPreferences: ReportPreferenceList;
   scheduledReportEmails: ScheduledReportEmailJobList;
   createUser: (input: ManagedUserCreate) => Promise<void>;
+  createPassengerImport: (input: PassengerReportImportCreate) => Promise<void>;
   createPermissionGroup: (input: PermissionGroupCreate) => Promise<void>;
   currentUserPermissions: string[];
   deletePermissionGroup: (groupId: string) => Promise<void>;
@@ -114,9 +120,11 @@ export function SettingsPage({
   files,
   isSaving,
   jobProfiles,
+  liveReports,
   managedUserActions,
   managedUserHistory,
   managedUserDetail,
+  passengerReportImports,
   personnel,
   notifications,
   permissionGroups,
@@ -127,6 +135,7 @@ export function SettingsPage({
   reportPreferences,
   scheduledReportEmails,
   createUser,
+  createPassengerImport,
   createPermissionGroup,
   currentUserPermissions,
   deletePermissionGroup,
@@ -700,6 +709,47 @@ export function SettingsPage({
             ) : null}
           </div>
         </Panel>
+        <Panel title="Passenger report imports" eyebrow={`${passengerReportImports.items.length} imports`}>
+          <div className="list-stack">
+            {passengerReportImports.items.map((item) => (
+              <article className="list-row" key={item.id}>
+                <div>
+                  <strong>{item.importName}</strong>
+                  <p>{item.sourceFileName}</p>
+                </div>
+                <div className="list-meta">
+                  <span>{item.operatingDate}</span>
+                  <StatusBadge
+                    tone={item.status === "processed" ? "success" : "warning"}
+                    label={item.status}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="button-row">
+            <button
+              type="button"
+              disabled={!canScheduleReports}
+              onClick={() =>
+                void runAction(
+                  () =>
+                    createPassengerImport({
+                      importName: "Daily passenger import",
+                      sourceFileName: `${property.code}-passenger-upload.csv`,
+                      operatingDate: "2026-03-07",
+                      rowCount: 128,
+                      status: "processed",
+                      notes: "Imported from station count workbook."
+                    }),
+                  "Passenger report import recorded."
+                )
+              }
+            >
+              Import passenger report
+            </button>
+          </div>
+        </Panel>
       </div>
       <div className="two-column-grid">
         <Panel title="Personnel directory" eyebrow={`${personnel.items.length} records`}>
@@ -1026,6 +1076,28 @@ export function SettingsPage({
             </article>
           ))}
         </div>
+      </Panel>
+      <Panel title="Live reports" eyebrow={`${liveReports.items.length} views`}>
+        <div className="list-stack">
+          {liveReports.items.map((report) => (
+            <article className="list-row" key={report.id}>
+              <div>
+                <strong>{report.reportName}</strong>
+                <p>{report.audience}</p>
+                <p>{report.embedUrl}</p>
+              </div>
+              <div className="list-meta">
+                <span>{report.provider}</span>
+                <StatusBadge
+                  tone={report.status === "available" ? "success" : "warning"}
+                  label={report.status}
+                />
+              </div>
+            </article>
+          ))}
+        </div>
+      </Panel>
+      <Panel title="Permission group maintenance" eyebrow={`${permissionGroups.items.length} groups`}>
         {permissionGroups.items[0] ? (
           <button
             type="button"

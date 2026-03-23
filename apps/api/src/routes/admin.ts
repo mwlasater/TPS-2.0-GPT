@@ -7,6 +7,7 @@ import {
   delayTemplateUpdateSchema,
   jobProfileUpdateSchema,
   notificationUpdateSchema,
+  passengerReportImportCreateSchema,
   permissionGroupCreateSchema,
   permissionGroupUpdateSchema,
   reportPreferenceUpdateSchema,
@@ -26,6 +27,7 @@ import type {
   DelayTemplateUpdate,
   JobProfileUpdate,
   NotificationUpdate,
+  PassengerReportImportCreate,
   PermissionGroupCreate,
   PermissionGroupUpdate,
   PersonnelStatusUpdate,
@@ -134,6 +136,41 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         (request.params as { preferenceId: string }).preferenceId,
         payload
       );
+    }
+  );
+
+  app.get(
+    "/reports/live",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listLiveReports(request.property)
+  );
+
+  app.get(
+    "/reports/passenger-report",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.platform.listPassengerReportImports(request.property)
+  );
+
+  app.post(
+    "/reports/passenger-report",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "reports.schedule");
+      const payload = passengerReportImportCreateSchema.parse(
+        request.body
+      ) as PassengerReportImportCreate;
+      await app.dataAccess.platform.createPassengerReportImport(
+        request.property,
+        payload,
+        request.user.displayName
+      );
+      return { ok: true };
     }
   );
 

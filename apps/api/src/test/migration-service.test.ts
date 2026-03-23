@@ -24,7 +24,8 @@ describe("migration service", () => {
       "0015_user_admin_history",
       "0017_train_run_status_history",
       "0018_attendance_workflows",
-      "0019_reporting_workflows"
+      "0019_reporting_workflows",
+      "0020_reporting_delay_extensions"
     ]);
   });
 });

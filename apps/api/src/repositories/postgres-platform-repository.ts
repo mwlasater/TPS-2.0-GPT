@@ -3,9 +3,13 @@ import crypto from "node:crypto";
 import type {
   FileServiceItem,
   FileServiceList,
+  LiveReportCatalogItem,
+  LiveReportCatalogList,
   NotificationItem,
   NotificationList,
   NotificationUpdate,
+  PassengerReportImportCreate,
+  PassengerReportImportList,
   PowerBiEmbed,
   PowerBiEmbedList,
   PropertyCode,
@@ -24,6 +28,8 @@ import type {
 
 import { listFiles, listNotifications, listPowerBiEmbeds } from "../lib/platform-data.js";
 import {
+  listLiveReports,
+  listPassengerReportImports,
   listReportConfig,
   listReportPreferences,
   listScheduledReportEmailJobs
@@ -79,6 +85,18 @@ interface PowerBiDbRow {
   workspace_name: string;
   embed_url: string;
   enabled: boolean;
+}
+
+interface PassengerReportImportDbRow {
+  id: string;
+  import_name: string;
+  source_file_name: string;
+  imported_at: string | Date;
+  imported_by: string;
+  operating_date: string;
+  row_count: number;
+  status: "processed" | "warning";
+  notes: string;
 }
 
 function toIsoTimestamp(value: string | Date): string {
@@ -400,6 +418,115 @@ export class PostgresPlatformRepository implements PlatformRepository {
     return {
       deletedJobId: jobId
     };
+  }
+
+  async listLiveReports(propertyCode: PropertyCode): Promise<LiveReportCatalogList> {
+    const result = await this.db.query<PowerBiDbRow>(
+      `
+        SELECT
+          id,
+          report_name,
+          workspace_name,
+          embed_url,
+          enabled
+        FROM shared.power_bi_embed
+        WHERE railroad_code = $1
+        ORDER BY report_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listLiveReports(propertyCode);
+    }
+
+    return {
+      items: result.rows.map(
+        (row): LiveReportCatalogItem => ({
+          id: row.id,
+          reportName: row.report_name,
+          provider: "power_bi",
+          audience: row.workspace_name,
+          embedUrl: row.embed_url,
+          status: row.enabled ? "available" : "restricted"
+        })
+      )
+    };
+  }
+
+  async listPassengerReportImports(propertyCode: PropertyCode): Promise<PassengerReportImportList> {
+    const result = await this.db.query<PassengerReportImportDbRow>(
+      `
+        SELECT
+          id,
+          import_name,
+          source_file_name,
+          imported_at,
+          imported_by,
+          operating_date,
+          row_count,
+          status,
+          notes
+        FROM shared.passenger_report_import
+        WHERE railroad_code = $1
+        ORDER BY imported_at DESC, import_name
+      `,
+      [propertyCode]
+    );
+
+    if (!result.rows.length) {
+      return listPassengerReportImports(propertyCode);
+    }
+
+    return {
+      items: result.rows.map((row) => ({
+        id: row.id,
+        importName: row.import_name,
+        sourceFileName: row.source_file_name,
+        importedAt: toIsoTimestamp(row.imported_at),
+        importedBy: row.imported_by,
+        operatingDate: row.operating_date,
+        rowCount: row.row_count,
+        status: row.status,
+        notes: row.notes
+      }))
+    };
+  }
+
+  async createPassengerReportImport(
+    propertyCode: PropertyCode,
+    input: PassengerReportImportCreate,
+    actorName: string
+  ): Promise<void> {
+    const id = crypto.randomUUID();
+    await this.db.query(
+      `
+        INSERT INTO shared.passenger_report_import (
+          id,
+          railroad_code,
+          import_name,
+          source_file_name,
+          imported_at,
+          imported_by,
+          operating_date,
+          row_count,
+          status,
+          notes
+        )
+        VALUES ($1, $2, $3, $4, NOW(), $5, $6, $7, $8, $9)
+      `,
+      [
+        id,
+        propertyCode,
+        input.importName,
+        input.sourceFileName,
+        actorName,
+        input.operatingDate,
+        input.rowCount,
+        input.status,
+        input.notes
+      ]
+    );
   }
 
   async listFiles(propertyCode: PropertyCode): Promise<FileServiceList> {

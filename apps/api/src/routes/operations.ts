@@ -1,4 +1,5 @@
 import {
+  delayWorkOrderCreateSchema,
   consistEquipmentUpdateSchema,
   delayAdditionalInfoUpdateSchema,
   crewAssignmentUpdateSchema,
@@ -19,6 +20,7 @@ import type {
   ConsistEquipmentUpdate,
   CrewAssignmentUpdate,
   DelayAdditionalInfoUpdate,
+  DelayWorkOrderCreate,
   DelayEventBatchCreate,
   DelayTemplateCreateRequest,
   FareEnforcementCreate,
@@ -254,6 +256,14 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
   );
 
   app.get(
+    "/delays/notable-delay-types",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listNotableDelayTypes(request.property)
+  );
+
+  app.get(
     "/delays/special-movements",
     {
       preHandler: [app.authenticate, app.requireProperty]
@@ -270,6 +280,34 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       request.property,
       (request.params as { delayId: string }).delayId
     )
+  );
+
+  app.get(
+    "/delays/:delayId/work-order",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.getDelayWorkOrder(
+      request.property,
+      (request.params as { delayId: string }).delayId
+    )
+  );
+
+  app.post(
+    "/delays/:delayId/work-order",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "delays.write");
+      const payload = delayWorkOrderCreateSchema.parse(request.body) as DelayWorkOrderCreate;
+      return app.dataAccess.operations.createDelayWorkOrder(
+        request.property,
+        (request.params as { delayId: string }).delayId,
+        payload,
+        request.user.displayName
+      );
+    }
   );
 
   app.put(
@@ -311,6 +349,17 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
       preHandler: [app.authenticate, app.requireProperty]
     },
     async (request) => app.dataAccess.operations.listDelayEvents(
+      request.property,
+      (request.params as { runId: string }).runId
+    )
+  );
+
+  app.get(
+    "/train-runs/:runId/delay-propagation",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.getDelayPropagationPreview(
       request.property,
       (request.params as { runId: string }).runId
     )

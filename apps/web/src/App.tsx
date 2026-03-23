@@ -129,7 +129,10 @@ export function App() {
               scheduleApprovalSummary={operationsData.scheduleApprovalSummary}
               trainRunStatus={operationsData.trainRunStatus}
               delayAdditionalInfo={operationsData.delayAdditionalInfo}
+              delayPropagationPreview={operationsData.delayPropagationPreview}
               delayCommonLocations={operationsData.delayCommonLocations}
+              notableDelayTypes={operationsData.notableDelayTypes}
+              delayWorkOrders={operationsData.delayWorkOrders}
               delayTemplates={operationsData.delayTemplates}
               specialMovements={operationsData.specialMovements}
               selectedRunId={operationsData.selectedRunId}
@@ -141,6 +144,7 @@ export function App() {
               saveDelay={operationsData.saveDelay}
               createDelayBatch={operationsData.createDelayBatch}
               createDelayTemplate={operationsData.createDelayTemplate}
+              createWorkOrder={operationsData.createWorkOrder}
               saveDelayAdditionalInfo={operationsData.saveDelayAdditionalInfo}
               clearDelayAdditionalInfo={operationsData.clearDelayAdditionalInfo}
               deleteDelay={operationsData.deleteDelay}
@@ -171,6 +175,7 @@ export function App() {
               delayTemplates={adminData.delayTemplates}
               files={platformData.files}
               jobProfiles={baselineData.jobProfiles}
+              liveReports={adminData.liveReports}
               isSaving={
                 propertyData.isSaving ||
                 adminData.isSaving ||
@@ -183,6 +188,7 @@ export function App() {
               managedUserDetail={userAdminData.detail}
               notifications={platformData.notifications}
               personnel={baselineData.personnel}
+              passengerReportImports={adminData.passengerReportImports}
               permissionGroups={adminData.permissionGroups}
               powerBi={platformData.powerBi}
               property={activeProperty}
@@ -202,6 +208,7 @@ export function App() {
                 const detail = await propertyData.createUser(input);
                 setSelectedUserId(detail.id);
               }}
+              createPassengerImport={adminData.createPassengerImport}
               createPermissionGroup={adminData.createPermissionGroup}
               currentUserPermissions={currentUserPermissions}
               deletePermissionGroup={adminData.deletePermissionGroup}

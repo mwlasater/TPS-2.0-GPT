@@ -1,4 +1,9 @@
+import crypto from "node:crypto";
+
 import type {
+  LiveReportCatalogList,
+  PassengerReportImportCreate,
+  PassengerReportImportList,
   PropertyCode,
   ReportConfigList,
   ReportConfigRow,
@@ -123,6 +128,72 @@ const streetcarEmailJobsSeed: ScheduledReportEmailJobList = {
   ]
 };
 
+const commuterLiveReportsSeed: LiveReportCatalogList = {
+  items: [
+    {
+      id: "live-report-otp",
+      reportName: "Daily OTP Live",
+      provider: "power_bi",
+      audience: "Operations Leadership",
+      embedUrl: "https://app.powerbi.com/reportEmbed?reportId=daily-otp-live",
+      status: "available"
+    },
+    {
+      id: "live-report-dispatch",
+      reportName: "Dispatcher Delay Board",
+      provider: "paginated",
+      audience: "Dispatch",
+      embedUrl: "https://app.powerbi.com/reportEmbed?reportId=dispatch-delay-board",
+      status: "available"
+    }
+  ]
+};
+
+const streetcarLiveReportsSeed: LiveReportCatalogList = {
+  items: [
+    {
+      id: "street-live-headway",
+      reportName: "Street Headway Monitor",
+      provider: "power_bi",
+      audience: "Street Supervisors",
+      embedUrl: "https://app.powerbi.com/reportEmbed?reportId=street-headway-monitor",
+      status: "available"
+    }
+  ]
+};
+
+const commuterPassengerImportsSeed: PassengerReportImportList = {
+  items: [
+    {
+      id: "passenger-import-1",
+      importName: "Weekday passenger reconciliation",
+      sourceFileName: "caltrain-passenger-2026-03-06.csv",
+      importedAt: "2026-03-06T13:05:00Z",
+      importedBy: "Taylor Brooks",
+      operatingDate: "2026-03-06",
+      rowCount: 184,
+      status: "processed",
+      notes: "Matched to daily boarding feed with no rejected rows."
+    }
+  ]
+};
+
+const streetcarPassengerImportsSeed: PassengerReportImportList = {
+  items: [
+    {
+      id: "street-passenger-import-1",
+      importName: "Streetcar rider count import",
+      sourceFileName: "kcstreetcar-passenger-2026-03-06.csv",
+      importedAt: "2026-03-06T12:10:00Z",
+      importedBy: "Jordan Reyes",
+      operatingDate: "2026-03-06",
+      rowCount: 44,
+      status: "warning",
+      notes: "Two rows flagged for missing stop codes and held for review."
+    }
+  ]
+};
+
 const streetcarProperties = new Set<PropertyCode>([
   "kcstreetcar",
   "okcstreetcar",
@@ -147,6 +218,18 @@ function cloneScheduledEmailJobs(value: ScheduledReportEmailJobList): ScheduledR
   };
 }
 
+function cloneLiveReports(value: LiveReportCatalogList): LiveReportCatalogList {
+  return {
+    items: value.items.map((item) => ({ ...item }))
+  };
+}
+
+function clonePassengerImports(value: PassengerReportImportList): PassengerReportImportList {
+  return {
+    items: value.items.map((item) => ({ ...item }))
+  };
+}
+
 function isStreetcarProperty(propertyCode: PropertyCode): boolean {
   return streetcarProperties.has(propertyCode);
 }
@@ -154,6 +237,8 @@ function isStreetcarProperty(propertyCode: PropertyCode): boolean {
 const reportConfigByProperty = new Map<PropertyCode, ReportConfigList>();
 const reportPreferencesByProperty = new Map<PropertyCode, ReportPreferenceList>();
 const scheduledEmailJobsByProperty = new Map<PropertyCode, ScheduledReportEmailJobList>();
+const liveReportsByProperty = new Map<PropertyCode, LiveReportCatalogList>();
+const passengerImportsByProperty = new Map<PropertyCode, PassengerReportImportList>();
 
 function getReportConfigStore(propertyCode: PropertyCode): ReportConfigList {
   let value = reportConfigByProperty.get(propertyCode);
@@ -189,6 +274,32 @@ function getScheduledEmailJobsStore(propertyCode: PropertyCode): ScheduledReport
       ? cloneScheduledEmailJobs(streetcarEmailJobsSeed)
       : cloneScheduledEmailJobs(commuterEmailJobsSeed);
     scheduledEmailJobsByProperty.set(propertyCode, value);
+  }
+
+  return value;
+}
+
+function getLiveReportsStore(propertyCode: PropertyCode): LiveReportCatalogList {
+  let value = liveReportsByProperty.get(propertyCode);
+
+  if (!value) {
+    value = isStreetcarProperty(propertyCode)
+      ? cloneLiveReports(streetcarLiveReportsSeed)
+      : cloneLiveReports(commuterLiveReportsSeed);
+    liveReportsByProperty.set(propertyCode, value);
+  }
+
+  return value;
+}
+
+function getPassengerImportsStore(propertyCode: PropertyCode): PassengerReportImportList {
+  let value = passengerImportsByProperty.get(propertyCode);
+
+  if (!value) {
+    value = isStreetcarProperty(propertyCode)
+      ? clonePassengerImports(streetcarPassengerImportsSeed)
+      : clonePassengerImports(commuterPassengerImportsSeed);
+    passengerImportsByProperty.set(propertyCode, value);
   }
 
   return value;
@@ -301,8 +412,37 @@ export function deleteScheduledReportEmailJob(
   };
 }
 
+export function listLiveReports(propertyCode: PropertyCode): LiveReportCatalogList {
+  return getLiveReportsStore(propertyCode);
+}
+
+export function listPassengerReportImports(propertyCode: PropertyCode): PassengerReportImportList {
+  return getPassengerImportsStore(propertyCode);
+}
+
+export function createPassengerReportImport(
+  propertyCode: PropertyCode,
+  input: PassengerReportImportCreate,
+  actorName: string
+): void {
+  const source = getPassengerImportsStore(propertyCode);
+  source.items.unshift({
+    id: crypto.randomUUID(),
+    importName: input.importName,
+    sourceFileName: input.sourceFileName,
+    importedAt: new Date().toISOString(),
+    importedBy: actorName,
+    operatingDate: input.operatingDate,
+    rowCount: input.rowCount,
+    status: input.status,
+    notes: input.notes
+  });
+}
+
 export function resetReportConfigData() {
   reportConfigByProperty.clear();
   reportPreferencesByProperty.clear();
   scheduledEmailJobsByProperty.clear();
+  liveReportsByProperty.clear();
+  passengerImportsByProperty.clear();
 }

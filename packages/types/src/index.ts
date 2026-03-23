@@ -674,6 +674,44 @@ export interface ScheduledReportEmailJobList {
   items: ScheduledReportEmailJob[];
 }
 
+export interface LiveReportCatalogItem {
+  id: string;
+  reportName: string;
+  provider: "power_bi" | "paginated";
+  audience: string;
+  embedUrl: string;
+  status: "available" | "restricted";
+}
+
+export interface LiveReportCatalogList {
+  items: LiveReportCatalogItem[];
+}
+
+export interface PassengerReportImportRecord {
+  id: string;
+  importName: string;
+  sourceFileName: string;
+  importedAt: string;
+  importedBy: string;
+  operatingDate: string;
+  rowCount: number;
+  status: "processed" | "warning";
+  notes: string;
+}
+
+export interface PassengerReportImportList {
+  items: PassengerReportImportRecord[];
+}
+
+export interface PassengerReportImportCreate {
+  importName: string;
+  sourceFileName: string;
+  operatingDate: string;
+  rowCount: number;
+  status: "processed" | "warning";
+  notes: string;
+}
+
 export interface JobProfile {
   id: string;
   title: string;
@@ -810,4 +848,50 @@ export interface PowerBiEmbed {
 
 export interface PowerBiEmbedList {
   items: PowerBiEmbed[];
+}
+
+export interface NotableDelayType {
+  id: string;
+  label: string;
+  category: "mechanical" | "traffic" | "operations" | "passenger";
+  requiresWorkOrder: boolean;
+}
+
+export interface NotableDelayTypeList {
+  items: NotableDelayType[];
+}
+
+export interface DelayWorkOrder {
+  delayId: string;
+  workOrderId: string;
+  notableDelayType: string;
+  assetId: string | null;
+  repairType: string;
+  priority: "low" | "medium" | "high";
+  status: "open" | "scheduled" | "closed";
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface DelayWorkOrderCreate {
+  notableDelayType: string;
+  assetId: string | null;
+  repairType: string;
+  priority: "low" | "medium" | "high";
+}
+
+export interface DelayPropagationPreviewStop {
+  stationCode: string;
+  projectedDelayMinutes: number;
+  severity: "low" | "medium" | "high";
+}
+
+export interface DelayPropagationPreview {
+  runId: string;
+  sourceDelayIds: string[];
+  totalProjectedDelayMinutes: number;
+  impactedStopCount: number;
+  requiresCmmsFollowup: boolean;
+  notableDelayTypes: string[];
+  downstreamStops: DelayPropagationPreviewStop[];
 }

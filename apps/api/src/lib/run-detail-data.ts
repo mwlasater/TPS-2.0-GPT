@@ -4,6 +4,9 @@ import type {
   DelayAdditionalInfoUpdate,
   DelayEventBatchCreate,
   DelayCommonLocationUpdate,
+  DelayPropagationPreview,
+  DelayWorkOrder,
+  DelayWorkOrderCreate,
   DelayTemplateCreateRequest,
   DelayTemplateList,
   DelayTemplateUpdate,
@@ -12,6 +15,7 @@ import type {
   DelayEvent,
   DelayEventList,
   DelayEventUpdate,
+  NotableDelayTypeList,
   PropertyCode,
   SpecialMovementList,
   SpecialMovementUpdate,
@@ -122,6 +126,46 @@ const streetcarSpecialMovements: SpecialMovementList = {
   ]
 };
 
+const commuterNotableDelayTypes: NotableDelayTypeList = {
+  items: [
+    {
+      id: "notable-interlocking",
+      label: "Interlocking failure",
+      category: "mechanical",
+      requiresWorkOrder: true
+    },
+    {
+      id: "notable-platform",
+      label: "Platform crowding",
+      category: "passenger",
+      requiresWorkOrder: false
+    },
+    {
+      id: "notable-traffic",
+      label: "Traffic interference",
+      category: "traffic",
+      requiresWorkOrder: false
+    }
+  ]
+};
+
+const streetcarNotableDelayTypes: NotableDelayTypeList = {
+  items: [
+    {
+      id: "notable-signal-priority",
+      label: "Signal priority override",
+      category: "operations",
+      requiresWorkOrder: false
+    },
+    {
+      id: "notable-vehicle-fault",
+      label: "Vehicle fault",
+      category: "mechanical",
+      requiresWorkOrder: true
+    }
+  ]
+};
+
 const commuterDelayTemplates: DelayTemplateList = {
   items: [
     {
@@ -165,6 +209,8 @@ const additionalInfoCatalog: Partial<Record<PropertyCode, Partial<Record<string,
 const commonLocationCatalog: Partial<Record<PropertyCode, DelayCommonLocationList>> = {};
 const specialMovementCatalog: Partial<Record<PropertyCode, SpecialMovementList>> = {};
 const delayTemplateCatalog: Partial<Record<PropertyCode, DelayTemplateList>> = {};
+const notableDelayTypeCatalog: Partial<Record<PropertyCode, NotableDelayTypeList>> = {};
+const workOrderCatalog: Partial<Record<PropertyCode, Partial<Record<string, DelayWorkOrder>>>> = {};
 
 function getRunStops(propertyCode: PropertyCode, runId: string): StationStopList {
   if (!stopCatalog[propertyCode]) {
@@ -317,6 +363,16 @@ export function listSpecialMovements(propertyCode: PropertyCode): SpecialMovemen
   return specialMovementCatalog[propertyCode]!;
 }
 
+export function listNotableDelayTypes(propertyCode: PropertyCode): NotableDelayTypeList {
+  if (!notableDelayTypeCatalog[propertyCode]) {
+    notableDelayTypeCatalog[propertyCode] = streetcarProperties.has(propertyCode)
+      ? { items: streetcarNotableDelayTypes.items.map((item) => ({ ...item })) }
+      : { items: commuterNotableDelayTypes.items.map((item) => ({ ...item })) };
+  }
+
+  return notableDelayTypeCatalog[propertyCode]!;
+}
+
 export function updateDelayCommonLocation(
   propertyCode: PropertyCode,
   locationId: string,
@@ -376,6 +432,56 @@ export function getDelayAdditionalInfo(propertyCode: PropertyCode, delayId: stri
   return catalog[delayId]!;
 }
 
+function getWorkOrderStore(propertyCode: PropertyCode): Partial<Record<string, DelayWorkOrder>> {
+  if (!workOrderCatalog[propertyCode]) {
+    workOrderCatalog[propertyCode] = {
+      "delay-1": {
+        delayId: "delay-1",
+        workOrderId: "WO-1427",
+        notableDelayType: "Interlocking failure",
+        assetId: "SIG-204",
+        repairType: "Signal diagnostics",
+        priority: "high",
+        status: "scheduled",
+        createdAt: "2026-03-06T06:21:00Z",
+        createdBy: "Dispatch Supervisor"
+      }
+    };
+  }
+
+  return workOrderCatalog[propertyCode]!;
+}
+
+export function getDelayWorkOrder(propertyCode: PropertyCode, delayId: string): DelayWorkOrder | null {
+  return getWorkOrderStore(propertyCode)[delayId] ?? null;
+}
+
+export function createDelayWorkOrder(
+  propertyCode: PropertyCode,
+  delayId: string,
+  input: DelayWorkOrderCreate,
+  actorName: string
+): DelayWorkOrder {
+  const info = getDelayAdditionalInfo(propertyCode, delayId);
+  const workOrder: DelayWorkOrder = {
+    delayId,
+    workOrderId: `WO-${Math.floor(Math.random() * 9000) + 1000}`,
+    notableDelayType: input.notableDelayType,
+    assetId: input.assetId,
+    repairType: input.repairType,
+    priority: input.priority,
+    status: "open",
+    createdAt: new Date().toISOString(),
+    createdBy: actorName
+  };
+
+  getWorkOrderStore(propertyCode)[delayId] = workOrder;
+  info.workOrderId = workOrder.workOrderId;
+  info.notableDelayType = input.notableDelayType;
+
+  return workOrder;
+}
+
 export function updateDelayAdditionalInfo(
   propertyCode: PropertyCode,
   delayId: string,
@@ -402,9 +508,49 @@ export function deleteDelayAdditionalInfo(
   }
 
   delete catalog[delayId];
+  delete getWorkOrderStore(propertyCode)[delayId];
 
   return {
     delayId
+  };
+}
+
+export function getDelayPropagationPreview(
+  propertyCode: PropertyCode,
+  runId: string
+): DelayPropagationPreview {
+  const delays = listDelayEvents(propertyCode, runId).items;
+  const stops = listStationStops(propertyCode, runId).items;
+  const totalProjectedDelayMinutes = delays.reduce((total, delay) => total + delay.minutes, 0);
+  const notableDelayTypes = Array.from(
+    new Set(
+      delays
+        .map((delay) => getDelayAdditionalInfo(propertyCode, delay.id).notableDelayType)
+        .filter((value) => value.length > 0)
+    )
+  );
+
+  return {
+    runId,
+    sourceDelayIds: delays.map((delay) => delay.id),
+    totalProjectedDelayMinutes,
+    impactedStopCount: stops.filter((_stop, index) => Math.max(totalProjectedDelayMinutes - index, 0) > 0)
+      .length,
+    requiresCmmsFollowup: notableDelayTypes.some((label) =>
+      listNotableDelayTypes(propertyCode).items.some(
+        (item) => item.label === label && item.requiresWorkOrder
+      )
+    ),
+    notableDelayTypes,
+    downstreamStops: stops.map((stop, index) => {
+      const projectedDelayMinutes = Math.max(totalProjectedDelayMinutes - index, 0);
+      return {
+        stationCode: stop.stationCode,
+        projectedDelayMinutes,
+        severity:
+          projectedDelayMinutes >= 10 ? "high" : projectedDelayMinutes >= 5 ? "medium" : "low"
+      };
+    })
   };
 }
 
@@ -490,6 +636,7 @@ export function deleteDelayEvent(
 
   delays.items = nextItems;
   delete getDelayAdditionalInfoCatalog(propertyCode)[delayId];
+  delete getWorkOrderStore(propertyCode)[delayId];
 
   return {
     deletedId: delayId,
@@ -544,6 +691,7 @@ export function updateStationStop(
 export function resetRunDetailState(propertyCode: PropertyCode, runId: string): void {
   const stops = getRunStops(propertyCode, runId);
   const delays = getRunDelays(propertyCode, runId);
+  const existingDelayIds = delays.items.map((delay) => delay.id);
 
   stops.items = stops.items.map((stop) => ({
     ...stop,
@@ -552,6 +700,10 @@ export function resetRunDetailState(propertyCode: PropertyCode, runId: string): 
     alightings: 0
   }));
   delays.items = [];
+  for (const delayId of existingDelayIds) {
+    delete getDelayAdditionalInfoCatalog(propertyCode)[delayId];
+    delete getWorkOrderStore(propertyCode)[delayId];
+  }
 }
 
 export function deleteRunDetailState(propertyCode: PropertyCode, runId: string): void {
@@ -559,6 +711,7 @@ export function deleteRunDetailState(propertyCode: PropertyCode, runId: string):
 
   for (const delay of existingDelays) {
     delete getDelayAdditionalInfoCatalog(propertyCode)[delay.id];
+    delete getWorkOrderStore(propertyCode)[delay.id];
   }
 
   delete stopCatalog[propertyCode]?.[runId];
@@ -588,5 +741,13 @@ export function resetRunDetailData(): void {
 
   for (const propertyCode of Object.keys(delayTemplateCatalog) as PropertyCode[]) {
     delete delayTemplateCatalog[propertyCode];
+  }
+
+  for (const propertyCode of Object.keys(notableDelayTypeCatalog) as PropertyCode[]) {
+    delete notableDelayTypeCatalog[propertyCode];
+  }
+
+  for (const propertyCode of Object.keys(workOrderCatalog) as PropertyCode[]) {
+    delete workOrderCatalog[propertyCode];
   }
 }

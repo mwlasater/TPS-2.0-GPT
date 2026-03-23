@@ -663,6 +663,44 @@ export const scheduledReportEmailJobListSchema = z.object({
   items: z.array(scheduledReportEmailJobSchema)
 });
 
+export const liveReportCatalogItemSchema = z.object({
+  id: z.string(),
+  reportName: z.string(),
+  provider: z.enum(["power_bi", "paginated"]),
+  audience: z.string(),
+  embedUrl: z.string().url(),
+  status: z.enum(["available", "restricted"])
+});
+
+export const liveReportCatalogListSchema = z.object({
+  items: z.array(liveReportCatalogItemSchema)
+});
+
+export const passengerReportImportRecordSchema = z.object({
+  id: z.string(),
+  importName: z.string(),
+  sourceFileName: z.string(),
+  importedAt: z.string(),
+  importedBy: z.string(),
+  operatingDate: z.string(),
+  rowCount: z.number().int().nonnegative(),
+  status: z.enum(["processed", "warning"]),
+  notes: z.string()
+});
+
+export const passengerReportImportListSchema = z.object({
+  items: z.array(passengerReportImportRecordSchema)
+});
+
+export const passengerReportImportCreateSchema = z.object({
+  importName: z.string().min(1),
+  sourceFileName: z.string().min(1),
+  operatingDate: z.string().min(1),
+  rowCount: z.number().int().positive(),
+  status: z.enum(["processed", "warning"]),
+  notes: z.string().min(1)
+});
+
 export const jobProfileSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -799,6 +837,52 @@ export const powerBiEmbedSchema = z.object({
 
 export const powerBiEmbedListSchema = z.object({
   items: z.array(powerBiEmbedSchema)
+});
+
+export const notableDelayTypeSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  category: z.enum(["mechanical", "traffic", "operations", "passenger"]),
+  requiresWorkOrder: z.boolean()
+});
+
+export const notableDelayTypeListSchema = z.object({
+  items: z.array(notableDelayTypeSchema)
+});
+
+export const delayWorkOrderSchema = z.object({
+  delayId: z.string(),
+  workOrderId: z.string(),
+  notableDelayType: z.string(),
+  assetId: z.string().nullable(),
+  repairType: z.string(),
+  priority: z.enum(["low", "medium", "high"]),
+  status: z.enum(["open", "scheduled", "closed"]),
+  createdAt: z.string(),
+  createdBy: z.string()
+});
+
+export const delayWorkOrderCreateSchema = z.object({
+  notableDelayType: z.string().min(1),
+  assetId: z.string().nullable(),
+  repairType: z.string().min(1),
+  priority: z.enum(["low", "medium", "high"])
+});
+
+export const delayPropagationPreviewStopSchema = z.object({
+  stationCode: z.string(),
+  projectedDelayMinutes: z.number().int().nonnegative(),
+  severity: z.enum(["low", "medium", "high"])
+});
+
+export const delayPropagationPreviewSchema = z.object({
+  runId: z.string(),
+  sourceDelayIds: z.array(z.string()),
+  totalProjectedDelayMinutes: z.number().int().nonnegative(),
+  impactedStopCount: z.number().int().nonnegative(),
+  requiresCmmsFollowup: z.boolean(),
+  notableDelayTypes: z.array(z.string()),
+  downstreamStops: z.array(delayPropagationPreviewStopSchema)
 });
 
 export const propertyHeaderSchema = z.object({

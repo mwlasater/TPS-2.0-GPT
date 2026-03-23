@@ -7,6 +7,9 @@ import type {
   CrewAssignmentUpdate,
   DelayAdditionalInfo,
   DelayAdditionalInfoUpdate,
+  DelayPropagationPreview,
+  DelayWorkOrder,
+  DelayWorkOrderCreate,
   DelayEventCreate,
   DelayEventBatchCreate,
   DelayCommonLocationList,
@@ -19,6 +22,7 @@ import type {
   FareEnforcementList,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
+  NotableDelayTypeList,
   PropertySummary,
   ReferenceDataset,
   SpecialMovementList,
@@ -67,7 +71,10 @@ interface OperationsPageProps {
   scheduleApprovalSummary: TrainScheduleApprovalSummary;
   trainRunStatus: TrainRunStatusRecord;
   delayAdditionalInfo: Record<string, DelayAdditionalInfo>;
+  delayPropagationPreview: DelayPropagationPreview;
   delayCommonLocations: DelayCommonLocationList;
+  notableDelayTypes: NotableDelayTypeList;
+  delayWorkOrders: Record<string, DelayWorkOrder>;
   delayTemplates: DelayTemplateList;
   specialMovements: SpecialMovementList;
   schedules: TrainScheduleList;
@@ -127,6 +134,10 @@ interface OperationsPageProps {
     templateId: string,
     reportedAt: string
   ) => Promise<DelayEventList["items"][number] | undefined>;
+  createWorkOrder: (
+    delayId: string,
+    input: DelayWorkOrderCreate
+  ) => Promise<DelayWorkOrder | undefined>;
   saveDelayAdditionalInfo: (
     delayId: string,
     update: DelayAdditionalInfoUpdate
@@ -163,7 +174,10 @@ export function OperationsPage({
   scheduleApprovalSummary,
   trainRunStatus,
   delayAdditionalInfo,
+  delayPropagationPreview,
   delayCommonLocations,
+  notableDelayTypes,
+  delayWorkOrders,
   delayTemplates,
   specialMovements,
   schedules,
@@ -185,6 +199,7 @@ export function OperationsPage({
   saveStop,
   createDelayBatch,
   createDelayTemplate,
+  createWorkOrder,
   saveDelayAdditionalInfo,
   clearDelayAdditionalInfo,
   deleteDelay,
@@ -258,6 +273,12 @@ export function OperationsPage({
     mechanicalNotes: delayAdditionalInfo[selectedDelay?.id ?? ""]?.mechanicalNotes ?? "",
     passengerImpactSummary:
       delayAdditionalInfo[selectedDelay?.id ?? ""]?.passengerImpactSummary ?? ""
+  });
+  const [workOrderForm, setWorkOrderForm] = useState<DelayWorkOrderCreate>({
+    notableDelayType: delayAdditionalInfo[selectedDelay?.id ?? ""]?.notableDelayType ?? "",
+    assetId: null,
+    repairType: "Inspection",
+    priority: "medium"
   });
   const [equipmentForm, setEquipmentForm] = useState<ConsistEquipmentUpdate>({
     position: selectedEquipment?.position ?? 1,
@@ -379,6 +400,12 @@ export function OperationsPage({
       workOrderId: current?.workOrderId ?? null,
       mechanicalNotes: current?.mechanicalNotes ?? "",
       passengerImpactSummary: current?.passengerImpactSummary ?? ""
+    });
+    setWorkOrderForm({
+      notableDelayType: current?.notableDelayType ?? "",
+      assetId: null,
+      repairType: "Inspection",
+      priority: "medium"
     });
   }, [selectedDelay, delayAdditionalInfo]);
 
@@ -1064,6 +1091,97 @@ export function OperationsPage({
                 >
                   Clear delay metadata
                 </button>
+              </div>
+              <article className="metric-card editor-span">
+                <span>Propagation preview</span>
+                <strong>{delayPropagationPreview.totalProjectedDelayMinutes} min downstream</strong>
+                <p>
+                  {delayPropagationPreview.impactedStopCount} impacted stop(s)
+                  {delayPropagationPreview.requiresCmmsFollowup ? " · CMMS follow-up suggested" : ""}
+                </p>
+              </article>
+              <label className="field-stack">
+                <span>Notable delay type catalog</span>
+                <select
+                  onChange={(event) => {
+                    setWorkOrderForm((current) => ({
+                      ...current,
+                      notableDelayType: event.target.value
+                    }));
+                  }}
+                  value={workOrderForm.notableDelayType}
+                >
+                  <option value="">Select type</option>
+                  {notableDelayTypes.items.map((item) => (
+                    <option key={item.id} value={item.label}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-stack">
+                <span>Repair Type</span>
+                <input
+                  onChange={(event) => {
+                    setWorkOrderForm((current) => ({ ...current, repairType: event.target.value }));
+                  }}
+                  type="text"
+                  value={workOrderForm.repairType}
+                />
+              </label>
+              <label className="field-stack">
+                <span>Priority</span>
+                <select
+                  onChange={(event) => {
+                    setWorkOrderForm((current) => ({
+                      ...current,
+                      priority: event.target.value as DelayWorkOrderCreate["priority"]
+                    }));
+                  }}
+                  value={workOrderForm.priority}
+                >
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                </select>
+              </label>
+              <label className="field-stack">
+                <span>Asset ID</span>
+                <input
+                  onChange={(event) => {
+                    setWorkOrderForm((current) => ({
+                      ...current,
+                      assetId: event.target.value || null
+                    }));
+                  }}
+                  type="text"
+                  value={workOrderForm.assetId ?? ""}
+                />
+              </label>
+              <div className="action-row editor-span">
+                <button
+                  className="action-button"
+                  disabled={
+                    selectedRun.isApproved ||
+                    isSaving ||
+                    !canEditDelays ||
+                    !workOrderForm.notableDelayType
+                  }
+                  onClick={() => {
+                    void runAction(
+                      () => createWorkOrder(selectedDelay.id, workOrderForm),
+                      "Delay work order created."
+                    );
+                  }}
+                  type="button"
+                >
+                  {delayWorkOrders[selectedDelay.id] ? "Replace work order" : "Create work order"}
+                </button>
+                {delayWorkOrders[selectedDelay.id] ? (
+                  <p className="inline-feedback">
+                    {delayWorkOrders[selectedDelay.id]!.workOrderId} · {delayWorkOrders[selectedDelay.id]!.status}
+                  </p>
+                ) : null}
               </div>
             </div>
           ) : null}
