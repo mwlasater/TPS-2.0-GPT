@@ -1490,25 +1490,61 @@ describe("PostgresOperationsRepository", () => {
     });
   });
 
-  it("maps created fare enforcement rows into records", async () => {
+  it("maps fare enforcement history rows into entries", async () => {
     const query = vi.fn().mockResolvedValueOnce({
       rows: [
         {
-          id: "fare-new-1",
-          train_run_id: "caltrain-run-1",
-          inspector_name: "Morgan Lee",
-          first_location: "SFC",
-          second_location: "SJC",
-          activity_count: 8,
-          amtrak_transfers: 1,
-          amtrak_tickets: 2,
-          upass_count: 3,
-          tickets_sold: 4,
-          notes: "Midday inspection sweep.",
-          captured_at: new Date("2026-03-06T09:00:00Z")
+          id: "fare-history-1",
+          fare_record_id: "fare-1",
+          action: "updated",
+          actor_name: "Morgan Lee",
+          notes: "Fare enforcement record updated.",
+          created_at: new Date("2026-03-06T09:15:00Z")
         }
       ]
     });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const history = await repository.listFareEnforcementHistory("caltrain", "fare-1");
+
+    expect(history).toEqual({
+      items: [
+        {
+          id: "fare-history-1",
+          recordId: "fare-1",
+          action: "updated",
+          actorName: "Morgan Lee",
+          notes: "Fare enforcement record updated.",
+          createdAt: "2026-03-06T09:15:00.000Z"
+        }
+      ]
+    });
+  });
+
+  it("maps created fare enforcement rows into records", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "fare-new-1",
+            train_run_id: "caltrain-run-1",
+            inspector_name: "Morgan Lee",
+            first_location: "SFC",
+            second_location: "SJC",
+            activity_count: 8,
+            amtrak_transfers: 1,
+            amtrak_tickets: 2,
+            upass_count: 3,
+            tickets_sold: 4,
+            notes: "Midday inspection sweep.",
+            captured_at: new Date("2026-03-06T09:00:00Z")
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
 
     const repository = new PostgresOperationsRepository({ query });
     const record = await repository.createFareEnforcement("caltrain", {
@@ -1539,5 +1575,35 @@ describe("PostgresOperationsRepository", () => {
       notes: "Midday inspection sweep.",
       capturedAt: "2026-03-06T09:00:00.000Z"
     });
+    expect(query).toHaveBeenNthCalledWith(1, "BEGIN");
+    expect(query).toHaveBeenNthCalledWith(3, expect.stringContaining("INSERT INTO shared.fare_enforcement_history"), expect.any(Array));
+    expect(query).toHaveBeenNthCalledWith(4, "COMMIT");
+  });
+
+  it("returns deleted fare enforcement identifiers", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "fare-1",
+            train_run_id: "caltrain-run-1"
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const repository = new PostgresOperationsRepository({ query });
+    const result = await repository.deleteFareEnforcement("caltrain", "fare-1", "Morgan Lee");
+
+    expect(result).toEqual({
+      deletedRecordId: "fare-1",
+      runId: "caltrain-run-1"
+    });
+    expect(query).toHaveBeenNthCalledWith(1, "BEGIN");
+    expect(query).toHaveBeenNthCalledWith(3, expect.stringContaining("INSERT INTO shared.fare_enforcement_history"), expect.any(Array));
+    expect(query).toHaveBeenNthCalledWith(4, "COMMIT");
   });
 });

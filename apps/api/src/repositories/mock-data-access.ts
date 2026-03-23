@@ -1,8 +1,10 @@
 import {
   createFareEnforcement,
+  deleteFareEnforcement,
   deleteFareEnforcementForRun,
   getFareEnforcementDashboard,
   listFareEnforcement,
+  listFareEnforcementHistory,
   listFareEnforcementSummary,
   updateFareEnforcement
 } from "../lib/fare-enforcement-data.js";
@@ -477,6 +479,7 @@ export function createMockDataAccess(): DataAccess {
         return updateCrewAssignment(propertyCode, runId, assignmentId, update);
       },
       listFareEnforcement,
+      listFareEnforcementHistory,
       listFareEnforcementSummary,
       getFareEnforcementDashboard(propertyCode) {
         return getFareEnforcementDashboard(
@@ -485,7 +488,10 @@ export function createMockDataAccess(): DataAccess {
         );
       },
       createFareEnforcement,
-      updateFareEnforcement
+      updateFareEnforcement,
+      deleteFareEnforcement(_propertyCode, recordId, actorName) {
+        return deleteFareEnforcement(_propertyCode, recordId, actorName);
+      }
     }
   };
 }

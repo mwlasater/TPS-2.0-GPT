@@ -522,6 +522,11 @@ export interface FareEnforcementList {
   items: FareEnforcementRecord[];
 }
 
+export interface FareEnforcementDeleteResult {
+  deletedRecordId: string;
+  runId: string;
+}
+
 export interface FareEnforcementUpdate {
   inspectorName: string;
   firstLocation: string;
@@ -579,6 +584,19 @@ export interface FareEnforcementDashboard {
     activityCount: number;
     recordCount: number;
   }>;
+}
+
+export interface FareEnforcementHistoryEntry {
+  id: string;
+  recordId: string;
+  action: "created" | "updated" | "deleted";
+  actorName: string;
+  notes: string;
+  createdAt: string;
+}
+
+export interface FareEnforcementHistoryList {
+  items: FareEnforcementHistoryEntry[];
 }
 
 export interface PermissionGroup {

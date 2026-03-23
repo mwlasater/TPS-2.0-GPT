@@ -513,6 +513,11 @@ export const fareEnforcementListSchema = z.object({
   items: z.array(fareEnforcementRecordSchema)
 });
 
+export const fareEnforcementDeleteResultSchema = z.object({
+  deletedRecordId: z.string(),
+  runId: z.string()
+});
+
 export const fareEnforcementSummarySchema = z.object({
   runId: z.string(),
   recordCount: z.number(),
@@ -545,6 +550,19 @@ export const fareEnforcementDashboardSchema = z.object({
       recordCount: z.number()
     })
   )
+});
+
+export const fareEnforcementHistoryEntrySchema = z.object({
+  id: z.string(),
+  recordId: z.string(),
+  action: z.enum(["created", "updated", "deleted"]),
+  actorName: z.string(),
+  notes: z.string(),
+  createdAt: z.string()
+});
+
+export const fareEnforcementHistoryListSchema = z.object({
+  items: z.array(fareEnforcementHistoryEntrySchema)
 });
 
 export const fareEnforcementUpdateSchema = z.object({

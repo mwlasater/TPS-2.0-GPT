@@ -116,6 +116,7 @@ export function App() {
               currentUserPermissions={currentUserPermissions}
               delayEvents={operationsData.delayEvents}
               fareEnforcement={operationsData.fareEnforcement}
+              fareHistory={operationsData.fareHistory}
               fareDashboard={operationsData.fareDashboard}
               fareSummary={operationsData.fareSummary}
               isSaving={operationsData.isSaving}
@@ -154,6 +155,8 @@ export function App() {
               resetRun={operationsData.resetRun}
               deleteRun={operationsData.deleteRun}
               createFare={operationsData.createFare}
+              loadFareHistory={operationsData.loadFareHistory}
+              deleteFare={operationsData.deleteFare}
               saveFare={operationsData.saveFare}
               saveRunApproval={operationsData.saveRunApproval}
               saveStop={operationsData.saveStop}

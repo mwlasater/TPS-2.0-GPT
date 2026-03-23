@@ -30,7 +30,10 @@ import type {
   FareEnforcementList,
   FareEnforcementRecord,
   FareEnforcementCreate,
+  FareEnforcementDeleteResult,
   FareEnforcementDashboard,
+  FareEnforcementHistoryEntry,
+  FareEnforcementHistoryList,
   FareEnforcementSummary,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
@@ -64,7 +67,11 @@ import type {
   TrainScheduleList
 } from "@tps/types";
 
-import { listFareEnforcement, listFareEnforcementSummary } from "../lib/fare-enforcement-data.js";
+import {
+  listFareEnforcement,
+  listFareEnforcementHistory,
+  listFareEnforcementSummary
+} from "../lib/fare-enforcement-data.js";
 import {
   deriveTrainRunImpactSummary,
   deriveTrainScheduleApprovalSummary
@@ -262,6 +269,15 @@ interface FareEnforcementDashboardRow {
   covered_runs: number;
 }
 
+interface FareEnforcementHistoryRow {
+  id: string;
+  fare_record_id: string;
+  action: FareEnforcementHistoryEntry["action"];
+  actor_name: string;
+  notes: string;
+  created_at: string | Date;
+}
+
 interface TrainRunApprovalHistoryRow {
   id: string;
   train_run_id: string;
@@ -391,6 +407,30 @@ export class PostgresOperationsRepository implements OperationsRepository {
         VALUES ($1, $2, $3, $4, $5, $6, NOW())
       `,
       [`train-run-event-${crypto.randomUUID()}`, propertyCode, runId, action, actorName, notes]
+    );
+  }
+
+  private async recordFareHistory(
+    propertyCode: PropertyCode,
+    recordId: string,
+    action: FareEnforcementHistoryEntry["action"],
+    actorName: string,
+    notes: string
+  ): Promise<void> {
+    await this.db.query(
+      `
+        INSERT INTO shared.fare_enforcement_history (
+          id,
+          railroad_code,
+          fare_record_id,
+          action,
+          actor_name,
+          notes,
+          created_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      `,
+      [`fare-history-${crypto.randomUUID()}`, propertyCode, recordId, action, actorName, notes]
     );
   }
 
@@ -2412,6 +2452,43 @@ export class PostgresOperationsRepository implements OperationsRepository {
     };
   }
 
+  async listFareEnforcementHistory(
+    propertyCode: PropertyCode,
+    recordId: string
+  ): Promise<FareEnforcementHistoryList> {
+    const result = await this.db.query<FareEnforcementHistoryRow>(
+      `
+        SELECT
+          id,
+          fare_record_id,
+          action,
+          actor_name,
+          notes,
+          created_at
+        FROM shared.fare_enforcement_history
+        WHERE railroad_code = $1
+          AND fare_record_id = $2
+        ORDER BY created_at DESC
+      `,
+      [propertyCode, recordId]
+    );
+
+    if (result.rows.length === 0) {
+      return listFareEnforcementHistory(propertyCode, recordId);
+    }
+
+    return {
+      items: result.rows.map((row): FareEnforcementHistoryEntry => ({
+        id: row.id,
+        recordId: row.fare_record_id,
+        action: row.action,
+        actorName: row.actor_name,
+        notes: row.notes,
+        createdAt: toIsoTimestamp(row.created_at)
+      }))
+    };
+  }
+
   async listFareEnforcementSummary(propertyCode: PropertyCode): Promise<FareEnforcementSummaryList> {
     const result = await this.db.query<FareEnforcementSummaryRow>(
       `
@@ -2534,75 +2611,92 @@ export class PostgresOperationsRepository implements OperationsRepository {
     propertyCode: PropertyCode,
     input: FareEnforcementCreate
   ): Promise<FareEnforcementRecord> {
-    const result = await this.db.query<FareEnforcementRow>(
-      `
-        INSERT INTO shared.fare_enforcement (
-          id,
-          railroad_code,
-          train_run_id,
-          inspector_name,
-          first_location,
-          second_location,
-          activity_count,
-          amtrak_transfers,
-          amtrak_tickets,
-          upass_count,
-          tickets_sold,
-          notes,
-          captured_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        RETURNING
-          id,
-          train_run_id,
-          inspector_name,
-          first_location,
-          second_location,
-          activity_count,
-          amtrak_transfers,
-          amtrak_tickets,
-          upass_count,
-          tickets_sold,
-          notes,
-          captured_at
-      `,
-      [
-        `fare-${crypto.randomUUID()}`,
+    await this.db.query("BEGIN");
+
+    try {
+      const recordId = `fare-${crypto.randomUUID()}`;
+      const result = await this.db.query<FareEnforcementRow>(
+        `
+          INSERT INTO shared.fare_enforcement (
+            id,
+            railroad_code,
+            train_run_id,
+            inspector_name,
+            first_location,
+            second_location,
+            activity_count,
+            amtrak_transfers,
+            amtrak_tickets,
+            upass_count,
+            tickets_sold,
+            notes,
+            captured_at
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          RETURNING
+            id,
+            train_run_id,
+            inspector_name,
+            first_location,
+            second_location,
+            activity_count,
+            amtrak_transfers,
+            amtrak_tickets,
+            upass_count,
+            tickets_sold,
+            notes,
+            captured_at
+        `,
+        [
+          recordId,
+          propertyCode,
+          input.runId,
+          input.inspectorName,
+          input.firstLocation,
+          input.secondLocation,
+          input.activityCount,
+          input.amtrakTransfers,
+          input.amtrakTickets,
+          input.upassCount,
+          input.ticketsSold,
+          input.notes,
+          input.capturedAt
+        ]
+      );
+
+      const row = result.rows[0];
+
+      if (!row) {
+        throw new Error("fare_enforcement.create_failed");
+      }
+
+      await this.recordFareHistory(
         propertyCode,
-        input.runId,
-        input.inspectorName,
-        input.firstLocation,
-        input.secondLocation,
-        input.activityCount,
-        input.amtrakTransfers,
-        input.amtrakTickets,
-        input.upassCount,
-        input.ticketsSold,
-        input.notes,
-        input.capturedAt
-      ]
-    );
+        row.id,
+        "created",
+        "Local Development User",
+        "Fare enforcement record created."
+      );
+      await this.db.query("COMMIT");
 
-    const row = result.rows[0];
-
-    if (!row) {
-      throw new Error("fare_enforcement.create_failed");
+      return {
+        id: row.id,
+        runId: row.train_run_id,
+        inspectorName: row.inspector_name,
+        firstLocation: row.first_location,
+        secondLocation: row.second_location,
+        activityCount: row.activity_count,
+        amtrakTransfers: row.amtrak_transfers,
+        amtrakTickets: row.amtrak_tickets,
+        upassCount: row.upass_count,
+        ticketsSold: row.tickets_sold,
+        notes: row.notes,
+        capturedAt: toIsoTimestamp(row.captured_at)
+      };
+    } catch (error) {
+      await this.db.query("ROLLBACK");
+      throw error;
     }
-
-    return {
-      id: row.id,
-      runId: row.train_run_id,
-      inspectorName: row.inspector_name,
-      firstLocation: row.first_location,
-      secondLocation: row.second_location,
-      activityCount: row.activity_count,
-      amtrakTransfers: row.amtrak_transfers,
-      amtrakTickets: row.amtrak_tickets,
-      upassCount: row.upass_count,
-      ticketsSold: row.tickets_sold,
-      notes: row.notes,
-      capturedAt: toIsoTimestamp(row.captured_at)
-    };
   }
 
   async updateFareEnforcement(
@@ -2610,73 +2704,134 @@ export class PostgresOperationsRepository implements OperationsRepository {
     recordId: string,
     update: FareEnforcementUpdate
   ): Promise<FareEnforcementRecord> {
-    const result = await this.db.query<FareEnforcementRow>(
-      `
-        UPDATE shared.fare_enforcement fe
-        SET
-          inspector_name = $2,
-          first_location = $3,
-          second_location = $4,
-          activity_count = $5,
-          amtrak_transfers = $6,
-          amtrak_tickets = $7,
-          upass_count = $8,
-          tickets_sold = $9,
-          notes = $10,
-          captured_at = $11
-        FROM shared.train_run tr
-        WHERE tr.id = fe.train_run_id
-          AND tr.railroad_code = $1
-          AND fe.id = $12
-        RETURNING
-          fe.id,
-          fe.train_run_id,
-          fe.inspector_name,
-          fe.first_location,
-          fe.second_location,
-          fe.activity_count,
-          fe.amtrak_transfers,
-          fe.amtrak_tickets,
-          fe.upass_count,
-          fe.tickets_sold,
-          fe.notes,
-          fe.captured_at
-      `,
-      [
+    await this.db.query("BEGIN");
+
+    try {
+      const result = await this.db.query<FareEnforcementRow>(
+        `
+          UPDATE shared.fare_enforcement fe
+          SET
+            inspector_name = $2,
+            first_location = $3,
+            second_location = $4,
+            activity_count = $5,
+            amtrak_transfers = $6,
+            amtrak_tickets = $7,
+            upass_count = $8,
+            tickets_sold = $9,
+            notes = $10,
+            captured_at = $11
+          FROM shared.train_run tr
+          WHERE tr.id = fe.train_run_id
+            AND tr.railroad_code = $1
+            AND fe.id = $12
+          RETURNING
+            fe.id,
+            fe.train_run_id,
+            fe.inspector_name,
+            fe.first_location,
+            fe.second_location,
+            fe.activity_count,
+            fe.amtrak_transfers,
+            fe.amtrak_tickets,
+            fe.upass_count,
+            fe.tickets_sold,
+            fe.notes,
+            fe.captured_at
+        `,
+        [
+          propertyCode,
+          update.inspectorName,
+          update.firstLocation,
+          update.secondLocation,
+          update.activityCount,
+          update.amtrakTransfers,
+          update.amtrakTickets,
+          update.upassCount,
+          update.ticketsSold,
+          update.notes,
+          update.capturedAt,
+          recordId
+        ]
+      );
+
+      const row = result.rows[0];
+
+      if (!row) {
+        throw new Error("fare_enforcement.not_found");
+      }
+
+      await this.recordFareHistory(
         propertyCode,
-        update.inspectorName,
-        update.firstLocation,
-        update.secondLocation,
-        update.activityCount,
-        update.amtrakTransfers,
-        update.amtrakTickets,
-        update.upassCount,
-        update.ticketsSold,
-        update.notes,
-        update.capturedAt,
-        recordId
-      ]
-    );
+        recordId,
+        "updated",
+        "Local Development User",
+        "Fare enforcement record updated."
+      );
+      await this.db.query("COMMIT");
 
-    const row = result.rows[0];
-
-    if (!row) {
-      throw new Error("fare_enforcement.not_found");
+      return {
+        id: row.id,
+        runId: row.train_run_id,
+        inspectorName: row.inspector_name,
+        firstLocation: row.first_location,
+        secondLocation: row.second_location,
+        activityCount: row.activity_count,
+        amtrakTransfers: row.amtrak_transfers,
+        amtrakTickets: row.amtrak_tickets,
+        upassCount: row.upass_count,
+        ticketsSold: row.tickets_sold,
+        notes: row.notes,
+        capturedAt: toIsoTimestamp(row.captured_at)
+      };
+    } catch (error) {
+      await this.db.query("ROLLBACK");
+      throw error;
     }
+  }
 
-    return {
-      id: row.id,
-      runId: row.train_run_id,
-      inspectorName: row.inspector_name,
-      firstLocation: row.first_location,
-      secondLocation: row.second_location,
-      activityCount: row.activity_count,
-      amtrakTransfers: row.amtrak_transfers,
-      amtrakTickets: row.amtrak_tickets,
-      upassCount: row.upass_count,
-      ticketsSold: row.tickets_sold,
-      notes: row.notes,
-      capturedAt: toIsoTimestamp(row.captured_at)
-    };
+  async deleteFareEnforcement(
+    propertyCode: PropertyCode,
+    recordId: string,
+    actorName: string
+  ): Promise<FareEnforcementDeleteResult> {
+    await this.db.query("BEGIN");
+
+    try {
+      const result = await this.db.query<{ id: string; train_run_id: string }>(
+        `
+          DELETE FROM shared.fare_enforcement fe
+          USING shared.train_run tr
+          WHERE tr.id = fe.train_run_id
+            AND tr.railroad_code = $1
+            AND fe.id = $2
+          RETURNING fe.id, fe.train_run_id
+        `,
+        [propertyCode, recordId]
+      );
+
+      const row = result.rows[0];
+
+      if (!row) {
+        throw new Error("fare_enforcement.not_found");
+      }
+
+      await this.recordFareHistory(
+        propertyCode,
+        recordId,
+        "deleted",
+        actorName,
+        "Fare enforcement record deleted."
+      );
+      await this.db.query("COMMIT");
+
+      return {
+        deletedRecordId: row.id,
+        runId: row.train_run_id
+      };
+    } catch (error) {
+      await this.db.query("ROLLBACK");
+      throw error;
+    }
   }
 }

@@ -35,6 +35,8 @@ import type {
   DelayEventUpdate,
   FareEnforcementCreate,
   FareEnforcementDashboard,
+  FareEnforcementDeleteResult,
+  FareEnforcementHistoryList,
   FareEnforcementList,
   FareEnforcementRecord,
   FareEnforcementSummaryList,
@@ -139,16 +141,23 @@ async function fetchPropertyScoped<T>(path: string, propertyCode: PropertyCode):
 async function mutatePropertyScoped<T>(
   path: string,
   propertyCode: PropertyCode,
-  method: "POST" | "PUT",
-  body: unknown
+  method: "POST" | "PUT" | "DELETE",
+  body?: unknown
 ): Promise<T> {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  const requestInit: RequestInit = {
     method,
     headers: await buildAuthorizedHeaders({
       "Content-Type": "application/json",
       "X-Property": propertyCode
-    }),
-    body: JSON.stringify(body)
+    })
+  };
+
+  if (body !== undefined) {
+    requestInit.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    ...requestInit
   });
 
   if (!response.ok) {
@@ -1016,6 +1025,16 @@ export function fetchFareEnforcementSummary(
   return fetchPropertyScoped<FareEnforcementSummaryList>("/fare-enforcement/summary", propertyCode);
 }
 
+export function fetchFareEnforcementHistory(
+  propertyCode: PropertyCode,
+  recordId: string
+): Promise<FareEnforcementHistoryList> {
+  return fetchPropertyScoped<FareEnforcementHistoryList>(
+    `/fare-enforcement/${recordId}/history`,
+    propertyCode
+  );
+}
+
 export function fetchFareEnforcementDashboard(
   propertyCode: PropertyCode
 ): Promise<FareEnforcementDashboard> {
@@ -1032,5 +1051,17 @@ export function updateFareEnforcement(
     propertyCode,
     "PUT",
     payload
+  );
+}
+
+export function deleteFareEnforcementRecord(
+  propertyCode: PropertyCode,
+  recordId: string
+): Promise<FareEnforcementDeleteResult> {
+  return mutatePropertyScoped<FareEnforcementDeleteResult>(
+    `/fare-enforcement/${recordId}`,
+    propertyCode,
+    "DELETE",
+    undefined
   );
 }

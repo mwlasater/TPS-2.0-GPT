@@ -18,6 +18,7 @@ import type {
   DelayTemplateList,
   DelayEventUpdate,
   FareEnforcementCreate,
+  FareEnforcementHistoryList,
   FareEnforcementDashboard,
   FareEnforcementList,
   FareEnforcementSummaryList,
@@ -59,6 +60,7 @@ interface OperationsPageProps {
   currentUserPermissions: string[];
   delayEvents: DelayEventList;
   fareEnforcement: FareEnforcementList;
+  fareHistory: FareEnforcementHistoryList;
   fareDashboard: FareEnforcementDashboard;
   fareSummary: FareEnforcementSummaryList;
   isSaving: boolean;
@@ -104,6 +106,8 @@ interface OperationsPageProps {
   createFare: (
     input: FareEnforcementCreate
   ) => Promise<FareEnforcementList["items"][number] | undefined>;
+  loadFareHistory: (recordId: string | null) => Promise<void>;
+  deleteFare: (recordId: string) => Promise<{ deletedRecordId: string; runId: string } | undefined>;
   saveRunApproval: (
     runId: string,
     update: TrainRunApprovalUpdate
@@ -161,6 +165,7 @@ export function OperationsPage({
   currentUserPermissions,
   delayEvents,
   fareEnforcement,
+  fareHistory,
   fareDashboard,
   fareSummary,
   isSaving,
@@ -189,6 +194,8 @@ export function OperationsPage({
   swapCrew,
   saveDelay,
   createFare,
+  loadFareHistory,
+  deleteFare,
   saveFare,
   saveRunApproval,
   saveBatchRunApproval,
@@ -332,6 +339,10 @@ export function OperationsPage({
     ]
   });
   const [delayTemplateReportedAt, setDelayTemplateReportedAt] = useState("2026-03-06T06:28:00Z");
+
+  useEffect(() => {
+    void loadFareHistory(selectedFare?.id ?? null);
+  }, [selectedFare?.id]);
 
   function updateBatchDelay(index: number, update: Partial<DelayEventCreate>) {
     setNewDelayBatch((current) => ({
@@ -1795,10 +1806,13 @@ export function OperationsPage({
                 className="action-button"
                 disabled={isSaving || !canEditFare}
                 onClick={() => {
-                  void runAction(
-                    () => createFare(newFareForm),
-                    "Fare enforcement record created."
-                  );
+                  void runAction(async () => {
+                    const record = await createFare(newFareForm);
+                    if (record) {
+                      setSelectedFareId(record.id);
+                    }
+                    return record;
+                  }, "Fare enforcement record created.");
                 }}
                 type="button"
               >
@@ -1986,9 +2000,44 @@ export function OperationsPage({
               >
                 Save selected fare record
               </button>
+              <button
+                className="action-button secondary"
+                disabled={isSaving || !canEditFare}
+                onClick={() => {
+                  void runAction(async () => {
+                    const result = await deleteFare(selectedFare.id);
+                    setSelectedFareId(null);
+                    return result;
+                  }, "Fare enforcement record deleted.");
+                }}
+                type="button"
+              >
+                Delete selected fare record
+              </button>
+            </div>
+            <div className="editor-span">
+              <h4>Fare history</h4>
+              <div className="list-stack">
+                {fareHistory.items.length ? (
+                  fareHistory.items.map((entry) => (
+                    <article className="selection-card" key={entry.id}>
+                      <div>
+                        <strong>{entry.action}</strong>
+                        <p>{entry.notes}</p>
+                      </div>
+                      <div className="list-meta">
+                        <StatusBadge label={entry.actorName} tone="neutral" />
+                        <span>{entry.createdAt}</span>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <p>No fare history recorded for this selection yet.</p>
+                )}
+              </div>
             </div>
           </div>
-          ) : null}
+        ) : null}
         </Panel>
       </div>
       <Panel title="Approval history" eyebrow={`${approvalHistory.items.length} events`}>

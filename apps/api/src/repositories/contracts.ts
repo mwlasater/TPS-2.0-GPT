@@ -70,7 +70,9 @@ import type {
   FareEnforcementList,
   FareEnforcementRecord,
   FareEnforcementCreate,
+  FareEnforcementDeleteResult,
   FareEnforcementDashboard,
+  FareEnforcementHistoryList,
   FareEnforcementSummaryList,
   FareEnforcementUpdate,
   StationStop,
@@ -427,6 +429,10 @@ export interface OperationsRepository {
     propertyCode: PropertyCode,
     runId?: string
   ): MaybePromise<FareEnforcementList>;
+  listFareEnforcementHistory(
+    propertyCode: PropertyCode,
+    recordId: string
+  ): MaybePromise<FareEnforcementHistoryList>;
   listFareEnforcementSummary(propertyCode: PropertyCode): MaybePromise<FareEnforcementSummaryList>;
   getFareEnforcementDashboard(propertyCode: PropertyCode): MaybePromise<FareEnforcementDashboard>;
   createFareEnforcement(
@@ -438,6 +444,11 @@ export interface OperationsRepository {
     recordId: string,
     update: FareEnforcementUpdate
   ): MaybePromise<FareEnforcementRecord>;
+  deleteFareEnforcement(
+    propertyCode: PropertyCode,
+    recordId: string,
+    actorName: string
+  ): MaybePromise<FareEnforcementDeleteResult>;
 }
 
 export interface DataAccess {

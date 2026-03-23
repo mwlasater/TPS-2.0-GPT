@@ -551,6 +551,17 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
     )
   );
 
+  app.get(
+    "/fare-enforcement/:recordId/history",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => app.dataAccess.operations.listFareEnforcementHistory(
+      request.property,
+      (request.params as { recordId: string }).recordId
+    )
+  );
+
   app.post(
     "/fare-enforcement",
     {
@@ -591,6 +602,21 @@ export async function registerOperationsRoutes(app: FastifyInstance): Promise<vo
         request.property,
         (request.params as { recordId: string }).recordId,
         payload
+      );
+    }
+  );
+
+  app.delete(
+    "/fare-enforcement/:recordId",
+    {
+      preHandler: [app.authenticate, app.requireProperty]
+    },
+    async (request) => {
+      await app.requirePermission(request, "fare.write");
+      return app.dataAccess.operations.deleteFareEnforcement(
+        request.property,
+        (request.params as { recordId: string }).recordId,
+        request.user.displayName
       );
     }
   );

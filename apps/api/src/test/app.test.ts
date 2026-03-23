@@ -2458,6 +2458,24 @@ describe("app contracts", () => {
       }
     });
 
+    const historyResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/fare-enforcement/fare-caltrain-1/history",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
+    const deleteResponse = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/fare-enforcement/${createResponse.json().id as string}`,
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
     expect(createResponse.statusCode).toBe(200);
     expect(createResponse.json()).toMatchObject({
       runId: "caltrain-run-1",
@@ -2505,6 +2523,16 @@ describe("app contracts", () => {
       amtrakTransfers: 3,
       ticketsSold: 5
     });
+    expect(historyResponse.statusCode).toBe(200);
+    expect(historyResponse.json().items[0]).toMatchObject({
+      recordId: "fare-caltrain-1",
+      action: "updated"
+    });
+    expect(deleteResponse.statusCode).toBe(200);
+    expect(deleteResponse.json()).toMatchObject({
+      deletedRecordId: createResponse.json().id,
+      runId: "caltrain-run-1"
+    });
   });
 
   it("rejects fare enforcement writes without fare write permission", async () => {
@@ -2537,8 +2565,21 @@ describe("app contracts", () => {
       }
     });
 
+    const deleteResponse = await restrictedApp.inject({
+      method: "DELETE",
+      url: "/api/v1/fare-enforcement/fare-caltrain-1",
+      headers: {
+        authorization: "Bearer local-dev-token",
+        "x-property": "caltrain"
+      }
+    });
+
     expect(createResponse.statusCode).toBe(403);
     expect(createResponse.json()).toMatchObject({
+      error: "permission.forbidden"
+    });
+    expect(deleteResponse.statusCode).toBe(403);
+    expect(deleteResponse.json()).toMatchObject({
       error: "permission.forbidden"
     });
 
